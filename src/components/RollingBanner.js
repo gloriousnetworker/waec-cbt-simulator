@@ -1,88 +1,57 @@
-// components/RollingBanner.js - Alternative version with continuous scroll
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
-import { gsap } from 'gsap';
+import { useEffect, useState } from 'react';
+import Image from 'next/image';
 
-export default function RollingBanner() {
-  const [banners, setBanners] = useState([]);
-  const containerRef = useRef(null);
-  const contentRef = useRef(null);
-  const stagingUrl = 'https://big-relief-backend.vercel.app';
+const RollingBanner = () => {
+  const messages = [
+    "Welcome to WAEC CBT Simulator!",
+    "Practice makes perfect!",
+    "Time management is key!",
+    "Read questions carefully!",
+    "Check your answers before submitting!"
+  ];
 
-  useEffect(() => {
-    const fetchBanners = async () => {
-      try {
-        const response = await fetch(`${stagingUrl}/api/v1/banners/active`);
-        const data = await response.json();
-        if (data.success && data.data.length > 0) {
-          setBanners(data.data);
-        }
-      } catch (error) {
-        console.error('Error fetching banners:', error);
-      }
-    };
-
-    fetchBanners();
-  }, []);
+  const [currentIndex, setCurrentIndex] = useState(0);
 
   useEffect(() => {
-    if (banners.length === 0 || !containerRef.current || !contentRef.current) return;
+    const interval = setInterval(() => {
+      setCurrentIndex((prevIndex) => (prevIndex + 1) % messages.length);
+    }, 3000);
 
-    const container = containerRef.current;
-    const content = contentRef.current;
-    
-    // Duplicate content for seamless looping
-    content.innerHTML += content.innerHTML;
-
-    const contentWidth = content.scrollWidth / 2;
-    const duration = 20; // seconds for one full loop
-
-    // Animation
-    const animation = gsap.to(content, {
-      x: -contentWidth,
-      duration: duration,
-      ease: 'none',
-      repeat: -1,
-    });
-
-    // Pause on hover
-    container.addEventListener('mouseenter', () => animation.pause());
-    container.addEventListener('mouseleave', () => animation.resume());
-
-    return () => {
-      animation.kill();
-      container.removeEventListener('mouseenter', () => animation.pause());
-      container.removeEventListener('mouseleave', () => animation.resume());
-    };
-  }, [banners]);
-
-  if (banners.length === 0) {
-    return null;
-  }
+    return () => clearInterval(interval);
+  }, [messages.length]);
 
   return (
-    <div className="bg-[#039994] text-white py-3 overflow-hidden" ref={containerRef}>
-      <div 
-        className="flex items-center gap-8 px-4 whitespace-nowrap w-max"
-        ref={contentRef}
-      >
-        {banners.map((banner, index) => (
-          <div key={`${banner.id}-${index}`} className="flex items-center gap-4">
-            {banner.imageUrl && (
-              <img 
-                src={banner.imageUrl} 
-                alt="Banner" 
-                className="h-8 w-8 object-contain rounded-full" 
-              />
-            )}
-            <div>
-              <h3 className="font-semibold text-sm sm:text-base">{banner.title}</h3>
-              <p className="text-xs sm:text-sm">{banner.description}</p>
-            </div>
+    <div className="w-full bg-gradient-to-r from-[#039994] to-[#026d6a] text-white py-3 overflow-hidden">
+      <div className="max-w-7xl mx-auto px-4 flex items-center justify-center">
+        <div className="flex items-center gap-2 mr-4">
+          <div className="relative w-6 h-6">
+            <Image
+              src="/icons/icon-72x72.png"
+              alt="WAEC CBT"
+              width={24}
+              height={24}
+              className="rounded-full"
+            />
           </div>
-        ))}
+          <span className="font-playfair font-bold">WAEC CBT</span>
+        </div>
+        <div className="relative h-6 overflow-hidden flex-1">
+          <div
+            className="absolute top-0 left-0 w-full transition-transform duration-500"
+            style={{ transform: `translateY(-${currentIndex * 100}%)` }}
+          >
+            {messages.map((message, index) => (
+              <div key={index} className="h-6 flex items-center">
+                <p className="font-playfair text-sm font-medium">{message}</p>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );
-}
+};
+
+export default RollingBanner;
