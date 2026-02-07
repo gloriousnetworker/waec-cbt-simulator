@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
 import toast from 'react-hot-toast';
 import {
@@ -37,9 +37,6 @@ import {
   loginFeatureItem,
   loginFeatureIcon,
   loginFeatureText,
-  loadingSpinner,
-  loadingSpinnerSvg,
-  loadingText
 } from '../../styles/styles';
 
 export default function LoginPage() {
@@ -50,6 +47,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
   const { login, isAuthenticated } = useAuth();
+  const videoRef = useRef(null);
 
   const demoCredentials = [
     { email: 'student001@megatechsolutions.org', password: '123456' },
@@ -61,6 +59,17 @@ export default function LoginPage() {
       router.push('/dashboard');
     }
   }, [isAuthenticated, router]);
+
+  useEffect(() => {
+    if (loading && videoRef.current) {
+      const playPromise = videoRef.current.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(e => {
+          console.log("Video autoplay prevented:", e);
+        });
+      }
+    }
+  }, [loading]);
 
   const handleDemoLogin = (email, password) => {
     setIdentifier(email);
@@ -77,13 +86,15 @@ export default function LoginPage() {
       
       if (result.success) {
         toast.success('Login successful! Redirecting...', { id: loginToast });
-        router.push('/dashboard');
+        setTimeout(() => {
+          router.push('/dashboard');
+        }, 1500);
       } else {
         toast.error(result.message || 'Login failed', { id: loginToast });
+        setLoading(false);
       }
     } catch (error) {
       toast.error('An error occurred. Please try again.', { id: loginToast });
-    } finally {
       setLoading(false);
     }
   };
@@ -98,155 +109,185 @@ export default function LoginPage() {
   };
 
   return (
-    <div className={loginContainer}>
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className={loginContent}
-      >
-        <motion.div
-          initial={{ scale: 0.9, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ delay: 0.1, duration: 0.4 }}
-        >
-          <h1 className={loginLogo}>WAEC</h1>
-          <h2 className={loginTitle}>CBT Exam Simulator</h2>
-          <p className={loginSubtitle}>Sign in to start practicing</p>
-        </motion.div>
-
-        <motion.form
-          onSubmit={handleSubmit}
-          className={loginForm}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.2, duration: 0.4 }}
-        >
-          <div>
-            <label className={loginLabel}>Email Address</label>
-            <input
-              type="text"
-              value={identifier}
-              onChange={(e) => setIdentifier(e.target.value)}
-              className={loginInput}
-              placeholder="student@example.org"
+    <>
+      <AnimatePresence>
+        {loading && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[9999] bg-white"
+          >
+            <video
+              ref={videoRef}
+              src="/loader.mp4"
+              autoPlay
+              loop
+              muted
+              playsInline
+              className="w-full h-full object-cover"
             />
-          </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-          <div>
-            <label className={loginLabel}>Password</label>
-            <div className={loginPasswordWrapper}>
+      <div className={loginContainer}>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.4 }}
+          className="w-full max-w-sm px-4 py-2"
+        >
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1, duration: 0.4 }}
+            className="text-center mb-4"
+          >
+            <h1 className="text-[40px] leading-[100%] font-[700] tracking-[-0.03em] text-[#039994] text-center mb-1 font-playfair">WAEC</h1>
+            <h2 className="text-[20px] leading-[120%] font-[600] tracking-[-0.03em] text-[#1E1E1E] text-center mb-1 font-playfair">CBT Exam Simulator</h2>
+            <p className="text-[12px] leading-[140%] font-[400] tracking-[-0.02em] text-[#626060] text-center mb-6 font-playfair">Sign in to start practicing</p>
+          </motion.div>
+
+          <motion.form
+            onSubmit={handleSubmit}
+            className="space-y-4 mb-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.2, duration: 0.4 }}
+          >
+            <div>
+              <label className="block mb-1 text-[12px] leading-[100%] tracking-[-0.02em] font-[500] text-[#1E1E1E] font-playfair">Email Address</label>
               <input
-                type={showPassword ? 'text' : 'password'}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className={loginInput}
-                placeholder="Enter your password"
+                type="text"
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
+                className="w-full px-3 py-2 border-b-2 border-gray-300 text-[13px] leading-[100%] tracking-[-0.02em] font-[500] text-[#1E1E1E] font-playfair focus:outline-none focus:border-[#039994] transition-colors bg-transparent placeholder-[#B0B0B0]"
+                placeholder="student@example.org"
+                disabled={loading}
               />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className={loginPasswordToggle}
+            </div>
+
+            <div>
+              <label className="block mb-1 text-[12px] leading-[100%] tracking-[-0.02em] font-[500] text-[#1E1E1E] font-playfair">Password</label>
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full px-3 py-2 border-b-2 border-gray-300 text-[13px] leading-[100%] tracking-[-0.02em] font-[500] text-[#1E1E1E] font-playfair focus:outline-none focus:border-[#039994] transition-colors bg-transparent placeholder-[#B0B0B0]"
+                  placeholder="Enter your password"
+                  disabled={loading}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-0 top-1/2 -translate-y-1/2 text-[#626060] cursor-pointer hover:text-[#039994] transition-colors text-[18px]"
+                  disabled={loading}
+                >
+                  {showPassword ? '👁️' : '👁️‍🗨️'}
+                </button>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between mb-4">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="w-3 h-3 border-2 border-gray-300 rounded cursor-pointer accent-[#039994]"
+                  disabled={loading}
+                />
+                <span className="text-[11px] leading-[100%] font-[400] text-[#626060] font-playfair">Remember me</span>
+              </label>
+              <button 
+                type="button" 
+                className="text-[11px] leading-[100%] font-[500] text-[#039994] hover:underline cursor-pointer font-playfair"
+                disabled={loading}
               >
-                {showPassword ? '👁️' : '👁️‍🗨️'}
+                Forgot password?
               </button>
             </div>
-          </div>
 
-          <div className={loginRememberRow}>
-            <label className={loginCheckboxLabel}>
-              <input
-                type="checkbox"
-                checked={rememberMe}
-                onChange={(e) => setRememberMe(e.target.checked)}
-                className={loginCheckbox}
-              />
-              <span className={loginCheckboxText}>Remember me</span>
-            </label>
-            <button type="button" className={loginForgotPassword}>
-              Forgot password?
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-2 bg-[#039994] text-white text-[14px] leading-[100%] font-[600] tracking-[-0.02em] rounded-md hover:bg-[#02857f] focus:outline-none focus:ring-2 focus:ring-[#039994] focus:ring-offset-2 transition-all font-playfair disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? 'Signing in...' : 'Sign In'}
             </button>
-          </div>
+          </motion.form>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className={loginButton}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.3, duration: 0.4 }}
           >
-            {loading ? (
-              <span className={loadingSpinner}>
-                <svg className={loadingSpinnerSvg} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                <span className={loadingText}>Signing in...</span>
-              </span>
-            ) : (
-              'Sign In'
-            )}
-          </button>
-        </motion.form>
+            <div className="flex items-center my-4">
+              <div className="flex-1 h-px bg-gray-300"></div>
+              <span className="px-3 text-[11px] leading-[100%] font-[500] text-[#626060] font-playfair">OR</span>
+              <div className="flex-1 h-px bg-gray-300"></div>
+            </div>
 
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.3, duration: 0.4 }}
-        >
-          <div className={loginDivider}>
-            <div className={loginDividerLine}></div>
-            <span className={loginDividerText}>OR</span>
-            <div className={loginDividerLine}></div>
-          </div>
-
-          <div className={loginDemoSection}>
-            <h3 className={loginDemoTitle}>Quick Access - Demo Accounts</h3>
-            
-            {demoCredentials.map((cred, index) => (
-              <motion.button
-                key={index}
-                whileHover={{ scale: 1.01 }}
-                whileTap={{ scale: 0.99 }}
-                onClick={() => handleDemoLogin(cred.email, cred.password)}
-                disabled={loading}
-                className={loginDemoButton}
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className={loginDemoEmail}>{cred.email}</div>
-                    <div className={loginDemoPassword}>Password: {cred.password}</div>
+            <div className="space-y-2 mb-4">
+              <h3 className="text-[13px] leading-[120%] font-[600] tracking-[-0.02em] text-[#1E1E1E] mb-2 font-playfair">Quick Access - Demo Accounts</h3>
+              
+              {demoCredentials.map((cred, index) => (
+                <motion.button
+                  key={index}
+                  whileHover={{ scale: loading ? 1 : 1.01 }}
+                  whileTap={{ scale: loading ? 1 : 0.99 }}
+                  onClick={() => handleDemoLogin(cred.email, cred.password)}
+                  disabled={loading}
+                  className="w-full px-3 py-2 border-2 border-[#039994] text-left rounded-md hover:bg-[#039994]/5 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-[12px] leading-[100%] font-[500] text-[#1E1E1E] font-playfair mb-0.5">{cred.email}</div>
+                      <div className="text-[10px] leading-[100%] font-[400] text-[#626060] font-playfair">Password: {cred.password}</div>
+                    </div>
+                    <div className="text-[#039994] text-[16px]">→</div>
                   </div>
-                  <div className={loginDemoArrow}>→</div>
-                </div>
-              </motion.button>
-            ))}
-          </div>
+                </motion.button>
+              ))}
+            </div>
 
-          <div className={loginNote}>
-            <p className={loginNoteText}>
-              <strong>Note:</strong> These are demo accounts. For full access, please contact your school administrator.
-            </p>
-          </div>
+            <div className="mt-4 px-3 py-2 bg-[#FFF9E6] border-l-4 border-[#FFC107] rounded-r-md mb-4">
+              <p className="text-[10px] leading-[140%] font-[400] text-[#5D4E00] font-playfair">
+                <strong>Note:</strong> These are demo accounts. For full access, please contact your school administrator.
+              </p>
+            </div>
 
-          <div className={loginFeatures}>
-            <div className={loginFeatureItem}>
-              <div className={loginFeatureIcon}>📱</div>
-              <div className={loginFeatureText}>Mobile Friendly</div>
+            <div className="grid grid-cols-2 gap-2 mb-4">
+              <div className="text-center py-2">
+                <div className="text-[20px] mb-1">📱</div>
+                <div className="text-[10px] leading-[120%] font-[500] text-[#626060] font-playfair">Mobile Friendly</div>
+              </div>
+              <div className="text-center py-2">
+                <div className="text-[20px] mb-1">⚡</div>
+                <div className="text-[10px] leading-[120%] font-[500] text-[#626060] font-playfair">Instant Results</div>
+              </div>
+              <div className="text-center py-2">
+                <div className="text-[20px] mb-1">📚</div>
+                <div className="text-[10px] leading-[120%] font-[500] text-[#626060] font-playfair">Past Questions</div>
+              </div>
+              <div className="text-center py-2">
+                <div className="text-[20px] mb-1">🎯</div>
+                <div className="text-[10px] leading-[120%] font-[500] text-[#626060] font-playfair">Analytics</div>
+              </div>
             </div>
-            <div className={loginFeatureItem}>
-              <div className={loginFeatureIcon}>⚡</div>
-              <div className={loginFeatureText}>Instant Results</div>
+
+            <div className="pt-4 border-t border-[#E8E8E8] text-center">
+              <p className="text-[9px] leading-[140%] font-[400] text-[#626060] font-playfair">
+                <span className="font-[600] text-[#1E1E1E]">Mega-Tech</span>
+                <span className="mx-1">•</span>
+                <span>© 2026 All rights reserved</span>
+              </p>
             </div>
-            <div className={loginFeatureItem}>
-              <div className={loginFeatureIcon}>📚</div>
-              <div className={loginFeatureText}>Past Questions</div>
-            </div>
-            <div className={loginFeatureItem}>
-              <div className={loginFeatureIcon}>🎯</div>
-              <div className={loginFeatureText}>Analytics</div>
-            </div>
-          </div>
+          </motion.div>
         </motion.div>
-      </motion.div>
-    </div>
+      </div>
+    </>
   );
 }

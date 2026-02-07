@@ -1,9 +1,11 @@
 'use client';
 
-import { useState, useEffect, useCallback, Suspense } from 'react';
+import { useState, useEffect, useCallback, Suspense, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import ProtectedRoute from '../../../components/ProtectedRoute';
+import toast from 'react-hot-toast';
+import { getSubjectQuestions } from '@/app/data/questions';
 
 const examRoomContainer = "min-h-screen bg-[#F9FAFB]";
 const examRoomHeader = "bg-white border-b border-[#E8E8E8] sticky top-0 z-10";
@@ -42,7 +44,7 @@ const examRoomProgressText = "flex justify-between text-[13px] leading-[100%] fo
 const examRoomProgressBarBg = "h-2 bg-[#F0F0F0] rounded-full overflow-hidden";
 const examRoomProgressBarFill = "h-full bg-[#039994] rounded-full transition-all";
 const examRoomQuestionGrid = "grid grid-cols-5 md:grid-cols-6 lg:grid-cols-5 gap-2 mb-6";
-const examRoomQuestionDot = "w-10 h-10 rounded-full flex items-center justify-center text-[13px] leading-[100%] font-[600] font-playfair transition-all";
+const examRoomQuestionDot = "w-10 h-10 rounded-full flex items-center justify-center text-[13px] leading-[100%] font-[600] font-playfair transition-all cursor-pointer";
 const examRoomQuestionDotUnanswered = "bg-white border border-[#E8E8E8] text-[#626060] hover:border-[#039994]";
 const examRoomQuestionDotAnswered = "bg-[#E8F8F6] border border-[#039994] text-[#039994]";
 const examRoomQuestionDotCurrent = "bg-[#039994] text-white";
@@ -52,10 +54,10 @@ const examRoomSubmitButton = "bg-[#DC2626] text-white hover:bg-[#B91C1C]";
 const examRoomReviewButton = "bg-white text-[#039994] border border-[#039994] hover:bg-[#F0F9F8]";
 const examWarningModal = "fixed inset-0 bg-black/50 flex items-center justify-center z-50";
 const examWarningCard = "bg-white rounded-xl p-6 max-w-md mx-4";
-const examWarningIcon = "text-4xl mb-4 text-center";
-const examWarningTitle = "text-[18px] leading-[120%] font-[600] text-[#1E1E1E] mb-2 text-center font-playfair";
+const examWarningIcon = "text-5xl mb-4 text-center";
+const examWarningTitle = "text-[20px] leading-[120%] font-[700] tracking-[-0.03em] mb-2 text-center font-playfair";
 const examWarningText = "text-[14px] leading-[150%] font-[500] text-[#626060] mb-6 text-center font-playfair";
-const examWarningButton = "w-full py-3 bg-[#039994] text-white rounded-lg font-playfair text-[14px] leading-[100%] font-[600] hover:bg-[#028a85]";
+const examWarningButton = "w-full py-3 rounded-lg font-playfair text-[14px] leading-[100%] font-[600] hover:opacity-90 transition-all";
 const modalOverlay = "fixed inset-0 bg-black/50 flex items-center justify-center z-50";
 const modalContainer = "bg-white rounded-xl p-6 max-w-md mx-4";
 const modalTitle = "text-[18px] leading-[120%] font-[600] text-[#1E1E1E] mb-2 font-playfair";
@@ -64,22 +66,58 @@ const modalActions = "flex gap-3";
 const modalButtonSecondary = "flex-1 py-3 bg-white text-[#039994] border border-[#039994] rounded-lg font-playfair text-[14px] leading-[100%] font-[600] hover:bg-[#F0F9F8]";
 const modalButtonDanger = "flex-1 py-3 bg-[#DC2626] text-white rounded-lg font-playfair text-[14px] leading-[100%] font-[600] hover:bg-[#B91C1C]";
 
-const generateQuestions = (subject, count) => {
-  const questions = [];
-  for (let i = 1; i <= count; i++) {
-    questions.push({
-      id: i,
-      question: `This is question ${i} for ${subject}. What is the correct answer among the options below?`,
-      options: [
-        `Option A for question ${i}`,
-        `Option B for question ${i}`,
-        `Option C for question ${i}`,
-        `Option D for question ${i}`
-      ],
-      correctAnswer: Math.floor(Math.random() * 4),
-      marks: 1
-    });
+const shuffleArray = (array) => {
+  const newArray = [...array];
+  for (let i = newArray.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
   }
+  return newArray;
+};
+
+const shuffleOptions = (question) => {
+  const options = [...question.options];
+  const correctAnswerIndex = question.correctAnswer;
+  const correctOption = options[correctAnswerIndex];
+  
+  const shuffledOptions = shuffleArray(options);
+  const newCorrectAnswerIndex = shuffledOptions.indexOf(correctOption);
+  
+  return {
+    ...question,
+    options: shuffledOptions,
+    correctAnswer: newCorrectAnswerIndex
+  };
+};
+
+const generateExamQuestions = (subjectId, requiredCount) => {
+  const availableQuestions = getSubjectQuestions(subjectId);
+  if (availableQuestions.length >= requiredCount) {
+    const selected = shuffleArray(availableQuestions).slice(0, requiredCount);
+    return selected.map(q => ({ ...q, id: Math.random().toString(36).substr(2, 9) }));
+  }
+  
+  const questions = [];
+  let questionPool = [...availableQuestions];
+  let poolIndex = 0;
+  
+  while (questions.length < requiredCount) {
+    if (poolIndex >= questionPool.length) {
+      questionPool = shuffleArray(availableQuestions);
+      poolIndex = 0;
+    }
+    
+    const baseQuestion = { ...questionPool[poolIndex] };
+    const shuffledQuestion = shuffleOptions(baseQuestion);
+    
+    questions.push({
+      ...shuffledQuestion,
+      id: `q${questions.length + 1}_${Math.random().toString(36).substr(2, 4)}`
+    });
+    
+    poolIndex++;
+  }
+  
   return questions;
 };
 
@@ -114,19 +152,58 @@ function ExamRoomContent() {
   const [questions, setQuestions] = useState([]);
   const [showWarning, setShowWarning] = useState(false);
   const [showSubmitModal, setShowSubmitModal] = useState(false);
-  const [tabSwitchCount, setTabSwitchCount] = useState(0);
+  const [warningCount, setWarningCount] = useState(0);
+  const [lastViolationType, setLastViolationType] = useState('');
   const [examSubmitted, setExamSubmitted] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const violationTimeoutRef = useRef(null);
+  const toastShownRef = useRef(false);
 
   const subject = subjectData[subjectId] || subjectData.mathematics;
   const isTimed = examType === 'timed' || examType === 'mock';
+  const isStrictMode = examType === 'mock';
 
   useEffect(() => {
-    const generatedQuestions = generateQuestions(subject.name, subject.questions);
-    setQuestions(generatedQuestions);
-    if (isTimed) {
-      setTimeLeft(subject.duration * 60);
+    const loadQuestions = () => {
+      setLoading(true);
+      try {
+        const generatedQuestions = generateExamQuestions(subjectId, subject.questions);
+        setQuestions(generatedQuestions);
+        if (isTimed) {
+          setTimeLeft(subject.duration * 60);
+        }
+        if (isStrictMode) {
+          enterFullscreen();
+        }
+      } catch (error) {
+        console.error('Error loading questions:', error);
+        toast.error('Failed to load exam questions');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadQuestions();
+
+    return () => {
+      if (document.fullscreenElement) {
+        document.exitFullscreen().catch(() => {});
+      }
+      if (violationTimeoutRef.current) {
+        clearTimeout(violationTimeoutRef.current);
+      }
+    };
+  }, [subjectId, subject.questions, subject.duration, isTimed, isStrictMode]);
+
+  const enterFullscreen = () => {
+    const elem = document.documentElement;
+    if (elem.requestFullscreen) {
+      elem.requestFullscreen().then(() => {
+        setIsFullscreen(true);
+      }).catch(() => {});
     }
-  }, [subject.name, subject.questions, subject.duration, isTimed]);
+  };
 
   useEffect(() => {
     if (!isTimed || timeLeft <= 0 || examSubmitted) return;
@@ -144,33 +221,96 @@ function ExamRoomContent() {
     return () => clearInterval(timer);
   }, [isTimed, timeLeft, examSubmitted]);
 
+  const handleViolation = useCallback((type) => {
+    if (examSubmitted) return;
+
+    if (violationTimeoutRef.current) {
+      clearTimeout(violationTimeoutRef.current);
+    }
+
+    setWarningCount((prev) => {
+      const newCount = prev + 1;
+      setLastViolationType(type);
+      setShowWarning(true);
+
+      if (newCount >= 3) {
+        violationTimeoutRef.current = setTimeout(() => {
+          handleAutoSubmit(`Malpractice detected after 3 warnings: ${type}`);
+        }, 100);
+      }
+
+      return newCount;
+    });
+  }, [examSubmitted]);
+
   const handleVisibilityChange = useCallback(() => {
     if (document.hidden && isTimed && !examSubmitted) {
-      setTabSwitchCount((prev) => {
-        const newCount = prev + 1;
-        if (newCount >= 3) {
-          handleAutoSubmit('Tab switching detected');
-        } else {
-          setShowWarning(true);
-        }
-        return newCount;
-      });
+      handleViolation('Tab switched');
     }
-  }, [isTimed, examSubmitted]);
+  }, [isTimed, examSubmitted, handleViolation]);
+
+  const handleBlur = useCallback(() => {
+    if (isTimed && !examSubmitted && !document.hidden) {
+      handleViolation('Window lost focus');
+    }
+  }, [isTimed, examSubmitted, handleViolation]);
+
+  const handleFullscreenChange = useCallback(() => {
+    if (!document.fullscreenElement && isStrictMode && !examSubmitted) {
+      handleViolation('Exited fullscreen mode');
+      setTimeout(() => {
+        if (!examSubmitted) {
+          enterFullscreen();
+        }
+      }, 100);
+    }
+  }, [isStrictMode, examSubmitted, handleViolation]);
+
+  const handleContextMenu = useCallback((e) => {
+    if (isTimed) {
+      e.preventDefault();
+    }
+  }, [isTimed]);
+
+  const handleKeyDown = useCallback((e) => {
+    if (isTimed && (e.key === 'F12' || (e.ctrlKey && e.shiftKey && e.key === 'I'))) {
+      e.preventDefault();
+    }
+  }, [isTimed]);
 
   useEffect(() => {
     if (isTimed) {
       document.addEventListener('visibilitychange', handleVisibilityChange);
+      window.addEventListener('blur', handleBlur);
+      document.addEventListener('fullscreenchange', handleFullscreenChange);
+      document.addEventListener('contextmenu', handleContextMenu);
+      document.addEventListener('keydown', handleKeyDown);
+
       return () => {
         document.removeEventListener('visibilitychange', handleVisibilityChange);
+        window.removeEventListener('blur', handleBlur);
+        document.removeEventListener('fullscreenchange', handleFullscreenChange);
+        document.removeEventListener('contextmenu', handleContextMenu);
+        document.removeEventListener('keydown', handleKeyDown);
       };
     }
-  }, [isTimed, handleVisibilityChange]);
+  }, [isTimed, handleVisibilityChange, handleBlur, handleFullscreenChange, handleContextMenu, handleKeyDown]);
 
   const handleAutoSubmit = (reason) => {
+    if (examSubmitted) return;
+    
     setExamSubmitted(true);
     const score = calculateScore();
-    router.push(`/dashboard/exam-result?score=${score}&total=${questions.length}&subject=${subject.name}&reason=${reason}`);
+    const percentage = ((score / questions.length) * 100).toFixed(1);
+    
+    if (!toastShownRef.current) {
+      toastShownRef.current = true;
+      toast.error(reason, { duration: 4000 });
+    }
+    
+    setTimeout(() => {
+      router.push(`/dashboard?examResult=true&score=${score}&total=${questions.length}&percentage=${percentage}&subject=${encodeURIComponent(subject.name)}&reason=${encodeURIComponent(reason)}`);
+    }, 1000);
   };
 
   const calculateScore = () => {
@@ -211,9 +351,20 @@ function ExamRoomContent() {
   };
 
   const confirmSubmit = () => {
+    if (examSubmitted) return;
+    
     setExamSubmitted(true);
     const score = calculateScore();
-    router.push(`/dashboard/exam-result?score=${score}&total=${questions.length}&subject=${subject.name}`);
+    const percentage = ((score / questions.length) * 100).toFixed(1);
+    
+    if (!toastShownRef.current) {
+      toastShownRef.current = true;
+      toast.success('Exam submitted successfully!');
+    }
+    
+    setTimeout(() => {
+      router.push(`/dashboard?examResult=true&score=${score}&total=${questions.length}&percentage=${percentage}&subject=${encodeURIComponent(subject.name)}`);
+    }, 500);
   };
 
   const formatTime = (seconds) => {
@@ -229,21 +380,45 @@ function ExamRoomContent() {
     return examRoomTimerDanger;
   };
 
+  const getWarningColor = () => {
+    if (warningCount === 1) return { bg: 'bg-[#FEF3C7]', text: 'text-[#F59E0B]', icon: '⚠️' };
+    if (warningCount === 2) return { bg: 'bg-[#FED7AA]', text: 'text-[#EA580C]', icon: '🚨' };
+    return { bg: 'bg-[#FEE2E2]', text: 'text-[#DC2626]', icon: '🛑' };
+  };
+
   const answeredCount = Object.keys(answers).length;
-  const progress = (answeredCount / questions.length) * 100;
+  const progress = questions.length > 0 ? (answeredCount / questions.length) * 100 : 0;
+
+  if (loading) {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center bg-white">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-[#039994] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-[14px] leading-[100%] font-[500] text-[#626060] font-playfair">Loading exam questions...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (questions.length === 0) {
     return (
       <div className="fixed inset-0 flex items-center justify-center bg-white">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-[#039994] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-[14px] leading-[100%] font-[500] text-[#626060] font-playfair">Loading exam...</p>
+          <div className="w-16 h-16 border-4 border-[#DC2626] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-[14px] leading-[100%] font-[500] text-[#DC2626] font-playfair">No questions available for this subject</p>
+          <button
+            onClick={() => router.push('/dashboard/exams')}
+            className="mt-4 px-6 py-2 bg-[#039994] text-white rounded-lg font-playfair text-[14px] leading-[100%] font-[600] hover:bg-[#028a85]"
+          >
+            Back to Exams
+          </button>
         </div>
       </div>
     );
   }
 
   const currentQ = questions[currentQuestion];
+  const warningStyle = getWarningColor();
 
   return (
     <div className={examRoomContainer}>
@@ -255,6 +430,11 @@ function ExamRoomContent() {
             </h1>
             <p className="text-[11px] leading-[100%] font-[400] text-[#626060] font-playfair mt-1">
               {examType === 'practice' ? 'Practice Mode' : examType === 'timed' ? 'Timed Mode' : 'Mock Exam'}
+              {warningCount > 0 && (
+                <span className={`ml-2 ${warningStyle.text} font-[600]`}>
+                  • Warning {warningCount}/3
+                </span>
+              )}
             </p>
           </div>
           {isTimed && (
@@ -391,19 +571,30 @@ function ExamRoomContent() {
             className={examWarningModal}
           >
             <motion.div
-              initial={{ scale: 0.9 }}
-              animate={{ scale: 1 }}
-              exit={{ scale: 0.9 }}
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
               className={examWarningCard}
             >
-              <div className={examWarningIcon}>⚠️</div>
-              <h3 className={examWarningTitle}>Warning: Tab Switch Detected</h3>
+              <div className={examWarningIcon}>{warningStyle.icon}</div>
+              <h3 className={`${examWarningTitle} ${warningStyle.text}`}>
+                Warning {warningCount} of 3
+              </h3>
               <p className={examWarningText}>
-                You have switched tabs {tabSwitchCount} time(s). After 3 tab switches, your exam will be automatically submitted. Please stay on this page.
+                Violation detected: <strong>{lastViolationType}</strong>
               </p>
+
+              <div className={`p-4 ${warningStyle.bg} rounded-lg mb-6`}>
+                <p className={`text-[13px] leading-[140%] font-[600] ${warningStyle.text} font-playfair text-center`}>
+                  {warningCount === 1 && 'First warning! Stay on this page.'}
+                  {warningCount === 2 && 'Second warning! One more violation will auto-submit your exam!'}
+                  {warningCount >= 3 && 'Third warning! Your exam is being submitted...'}
+                </p>
+              </div>
+
               <button
                 onClick={() => setShowWarning(false)}
-                className={examWarningButton}
+                className={`${examWarningButton} bg-[#039994] text-white`}
               >
                 I Understand
               </button>

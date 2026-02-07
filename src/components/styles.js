@@ -70,6 +70,10 @@ export const splashDots =
 'flex justify-center space-x-2 mt-8';
 export const splashDot =
 'w-2 h-2 bg-[#039994] rounded-full';
+export const splashImageContainer = 'relative w-64 h-64 mx-auto mb-8';
+export const splashImageWrapper = 'relative w-full h-full overflow-hidden';
+export const splashImage = 'object-contain w-full h-full';
+export const splashImageGlow = 'absolute inset-0 bg-[#039994] opacity-0 blur-3xl';
 
 export const loginContainer =
 'fixed inset-0 flex items-center justify-center bg-white overflow-hidden';
