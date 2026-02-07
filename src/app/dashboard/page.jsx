@@ -3,7 +3,7 @@
 import ProtectedRoute from '../../components/ProtectedRoute';
 import DashboardNavbar from '../../components/dashboard-components/Navbar';
 import DashboardSidebar from '../../components/dashboard-components/Sidebar';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
 import { useSearchParams } from 'next/navigation';
@@ -17,25 +17,17 @@ import StudyGroups from '../../components/dashboard-content/StudyGroups';
 import Settings from '../../components/dashboard-content/Settings';
 import Help from '../../components/dashboard-content/Help';
 import toast from 'react-hot-toast';
-import {
-  dashboardContainer,
-  dashboardMain,
-  dashboardContent,
-  dashboardInner,
-  dashboardLoading,
-  dashboardLoadingInner,
-  dashboardLoadingSpinner,
-  dashboardLoadingText,
-  modalOverlay,
-  modalContainer,
-  modalTitle,
-  modalText,
-  modalActions,
-  modalButtonSecondary,
-  modalButtonDanger
-} from '../../styles/styles';
 
-export default function DashboardPage() {
+const dashboardContainer = "min-h-screen bg-[#F9FAFB]";
+const dashboardMain = "flex";
+const dashboardContent = "flex-1 min-h-screen overflow-y-auto";
+const dashboardInner = "max-w-7xl mx-auto px-4 py-6";
+const dashboardLoading = "fixed inset-0 bg-white flex items-center justify-center z-50";
+const dashboardLoadingInner = "text-center";
+const dashboardLoadingSpinner = "w-16 h-16 border-4 border-[#039994] border-t-transparent rounded-full animate-spin mx-auto mb-4";
+const dashboardLoadingText = "text-[14px] leading-[100%] font-[500] text-[#626060] font-playfair";
+
+function DashboardContent() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [pageLoading, setPageLoading] = useState(true);
   const [activeSection, setActiveSection] = useState('home');
@@ -80,7 +72,14 @@ export default function DashboardPage() {
         toast.success('Exam completed successfully!', { duration: 3000 });
       }
 
-      window.history.replaceState({}, '', '/dashboard');
+      const url = new URL(window.location.href);
+      url.searchParams.delete('examResult');
+      url.searchParams.delete('score');
+      url.searchParams.delete('total');
+      url.searchParams.delete('percentage');
+      url.searchParams.delete('subject');
+      url.searchParams.delete('reason');
+      window.history.replaceState({}, '', url.pathname);
     }
   }, [searchParams]);
 
@@ -134,122 +133,137 @@ export default function DashboardPage() {
   }
 
   return (
-    <ProtectedRoute>
-      <div className={dashboardContainer}>
-        <DashboardNavbar 
+    <div className={dashboardContainer}>
+      <DashboardNavbar 
+        activeSection={activeSection}
+        setActiveSection={handleNavigation}
+        onMenuClick={() => setSidebarOpen(!sidebarOpen)} 
+      />
+      
+      <div className={dashboardMain}>
+        <DashboardSidebar 
+          isOpen={sidebarOpen} 
+          onClose={() => setSidebarOpen(false)}
           activeSection={activeSection}
           setActiveSection={handleNavigation}
-          onMenuClick={() => setSidebarOpen(!sidebarOpen)} 
         />
         
-        <div className={dashboardMain}>
-          <DashboardSidebar 
-            isOpen={sidebarOpen} 
-            onClose={() => setSidebarOpen(false)}
-            activeSection={activeSection}
-            setActiveSection={handleNavigation}
-          />
-          
-          <main className={dashboardContent}>
-            <motion.div
-              key={activeSection}
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.2 }}
-              className={dashboardInner}
-            >
-              {renderSection()}
-            </motion.div>
-          </main>
-        </div>
+        <main className={dashboardContent}>
+          <motion.div
+            key={activeSection}
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.2 }}
+            className={dashboardInner}
+          >
+            {renderSection()}
+          </motion.div>
+        </main>
+      </div>
 
-        <AnimatePresence>
-          {showResultModal && examResult && (
+      <AnimatePresence>
+        {showResultModal && examResult && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+            onClick={handleCloseResult}
+          >
             <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className={modalOverlay}
-              onClick={handleCloseResult}
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-xl p-8 max-w-md mx-4 text-center"
             >
-              <motion.div
-                initial={{ scale: 0.9, y: 20 }}
-                animate={{ scale: 1, y: 0 }}
-                exit={{ scale: 0.9, y: 20 }}
-                onClick={(e) => e.stopPropagation()}
-                className="bg-white rounded-xl p-8 max-w-md mx-4 text-center"
-              >
-                <div className="mb-6">
-                  {examResult.reason ? (
-                    <div className="text-5xl mb-4">⚠️</div>
-                  ) : (
-                    <div className="text-5xl mb-4">
-                      {examResult.percentage >= 50 ? '🎉' : '📚'}
-                    </div>
-                  )}
-                  <h3 className="text-[24px] leading-[120%] font-[700] tracking-[-0.03em] text-[#1E1E1E] mb-2 font-playfair">
-                    {examResult.reason ? 'Exam Auto-Submitted' : 'Exam Completed!'}
-                  </h3>
-                  <p className="text-[14px] leading-[140%] font-[400] text-[#626060] font-playfair">
-                    {examResult.subject}
-                  </p>
-                </div>
-
-                {examResult.reason && (
-                  <div className="mb-6 p-4 bg-[#FEF2F2] border border-[#DC2626] rounded-lg">
-                    <p className="text-[12px] leading-[140%] font-[500] text-[#DC2626] font-playfair">
-                      Reason: {examResult.reason}
-                    </p>
+              <div className="mb-6">
+                {examResult.reason ? (
+                  <div className="text-5xl mb-4">⚠️</div>
+                ) : (
+                  <div className="text-5xl mb-4">
+                    {examResult.percentage >= 50 ? '🎉' : '📚'}
                   </div>
                 )}
+                <h3 className="text-[24px] leading-[120%] font-[700] tracking-[-0.03em] text-[#1E1E1E] mb-2 font-playfair">
+                  {examResult.reason ? 'Exam Auto-Submitted' : 'Exam Completed!'}
+                </h3>
+                <p className="text-[14px] leading-[140%] font-[400] text-[#626060] font-playfair">
+                  {examResult.subject}
+                </p>
+              </div>
 
-                <div className="mb-8">
-                  <div className={`inline-flex items-center justify-center w-24 h-24 rounded-full ${getGrade(examResult.percentage).bg} mb-4`}>
-                    <span className={`text-[40px] leading-[100%] font-[700] font-playfair ${getGrade(examResult.percentage).color}`}>
-                      {getGrade(examResult.percentage).grade}
+              {examResult.reason && (
+                <div className="mb-6 p-4 bg-[#FEF2F2] border border-[#DC2626] rounded-lg">
+                  <p className="text-[12px] leading-[140%] font-[500] text-[#DC2626] font-playfair">
+                    Reason: {examResult.reason}
+                  </p>
+                </div>
+              )}
+
+              <div className="mb-8">
+                <div className={`inline-flex items-center justify-center w-24 h-24 rounded-full ${getGrade(examResult.percentage).bg} mb-4`}>
+                  <span className={`text-[40px] leading-[100%] font-[700] font-playfair ${getGrade(examResult.percentage).color}`}>
+                    {getGrade(examResult.percentage).grade}
+                  </span>
+                </div>
+                
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center p-3 bg-[#F9FAFB] rounded-lg">
+                    <span className="text-[13px] leading-[100%] font-[500] text-[#626060] font-playfair">Score</span>
+                    <span className="text-[16px] leading-[100%] font-[700] text-[#1E1E1E] font-playfair">
+                      {examResult.score} / {examResult.total}
                     </span>
                   </div>
                   
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-center p-3 bg-[#F9FAFB] rounded-lg">
-                      <span className="text-[13px] leading-[100%] font-[500] text-[#626060] font-playfair">Score</span>
-                      <span className="text-[16px] leading-[100%] font-[700] text-[#1E1E1E] font-playfair">
-                        {examResult.score} / {examResult.total}
-                      </span>
-                    </div>
-                    
-                    <div className="flex justify-between items-center p-3 bg-[#F9FAFB] rounded-lg">
-                      <span className="text-[13px] leading-[100%] font-[500] text-[#626060] font-playfair">Percentage</span>
-                      <span className={`text-[16px] leading-[100%] font-[700] font-playfair ${getGrade(examResult.percentage).color}`}>
-                        {examResult.percentage}%
-                      </span>
-                    </div>
+                  <div className="flex justify-between items-center p-3 bg-[#F9FAFB] rounded-lg">
+                    <span className="text-[13px] leading-[100%] font-[500] text-[#626060] font-playfair">Percentage</span>
+                    <span className={`text-[16px] leading-[100%] font-[700] font-playfair ${getGrade(examResult.percentage).color}`}>
+                      {examResult.percentage}%
+                    </span>
                   </div>
                 </div>
+              </div>
 
-                <div className="space-y-3">
-                  <button
-                    onClick={() => {
-                      handleCloseResult();
-                      setActiveSection('performance');
-                    }}
-                    className="w-full py-3 bg-[#039994] text-white rounded-lg font-playfair text-[14px] leading-[100%] font-[600] hover:bg-[#028a85] transition-colors"
-                  >
-                    View Performance
-                  </button>
-                  <button
-                    onClick={handleCloseResult}
-                    className="w-full py-3 bg-white text-[#039994] border border-[#039994] rounded-lg font-playfair text-[14px] leading-[100%] font-[600] hover:bg-[#F0F9F8] transition-colors"
-                  >
-                    Back to Dashboard
-                  </button>
-                </div>
-              </motion.div>
+              <div className="space-y-3">
+                <button
+                  onClick={() => {
+                    handleCloseResult();
+                    setActiveSection('performance');
+                  }}
+                  className="w-full py-3 bg-[#039994] text-white rounded-lg font-playfair text-[14px] leading-[100%] font-[600] hover:bg-[#028a85] transition-colors"
+                >
+                  View Performance
+                </button>
+                <button
+                  onClick={handleCloseResult}
+                  className="w-full py-3 bg-white text-[#039994] border border-[#039994] rounded-lg font-playfair text-[14px] leading-[100%] font-[600] hover:bg-[#F0F9F8] transition-colors"
+                >
+                  Back to Dashboard
+                </button>
+              </div>
             </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <ProtectedRoute>
+      <Suspense fallback={
+        <div className={dashboardLoading}>
+          <div className={dashboardLoadingInner}>
+            <div className={dashboardLoadingSpinner}></div>
+            <p className={dashboardLoadingText}>Loading dashboard...</p>
+          </div>
+        </div>
+      }>
+        <DashboardContent />
+      </Suspense>
     </ProtectedRoute>
   );
 }
