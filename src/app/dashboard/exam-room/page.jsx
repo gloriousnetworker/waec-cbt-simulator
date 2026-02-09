@@ -90,35 +90,33 @@ const shuffleOptions = (question) => {
   };
 };
 
+const getRandomStartIndex = (totalQuestions, examSize) => {
+  if (totalQuestions <= examSize) return 0;
+  const maxStartIndex = totalQuestions - examSize;
+  return Math.floor(Math.random() * (maxStartIndex + 1));
+};
+
 const generateExamQuestions = (subjectId, requiredCount) => {
   const availableQuestions = getSubjectQuestions(subjectId);
-  if (availableQuestions.length >= requiredCount) {
-    const selected = shuffleArray(availableQuestions).slice(0, requiredCount);
-    return selected.map(q => ({ ...q, id: Math.random().toString(36).substr(2, 9) }));
+  
+  if (availableQuestions.length <= requiredCount) {
+    const shuffledQuestions = shuffleArray(availableQuestions);
+    return shuffledQuestions.map((q, index) => ({
+      ...shuffleOptions(q),
+      id: `q${index + 1}_${Math.random().toString(36).substr(2, 4)}`,
+      originalId: q.id
+    }));
   }
   
-  const questions = [];
-  let questionPool = [...availableQuestions];
-  let poolIndex = 0;
+  const shuffledAllQuestions = shuffleArray(availableQuestions);
+  const startIndex = getRandomStartIndex(shuffledAllQuestions.length, requiredCount);
+  const selectedQuestions = shuffledAllQuestions.slice(startIndex, startIndex + requiredCount);
   
-  while (questions.length < requiredCount) {
-    if (poolIndex >= questionPool.length) {
-      questionPool = shuffleArray(availableQuestions);
-      poolIndex = 0;
-    }
-    
-    const baseQuestion = { ...questionPool[poolIndex] };
-    const shuffledQuestion = shuffleOptions(baseQuestion);
-    
-    questions.push({
-      ...shuffledQuestion,
-      id: `q${questions.length + 1}_${Math.random().toString(36).substr(2, 4)}`
-    });
-    
-    poolIndex++;
-  }
-  
-  return questions;
+  return selectedQuestions.map((q, index) => ({
+    ...shuffleOptions(q),
+    id: `q${index + 1}_${Math.random().toString(36).substr(2, 4)}`,
+    originalId: q.id
+  }));
 };
 
 const subjectData = {

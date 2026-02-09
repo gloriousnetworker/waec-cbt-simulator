@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 export default function SplashScreen() {
-  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const videoRef = useRef(null); // Remove the TypeScript annotation
   const [visible, setVisible] = useState(true);
   const [fadeOut, setFadeOut] = useState(false);
 
