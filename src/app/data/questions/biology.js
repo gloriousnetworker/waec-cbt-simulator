@@ -323,4 +323,505 @@ export const biologyQuestions = [
     difficulty: "medium",
     topic: "Reproduction"
   },
+  {
+    id: 31,
+    question: "Which part of the leaf is mainly responsible for photosynthesis?",
+    options: ["Vein", "Petiole", "Lamina", "Midrib"],
+    correctAnswer: 2,
+    marks: 2,
+    explanation: "The lamina contains chlorophyll and carries out photosynthesis.",
+    difficulty: "easy",
+    topic: "Plant Anatomy"
+  },
+  {
+    id: 32,
+    question: "Which process removes excess water from plants?",
+    options: ["Respiration", "Photosynthesis", "Transpiration", "Guttation"],
+    correctAnswer: 2,
+    marks: 2,
+    explanation: "Transpiration removes excess water as vapour through stomata.",
+    difficulty: "easy",
+    topic: "Plant Physiology"
+  },
+  {
+    id: 33,
+    question: "Which organelle is responsible for respiration in cells?",
+    options: ["Ribosome", "Nucleus", "Mitochondrion", "Chloroplast"],
+    correctAnswer: 2,
+    marks: 2,
+    explanation: "Mitochondria are the sites of cellular respiration.",
+    difficulty: "easy",
+    topic: "Cell Biology"
+  },
+  {
+    id: 34,
+    question: "Which of the following is a non-communicable disease?",
+    options: ["Cholera", "Tuberculosis", "Malaria", "Diabetes"],
+    correctAnswer: 3,
+    marks: 2,
+    explanation: "Diabetes is not caused by pathogens and cannot be transmitted.",
+    difficulty: "easy",
+    topic: "Health"
+  },
+  {
+    id: 35,
+    question: "The process by which organisms maintain constant internal conditions is called:",
+    options: ["Excretion", "Regulation", "Homeostasis", "Adaptation"],
+    correctAnswer: 2,
+    marks: 2,
+    explanation: "Homeostasis maintains stable internal conditions.",
+    difficulty: "medium",
+    topic: "Life Processes"
+  },
+  {
+    id: 36,
+    question: "Which blood component is responsible for clotting?",
+    options: ["Red blood cells", "White blood cells", "Platelets", "Plasma"],
+    correctAnswer: 2,
+    marks: 2,
+    explanation: "Platelets help in blood clotting.",
+    difficulty: "medium",
+    topic: "Blood"
+  },
+  {
+    id: 37,
+    question: "Which structure connects muscles to bones?",
+    options: ["Ligament", "Tendon", "Cartilage", "Joint"],
+    correctAnswer: 1,
+    marks: 2,
+    explanation: "Tendons connect muscles to bones.",
+    difficulty: "easy",
+    topic: "Movement"
+  },
+  {
+    id: 38,
+    question: "Which type of reproduction involves only one parent?",
+    options: ["Sexual", "Asexual", "Cross-fertilization", "Pollination"],
+    correctAnswer: 1,
+    marks: 2,
+    explanation: "Asexual reproduction involves one parent.",
+    difficulty: "easy",
+    topic: "Reproduction"
+  },
+  {
+    id: 39,
+    question: "Which structure in the human eye controls the amount of light entering?",
+    options: ["Lens", "Retina", "Iris", "Cornea"],
+    correctAnswer: 2,
+    marks: 2,
+    explanation: "The iris regulates light entry.",
+    difficulty: "medium",
+    topic: "Sense Organs"
+  },
+  {
+    id: 40,
+    question: "Which gas is absorbed by plants during respiration?",
+    options: ["Oxygen", "Carbon dioxide", "Nitrogen", "Hydrogen"],
+    correctAnswer: 0,
+    marks: 2,
+    explanation: "Plants use oxygen during respiration.",
+    difficulty: "medium",
+    topic: "Respiration"
+  },
+  {
+    id: 41,
+    question: "Which farming method improves soil fertility naturally?",
+    options: ["Bush burning", "Overcropping", "Crop rotation", "Deforestation"],
+    correctAnswer: 2,
+    marks: 3,
+    explanation: "Crop rotation helps restore soil nutrients.",
+    difficulty: "hard",
+    topic: "Agricultural Biology"
+  },
+  {
+    id: 42,
+    question: "The movement of pollen grains from anther to stigma is called:",
+    options: ["Fertilization", "Pollination", "Germination", "Dispersal"],
+    correctAnswer: 1,
+    marks: 2,
+    explanation: "Pollination transfers pollen to stigma.",
+    difficulty: "easy",
+    topic: "Plant Reproduction"
+  },
+  {
+    id: 43,
+    question: "Which structure protects the brain?",
+    options: ["Spine", "Skull", "Vertebra", "Rib"],
+    correctAnswer: 1,
+    marks: 2,
+    explanation: "The skull encloses and protects the brain.",
+    difficulty: "easy",
+    topic: "Skeleton"
+  },
+  {
+    id: 44,
+    question: "Which type of joint allows movement in one direction?",
+    options: ["Ball and socket", "Pivot", "Hinge", "Gliding"],
+    correctAnswer: 2,
+    marks: 2,
+    explanation: "Hinge joints allow movement in one direction.",
+    difficulty: "medium",
+    topic: "Movement"
+  },
+  {
+    id: 45,
+    question: "Which vitamin helps blood clotting?",
+    options: ["Vitamin A", "Vitamin B", "Vitamin C", "Vitamin K"],
+    correctAnswer: 3,
+    marks: 2,
+    explanation: "Vitamin K is required for blood clotting.",
+    difficulty: "medium",
+    topic: "Nutrition"
+  },
+  {
+    id: 46,
+    question: "Which part of the brain controls breathing?",
+    options: ["Cerebrum", "Cerebellum", "Medulla oblongata", "Hypothalamus"],
+    correctAnswer: 2,
+    marks: 3,
+    explanation: "The medulla controls involuntary actions.",
+    difficulty: "hard",
+    topic: "Nervous System"
+  },
+  {
+    id: 47,
+    question: "Which organism is both plant-like and animal-like?",
+    options: ["Mushroom", "Amoeba", "Euglena", "Paramecium"],
+    correctAnswer: 2,
+    marks: 3,
+    explanation: "Euglena has chlorophyll and also moves like an animal.",
+    difficulty: "hard",
+    topic: "Classification"
+  },
+  {
+    id: 48,
+    question: "Which structure transports manufactured food in plants?",
+    options: ["Xylem", "Cambium", "Phloem", "Epidermis"],
+    correctAnswer: 2,
+    marks: 2,
+    explanation: "Phloem transports food.",
+    difficulty: "medium",
+    topic: "Plant Anatomy"
+  },
+  {
+    id: 49,
+    question: "Which disease is caused by a virus?",
+    options: ["Tuberculosis", "Malaria", "Measles", "Cholera"],
+    correctAnswer: 2,
+    marks: 2,
+    explanation: "Measles is caused by a virus.",
+    difficulty: "medium",
+    topic: "Health"
+  },
+  {
+    id: 50,
+    question: "Which part of the digestive system stores bile?",
+    options: ["Liver", "Gall bladder", "Pancreas", "Duodenum"],
+    correctAnswer: 1,
+    marks: 2,
+    explanation: "Bile is stored in the gall bladder.",
+    difficulty: "medium",
+    topic: "Digestive System"
+  },
+  {
+    id: 51,
+    question: "Which structure connects two bones together?",
+    options: ["Tendon", "Ligament", "Cartilage", "Joint"],
+    correctAnswer: 1,
+    marks: 2,
+    explanation: "Ligaments connect bones to bones.",
+    difficulty: "easy",
+    topic: "Movement"
+  },
+  {
+    id: 52,
+    question: "Which sense organ detects sound?",
+    options: ["Eye", "Ear", "Nose", "Skin"],
+    correctAnswer: 1,
+    marks: 1,
+    explanation: "The ear detects sound.",
+    difficulty: "easy",
+    topic: "Sense Organs"
+  },
+  {
+    id: 53,
+    question: "Which organism fixes atmospheric nitrogen?",
+    options: ["Fungi", "Bacteria", "Algae", "Protozoa"],
+    correctAnswer: 1,
+    marks: 3,
+    explanation: "Nitrogen-fixing bacteria convert nitrogen into usable forms.",
+    difficulty: "hard",
+    topic: "Ecology"
+  },
+  {
+    id: 54,
+    question: "Which hormone is responsible for growth?",
+    options: ["Insulin", "Adrenaline", "Growth hormone", "Oestrogen"],
+    correctAnswer: 2,
+    marks: 2,
+    explanation: "Growth hormone stimulates body growth.",
+    difficulty: "medium",
+    topic: "Hormones"
+  },
+  {
+    id: 55,
+    question: "Which type of nutrition is exhibited by fungi?",
+    options: ["Autotrophic", "Holozoic", "Saprophytic", "Parasitic"],
+    correctAnswer: 2,
+    marks: 2,
+    explanation: "Fungi feed saprophytically.",
+    difficulty: "medium",
+    topic: "Nutrition"
+  },
+  {
+    id: 56,
+    question: "Which structure is responsible for smell?",
+    options: ["Tongue", "Nose", "Ear", "Eye"],
+    correctAnswer: 1,
+    marks: 1,
+    explanation: "The nose detects smell.",
+    difficulty: "easy",
+    topic: "Sense Organs"
+  },
+  {
+    id: 57,
+    question: "Which structure prevents food from entering the trachea?",
+    options: ["Larynx", "Epiglottis", "Pharynx", "Oesophagus"],
+    correctAnswer: 1,
+    marks: 3,
+    explanation: "The epiglottis closes the trachea during swallowing.",
+    difficulty: "hard",
+    topic: "Respiratory System"
+  },
+  {
+    id: 58,
+    question: "Which disease is caused by deficiency of iron?",
+    options: ["Rickets", "Scurvy", "Anaemia", "Goitre"],
+    correctAnswer: 2,
+    marks: 2,
+    explanation: "Iron deficiency causes anaemia.",
+    difficulty: "medium",
+    topic: "Nutrition"
+  },
+  {
+    id: 59,
+    question: "Which kingdom does bacteria belong to?",
+    options: ["Protista", "Fungi", "Monera", "Plantae"],
+    correctAnswer: 2,
+    marks: 2,
+    explanation: "Bacteria belong to Kingdom Monera.",
+    difficulty: "medium",
+    topic: "Classification"
+  },
+  {
+    id: 60,
+    question: "Which structure is absent in animal cells?",
+    options: ["Nucleus", "Cell membrane", "Chloroplast", "Mitochondrion"],
+    correctAnswer: 2,
+    marks: 2,
+    explanation: "Animal cells lack chloroplasts.",
+    difficulty: "easy",
+    topic: "Cell Biology"
+  },
+  {
+    id: 61,
+    question: "Which process involves the loss of water droplets from leaves?",
+    options: ["Transpiration", "Photosynthesis", "Respiration", "Guttation"],
+    correctAnswer: 3,
+    marks: 3,
+    explanation: "Guttation releases liquid water from leaves.",
+    difficulty: "hard",
+    topic: "Plant Physiology"
+  },
+  {
+    id: 62,
+    question: "Which structure produces female gametes?",
+    options: ["Ovary", "Uterus", "Fallopian tube", "Cervix"],
+    correctAnswer: 0,
+    marks: 2,
+    explanation: "Ovaries produce ova.",
+    difficulty: "medium",
+    topic: "Reproduction"
+  },
+  {
+    id: 63,
+    question: "Which tissue connects organs together?",
+    options: ["Muscle tissue", "Nervous tissue", "Connective tissue", "Epithelial tissue"],
+    correctAnswer: 2,
+    marks: 2,
+    explanation: "Connective tissues bind organs.",
+    difficulty: "medium",
+    topic: "Tissues"
+  },
+  {
+    id: 64,
+    question: "Which adaptation helps desert plants reduce water loss?",
+    options: ["Broad leaves", "Thin cuticle", "Spines", "Large stomata"],
+    correctAnswer: 2,
+    marks: 3,
+    explanation: "Spines reduce transpiration.",
+    difficulty: "hard",
+    topic: "Adaptation"
+  },
+  {
+    id: 65,
+    question: "Which organ removes excess salts from the body?",
+    options: ["Kidney", "Skin", "Liver", "Heart"],
+    correctAnswer: 1,
+    marks: 2,
+    explanation: "Sweat glands in the skin remove salts.",
+    difficulty: "medium",
+    topic: "Excretion"
+  },
+  {
+    id: 66,
+    question: "Which structure transports oxygen in the blood?",
+    options: ["Plasma", "Platelets", "Red blood cells", "White blood cells"],
+    correctAnswer: 2,
+    marks: 2,
+    explanation: "Red blood cells carry oxygen.",
+    difficulty: "easy",
+    topic: "Blood"
+  },
+  {
+    id: 67,
+    question: "Which organism is a decomposer?",
+    options: ["Grass", "Lion", "Fungus", "Goat"],
+    correctAnswer: 2,
+    marks: 2,
+    explanation: "Fungi decompose dead organic matter.",
+    difficulty: "medium",
+    topic: "Ecology"
+  },
+  {
+    id: 68,
+    question: "Which structure is responsible for taste?",
+    options: ["Tongue", "Nose", "Eye", "Ear"],
+    correctAnswer: 0,
+    marks: 1,
+    explanation: "Taste buds are found on the tongue.",
+    difficulty: "easy",
+    topic: "Sense Organs"
+  },
+  {
+    id: 69,
+    question: "Which process ensures continuity of life?",
+    options: ["Respiration", "Excretion", "Reproduction", "Nutrition"],
+    correctAnswer: 2,
+    marks: 2,
+    explanation: "Reproduction ensures survival of species.",
+    difficulty: "medium",
+    topic: "Life Processes"
+  },
+  {
+    id: 70,
+    question: "Which system controls body activities using hormones?",
+    options: ["Nervous system", "Digestive system", "Endocrine system", "Circulatory system"],
+    correctAnswer: 2,
+    marks: 2,
+    explanation: "The endocrine system uses hormones.",
+    difficulty: "medium",
+    topic: "Hormones"
+  },
+  {
+    id: 71,
+    question: "Which organism causes malaria?",
+    options: ["Virus", "Bacterium", "Plasmodium", "Fungus"],
+    correctAnswer: 2,
+    marks: 3,
+    explanation: "Plasmodium causes malaria.",
+    difficulty: "hard",
+    topic: "Health"
+  },
+  {
+    id: 72,
+    question: "Which structure in plants supports the stem?",
+    options: ["Xylem", "Phloem", "Cambium", "Pith"],
+    correctAnswer: 0,
+    marks: 2,
+    explanation: "Xylem provides mechanical support.",
+    difficulty: "medium",
+    topic: "Plant Anatomy"
+  },
+  {
+    id: 73,
+    question: "Which type of teeth is used for cutting?",
+    options: ["Canines", "Premolars", "Incisors", "Molars"],
+    correctAnswer: 2,
+    marks: 2,
+    explanation: "Incisors are used for cutting food.",
+    difficulty: "easy",
+    topic: "Digestive System"
+  },
+  {
+    id: 74,
+    question: "Which structure carries impulses away from the brain?",
+    options: ["Sensory neuron", "Motor neuron", "Relay neuron", "Spinal cord"],
+    correctAnswer: 1,
+    marks: 3,
+    explanation: "Motor neurons carry impulses from the brain.",
+    difficulty: "hard",
+    topic: "Nervous System"
+  },
+  {
+    id: 75,
+    question: "Which part of the plant bears flowers?",
+    options: ["Root", "Stem", "Leaf", "Bud"],
+    correctAnswer: 1,
+    marks: 1,
+    explanation: "The stem bears flowers.",
+    difficulty: "easy",
+    topic: "Plant Anatomy"
+  },
+  {
+    id: 76,
+    question: "Which structure produces bile?",
+    options: ["Gall bladder", "Pancreas", "Liver", "Duodenum"],
+    correctAnswer: 2,
+    marks: 2,
+    explanation: "Bile is produced in the liver.",
+    difficulty: "medium",
+    topic: "Digestive System"
+  },
+  {
+    id: 77,
+    question: "Which disease is caused by lack of iodine?",
+    options: ["Scurvy", "Goitre", "Anaemia", "Rickets"],
+    correctAnswer: 1,
+    marks: 2,
+    explanation: "Iodine deficiency causes goitre.",
+    difficulty: "medium",
+    topic: "Nutrition"
+  },
+  {
+    id: 78,
+    question: "Which part of the flower develops into fruit?",
+    options: ["Ovule", "Ovary", "Petal", "Sepal"],
+    correctAnswer: 1,
+    marks: 3,
+    explanation: "The ovary develops into fruit after fertilization.",
+    difficulty: "hard",
+    topic: "Plant Reproduction"
+  },
+  {
+    id: 79,
+    question: "Which structure controls voluntary actions?",
+    options: ["Medulla", "Cerebellum", "Cerebrum", "Spinal cord"],
+    correctAnswer: 2,
+    marks: 3,
+    explanation: "The cerebrum controls voluntary actions.",
+    difficulty: "hard",
+    topic: "Nervous System"
+  },
+  {
+    id: 80,
+    question: "Which organism is a primary consumer?",
+    options: ["Lion", "Grass", "Goat", "Fungus"],
+    correctAnswer: 2,
+    marks: 2,
+    explanation: "Goats feed directly on plants.",
+    difficulty: "medium",
+    topic: "Ecology"
+  }
+  
 ];
