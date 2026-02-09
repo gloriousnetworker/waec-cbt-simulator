@@ -1,64 +1,63 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 export default function SplashScreen() {
-  const [isVisible, setIsVisible] = useState(true);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [visible, setVisible] = useState(true);
   const [fadeOut, setFadeOut] = useState(false);
-  const videoRef = useRef(null);
 
   useEffect(() => {
-    const videoElement = videoRef.current;
-    
-    if (videoElement) {
-      const playPromise = videoElement.play();
-      
-      if (playPromise !== undefined) {
-        playPromise.catch(e => {
-          console.log("Video autoplay prevented:", e);
-        });
-      }
+    const video = videoRef.current;
+    if (!video) return;
 
-      const handleVideoEnd = () => {
-        setFadeOut(true);
-        setTimeout(() => {
-          setIsVisible(false);
-        }, 500);
-      };
+    video.muted = true;
+    video.playsInline = true;
+    video.preload = 'auto';
 
-      videoElement.addEventListener('ended', handleVideoEnd);
+    const playVideo = async () => {
+      try {
+        await video.play();
+      } catch {}
+    };
 
-      const maxTimeout = setTimeout(() => {
-        setFadeOut(true);
-        setTimeout(() => {
-          setIsVisible(false);
-        }, 500);
-      }, 6000);
+    const handleEnd = () => {
+      setFadeOut(true);
+      setTimeout(() => setVisible(false), 500);
+    };
 
-      return () => {
-        clearTimeout(maxTimeout);
-        if (videoElement) {
-          videoElement.removeEventListener('ended', handleVideoEnd);
-        }
-      };
-    }
+    video.addEventListener('ended', handleEnd);
+    video.addEventListener('canplay', playVideo);
+
+    const fallbackTimeout = setTimeout(() => {
+      setFadeOut(true);
+      setTimeout(() => setVisible(false), 500);
+    }, 6000);
+
+    playVideo();
+
+    return () => {
+      clearTimeout(fallbackTimeout);
+      video.removeEventListener('ended', handleEnd);
+      video.removeEventListener('canplay', playVideo);
+    };
   }, []);
 
-  if (!isVisible) return null;
+  if (!visible) return null;
 
   return (
-    <div 
+    <div
       className={`fixed inset-0 z-[9999] bg-black transition-opacity duration-500 ${
         fadeOut ? 'opacity-0' : 'opacity-100'
       }`}
-      style={{ touchAction: 'none' }}
     >
       <video
         ref={videoRef}
         src="/splash-animation.mp4"
-        autoPlay
         muted
+        autoPlay
         playsInline
+        preload="auto"
         className="w-full h-full object-cover"
       />
     </div>
