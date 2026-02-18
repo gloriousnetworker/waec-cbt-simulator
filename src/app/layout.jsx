@@ -1,3 +1,4 @@
+// src/app/layout.jsx
 'use client'
 
 import '../styles/globals.css'
@@ -66,7 +67,6 @@ export default function RootLayout({ children }) {
       setDeferredPrompt(null)
     })
 
-    // Add offline detection
     const handleOffline = () => {
       console.log('App is offline')
     }
