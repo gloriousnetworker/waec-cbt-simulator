@@ -1,63 +1,60 @@
+// public/sw-register.js
 (function() {
     if (typeof window === 'undefined') return;
     
-    console.log('SW Register: Starting...');
-    
     if (!('serviceWorker' in navigator)) {
-      console.log('SW Register: Not supported');
+      console.log('Service Worker not supported');
       return;
     }
   
-    function registerWithRetry(attempt = 1) {
-      console.log(`SW Register: Attempt ${attempt}...`);
+    let registrationAttempts = 0;
+    const maxAttempts = 5;
+  
+    async function unregisterOldWorkers() {
+      try {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        for (const registration of registrations) {
+          if (registration.active && registration.active.scriptURL.includes('sw.js')) {
+            await registration.unregister();
+          }
+        }
+      } catch (error) {
+        console.log('Error unregistering:', error);
+      }
+    }
+  
+    function registerWithRetry() {
+      registrationAttempts++;
       
-      navigator.serviceWorker.register('/sw.js')
+      navigator.serviceWorker.register('/sw.js', { scope: '/' })
         .then(registration => {
-          console.log('✅ SW Register: Initial success', registration.scope);
-          
-          function checkState() {
-            if (registration.active) {
-              console.log('✅ SW: Active and ready');
-            } else if (registration.installing) {
-              console.log('SW: Installing...');
-              registration.installing.addEventListener('statechange', (e) => {
-                console.log('SW: State ->', e.target.state);
-                if (e.target.state === 'redundant') {
-                  console.log('❌ SW: Became redundant - retrying...');
-                  registration.unregister().then(() => {
-                    setTimeout(() => registerWithRetry(attempt + 1), 2000);
-                  });
-                }
-              });
-            } else if (registration.waiting) {
-              console.log('SW: Waiting for activation');
-            }
+          if (registration.installing) {
+            registration.installing.addEventListener('statechange', (e) => {
+              if (e.target.state === 'activated') {
+                window.location.reload();
+              }
+            });
           }
           
-          checkState();
-          
-          registration.addEventListener('updatefound', () => {
-            console.log('SW: Update found');
-            checkState();
-          });
+          if (registration.waiting) {
+            registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+          }
         })
         .catch(error => {
-          console.error('❌ SW Register: Failed', error);
-          
-          if (attempt < 5) {
-            const delay = attempt * 3000;
-            console.log(`SW Register: Retrying in ${delay}ms...`);
-            setTimeout(() => registerWithRetry(attempt + 1), delay);
+          if (registrationAttempts < maxAttempts) {
+            const delay = Math.min(1000 * Math.pow(2, registrationAttempts), 30000);
+            setTimeout(registerWithRetry, delay);
           }
         });
     }
   
-    // Wait for page to be fully loaded
-    if (document.readyState === 'complete') {
-      setTimeout(registerWithRetry, 2000);
-    } else {
-      window.addEventListener('load', () => {
+    unregisterOldWorkers().then(() => {
+      if (document.readyState === 'complete') {
         setTimeout(registerWithRetry, 2000);
-      });
-    }
+      } else {
+        window.addEventListener('load', () => {
+          setTimeout(registerWithRetry, 2000);
+        });
+      }
+    });
   })();
