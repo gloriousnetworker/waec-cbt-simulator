@@ -1,5 +1,4 @@
-// public/chrome-sw.js (for Chrome browser)
-const CACHE_NAME = 'waec-cbt-chrome-v1';
+const CACHE_NAME = 'waec-cbt-chrome-v2';
 const OFFLINE_URL = '/_offline';
 const PRECACHE_URLS = [
   OFFLINE_URL,
@@ -24,7 +23,10 @@ self.addEventListener('activate', (event) => {
       caches.keys().then(keys => 
         Promise.all(
           keys.filter(key => key !== CACHE_NAME)
-            .map(key => caches.delete(key))
+            .map(key => {
+              console.log('SW: Deleting old cache', key);
+              return caches.delete(key);
+            })
         )
       ),
       self.clients.claim()
@@ -33,15 +35,17 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
+  if (event.request.method !== 'GET') return;
+  
   event.respondWith(
     fetch(event.request)
       .then(response => {
-        const responseClone = response.clone();
-        caches.open(CACHE_NAME).then(cache => {
-          if (event.request.method === 'GET' && response.status === 200) {
+        if (response && response.status === 200) {
+          const responseClone = response.clone();
+          caches.open(CACHE_NAME).then(cache => {
             cache.put(event.request, responseClone);
-          }
-        });
+          });
+        }
         return response;
       })
       .catch(() => {
