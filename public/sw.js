@@ -1,39 +1,19 @@
-const CACHE_NAME = 'waec-cbt-v1';
+// Service Worker with timestamp to force update
+const CACHE_NAME = 'sw-cache-' + Date.now();
 
-self.addEventListener('install', event => {
-  self.skipWaiting();
-  event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => {
-      return cache.addAll(['/offline']);
-    })
-  );
+console.log('Service Worker script loaded at:', new Date().toISOString());
+
+self.addEventListener('install', (event) => {
+    console.log('✅ SW Install event at:', new Date().toISOString());
+    self.skipWaiting();
 });
 
-self.addEventListener('activate', event => {
-  event.waitUntil(
-    Promise.all([
-      caches.keys().then(keys => {
-        return Promise.all(
-          keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))
-        );
-      }),
-      self.clients.claim()
-    ])
-  );
+self.addEventListener('activate', (event) => {
+    console.log('✅ SW Activate event at:', new Date().toISOString());
+    event.waitUntil(clients.claim());
 });
 
-self.addEventListener('fetch', event => {
-  if (event.request.mode === 'navigate') {
-    event.respondWith(
-      fetch(event.request).catch(() => {
-        return caches.match('/offline');
-      })
-    );
-  } else {
-    event.respondWith(
-      caches.match(event.request).then(response => {
-        return response || fetch(event.request);
-      })
-    );
-  }
+self.addEventListener('fetch', (event) => {
+    // Just pass through
+    event.respondWith(fetch(event.request));
 });
