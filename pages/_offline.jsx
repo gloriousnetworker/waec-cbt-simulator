@@ -1,25 +1,7 @@
-// pages/_offline.jsx
 import { motion } from 'framer-motion'
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
 
 export default function OfflinePage() {
-  const [retryCount, setRetryCount] = useState(0)
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (navigator.onLine) {
-        window.location.reload()
-      }
-    }, 5000)
-    return () => clearInterval(interval)
-  }, [])
-
-  const handleRetry = () => {
-    setRetryCount(prev => prev + 1)
-    window.location.reload()
-  }
-
   return (
     <div className="min-h-screen bg-[#F9FAFB] flex items-center justify-center p-4">
       <motion.div
@@ -43,10 +25,10 @@ export default function OfflinePage() {
             Go to Dashboard
           </Link>
           <button
-            onClick={handleRetry}
+            onClick={() => window.location.reload()}
             className="w-full py-3.5 bg-white text-[#039994] border-2 border-[#039994] rounded-xl font-playfair text-[15px] leading-[100%] font-[600] hover:bg-[#F0F9F8] transition-all"
           >
-            Try Again (Attempt {retryCount + 1})
+            Try Again
           </button>
         </div>
         
