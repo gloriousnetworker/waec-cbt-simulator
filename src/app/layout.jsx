@@ -65,6 +65,23 @@ export default function RootLayout({ children }) {
     window.addEventListener('appinstalled', () => {
       setDeferredPrompt(null)
     })
+
+    // Add offline detection
+    const handleOffline = () => {
+      console.log('App is offline')
+    }
+    
+    const handleOnline = () => {
+      console.log('App is online')
+    }
+
+    window.addEventListener('offline', handleOffline)
+    window.addEventListener('online', handleOnline)
+
+    return () => {
+      window.removeEventListener('offline', handleOffline)
+      window.removeEventListener('online', handleOnline)
+    }
   }, [])
 
   return (
