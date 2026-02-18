@@ -1,112 +1,77 @@
-'use client';
+'use client'
 
-import { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
-import { motion, AnimatePresence } from 'framer-motion';
-import { useAuth } from '../../context/AuthContext';
-import toast from 'react-hot-toast';
-import {
-  loginContainer,
-  loginContent,
-  loginLogo,
-  loginTitle,
-  loginSubtitle,
-  loginForm,
-  loginLabel,
-  loginInput,
-  loginPasswordWrapper,
-  loginPasswordToggle,
-  loginRememberRow,
-  loginCheckboxLabel,
-  loginCheckbox,
-  loginCheckboxText,
-  loginForgotPassword,
-  loginButton,
-  loginDivider,
-  loginDividerLine,
-  loginDividerText,
-  loginDemoSection,
-  loginDemoTitle,
-  loginDemoButton,
-  loginDemoEmail,
-  loginDemoPassword,
-  loginDemoArrow,
-  loginNote,
-  loginNoteText,
-  loginFeatures,
-  loginFeatureItem,
-  loginFeatureIcon,
-  loginFeatureText,
-} from '../../styles/styles';
+import { useState, useEffect, useRef } from 'react'
+import { useRouter } from 'next/navigation'
+import { motion, AnimatePresence } from 'framer-motion'
+import { useAuth } from '../../context/AuthContext'
+import toast from 'react-hot-toast'
+
+const loginContainer = "min-h-screen bg-[#F9FAFB] flex items-center justify-center"
+const loginContent = "w-full max-w-sm px-4 py-2"
 
 export default function LoginPage() {
-  const [identifier, setIdentifier] = useState('');
-  const [password, setPassword] = useState('');
-  const [rememberMe, setRememberMe] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const router = useRouter();
-  const { login, isAuthenticated } = useAuth();
-  const videoRef = useRef(null);
+  const [identifier, setIdentifier] = useState('')
+  const [password, setPassword] = useState('')
+  const [rememberMe, setRememberMe] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+  const router = useRouter()
+  const { login, isAuthenticated } = useAuth()
+  const videoRef = useRef(null)
 
   const demoCredentials = [
     { email: 'student001@megatechsolutions.org', password: '123456' },
     { email: 'student001@yourschool.org', password: '123456' }
-  ];
+  ]
 
   useEffect(() => {
     if (isAuthenticated) {
-      router.push('/dashboard');
+      router.push('/dashboard')
     }
-  }, [isAuthenticated, router]);
+  }, [isAuthenticated, router])
 
   useEffect(() => {
     if (loading && videoRef.current) {
-      const playPromise = videoRef.current.play();
-      if (playPromise !== undefined) {
-        playPromise.catch(e => {
-          console.log("Video autoplay prevented:", e);
-        });
-      }
+      videoRef.current.play().catch(() => {})
     }
-  }, [loading]);
+  }, [loading])
 
   const handleDemoLogin = (email, password) => {
-    setIdentifier(email);
-    setPassword(password);
-    handleLogin(email, password);
-  };
+    setIdentifier(email)
+    setPassword(password)
+    handleLogin(email, password)
+  }
 
   const handleLogin = async (email, pass) => {
-    setLoading(true);
-    const loginToast = toast.loading('Logging in...');
+    setLoading(true)
+    const loginToast = toast.loading('Logging in...')
 
     try {
-      const result = await login(email || identifier, pass || password);
+      const result = await login(email || identifier, pass || password)
       
       if (result.success) {
-        toast.success('Login successful! Redirecting...', { id: loginToast });
+        toast.success('Login successful! Redirecting...', { id: loginToast })
         setTimeout(() => {
-          router.push('/dashboard');
-        }, 1500);
+          router.push('/dashboard')
+        }, 1500)
       } else {
-        toast.error(result.message || 'Login failed', { id: loginToast });
-        setLoading(false);
+        toast.error(result.message || 'Login failed', { id: loginToast })
+        setLoading(false)
       }
     } catch (error) {
-      toast.error('An error occurred. Please try again.', { id: loginToast });
-      setLoading(false);
+      toast.error('An error occurred. Please try again.', { id: loginToast })
+      setLoading(false)
     }
-  };
+  }
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    e.preventDefault()
     if (!identifier || !password) {
-      toast.error('Please enter credentials or use demo accounts');
-      return;
+      toast.error('Please enter credentials or use demo accounts')
+      return
     }
-    handleLogin(identifier, password);
-  };
+    handleLogin(identifier, password)
+  }
 
   return (
     <>
@@ -136,7 +101,7 @@ export default function LoginPage() {
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.4 }}
-          className="w-full max-w-sm px-4 py-2"
+          className={loginContent}
         >
           <motion.div
             initial={{ opacity: 0, y: 10 }}
@@ -182,7 +147,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-0 top-1/2 -translate-y-1/2 text-[#626060] cursor-pointer hover:text-[#039994] transition-colors text-[18px]"
+                  className="absolute right-0 top-1/2 -translate-y-1/2 text-[#626060] hover:text-[#039994] transition-colors text-[18px]"
                   disabled={loading}
                 >
                   {showPassword ? '👁️' : '👁️‍🗨️'}
@@ -203,7 +168,7 @@ export default function LoginPage() {
               </label>
               <button 
                 type="button" 
-                className="text-[11px] leading-[100%] font-[500] text-[#039994] hover:underline cursor-pointer font-playfair"
+                className="text-[11px] leading-[100%] font-[500] text-[#039994] hover:underline font-playfair"
                 disabled={loading}
               >
                 Forgot password?
@@ -289,5 +254,5 @@ export default function LoginPage() {
         </motion.div>
       </div>
     </>
-  );
+  )
 }

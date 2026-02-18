@@ -4,8 +4,6 @@ import '../styles/globals.css'
 import { Toaster } from 'react-hot-toast'
 import { AuthProvider } from '../context/AuthContext'
 import { useEffect, useState } from 'react'
-import { useServiceWorker } from './hooks/useServiceWorker'
-import UpdateNotification from '@/components/UpdateNotification'
 
 const toastOptions = {
   style: {
@@ -57,7 +55,6 @@ const toastOptions = {
 
 export default function RootLayout({ children }) {
   const [deferredPrompt, setDeferredPrompt] = useState(null)
-  const { updateAvailable, skipWaiting } = useServiceWorker()
 
   useEffect(() => {
     window.addEventListener('beforeinstallprompt', (e) => {
@@ -91,6 +88,7 @@ export default function RootLayout({ children }) {
         <meta name="msapplication-TileColor" content="#039994" />
         <meta name="msapplication-tap-highlight" content="no" />
         <title>WAEC CBT Simulator</title>
+        <script src="/sw-register.js" defer></script>
       </head>
       <body className="bg-white min-h-screen font-playfair antialiased">
         <AuthProvider>
@@ -102,7 +100,6 @@ export default function RootLayout({ children }) {
             }}
           />
           {children}
-          <UpdateNotification show={updateAvailable} onUpdate={skipWaiting} />
         </AuthProvider>
       </body>
     </html>

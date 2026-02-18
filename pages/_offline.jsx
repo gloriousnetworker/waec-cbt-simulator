@@ -1,22 +1,7 @@
-'use client'
-
 import { motion } from 'framer-motion'
-import { useRouter } from 'next/navigation'
-import { useEffect } from 'react'
+import Link from 'next/link'
 
 export default function OfflinePage() {
-  const router = useRouter()
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (navigator.onLine) {
-        router.refresh()
-      }
-    }, 3000)
-
-    return () => clearInterval(interval)
-  }, [router])
-
   return (
     <div className="min-h-screen bg-[#F9FAFB] flex items-center justify-center p-4">
       <motion.div
@@ -29,28 +14,22 @@ export default function OfflinePage() {
           You're Offline
         </h1>
         <p className="text-[15px] leading-[150%] font-[400] text-[#626060] mb-8 font-playfair">
-          Don't worry! You can still practice with downloaded exams. Your progress will sync when you're back online.
+          You can still access pages you've visited before. Try going to Dashboard.
         </p>
         
         <div className="space-y-3">
-          <button
-            onClick={() => router.push('/dashboard')}
-            className="w-full py-3.5 bg-[#039994] text-white rounded-xl font-playfair text-[15px] leading-[100%] font-[600] hover:bg-[#028a85] transition-all"
+          <Link 
+            href="/dashboard" 
+            className="block w-full py-3.5 bg-[#039994] text-white rounded-xl font-playfair text-[15px] leading-[100%] font-[600] hover:bg-[#028a85] transition-all text-center"
           >
             Go to Dashboard
-          </button>
+          </Link>
           <button
             onClick={() => window.location.reload()}
             className="w-full py-3.5 bg-white text-[#039994] border-2 border-[#039994] rounded-xl font-playfair text-[15px] leading-[100%] font-[600] hover:bg-[#F0F9F8] transition-all"
           >
             Try Again
           </button>
-        </div>
-
-        <div className="mt-8 pt-6 border-t border-[#E8E8E8]">
-          <p className="text-[13px] leading-[140%] font-[400] text-[#9CA3AF] font-playfair">
-            📚 Available offline: Mathematics, English, Physics, and more
-          </p>
         </div>
       </motion.div>
     </div>

@@ -1,1 +1,39 @@
-if(!self.define){let e,s={};const n=(n,a)=>(n=new URL(n+".js",a).href,s[n]||new Promise(s=>{if("document"in self){const e=document.createElement("script");e.src=n,e.onload=s,document.head.appendChild(e)}else e=n,importScripts(n),s()}).then(()=>{let e=s[n];if(!e)throw new Error(`Module ${n} didn’t register its module`);return e}));self.define=(a,i)=>{const c=e||("document"in self?document.currentScript.src:"")||location.href;if(s[c])return;let r={};const t=e=>n(e,c),d={module:{uri:c},exports:r,require:t};s[c]=Promise.all(a.map(e=>d[e]||t(e))).then(e=>(i(...e),r))}}define(["./workbox-00a24876"],function(e){"use strict";importScripts("fallback-tHr5jhwyM-jSAWCJXJZOL.js"),self.skipWaiting(),e.clientsClaim(),e.precacheAndRoute([{url:"/_next/app-build-manifest.json",revision:"b450bb85d615b40c1f087c6304a9472e"},{url:"/_next/dynamic-css-manifest.json",revision:"d751713988987e9331980363e24189ce"},{url:"/_next/static/chunks/239-3c17a6d641bde0df.js",revision:"3c17a6d641bde0df"},{url:"/_next/static/chunks/255-cb395327542b56ef.js",revision:"cb395327542b56ef"},{url:"/_next/static/chunks/4bd1b696-c023c6e3521b1417.js",revision:"c023c6e3521b1417"},{url:"/_next/static/chunks/53-1e10b154d61f0876.js",revision:"1e10b154d61f0876"},{url:"/_next/static/chunks/753-5db88bad6e64d681.js",revision:"5db88bad6e64d681"},{url:"/_next/static/chunks/868-00a76118256afd15.js",revision:"00a76118256afd15"},{url:"/_next/static/chunks/app/_not-found/page-8c85e483308a1872.js",revision:"8c85e483308a1872"},{url:"/_next/static/chunks/app/dashboard/exam-room/page-134728cbf78d42dc.js",revision:"134728cbf78d42dc"},{url:"/_next/static/chunks/app/dashboard/page-f7f531bb731bb206.js",revision:"f7f531bb731bb206"},{url:"/_next/static/chunks/app/layout-0a6161408cbde87d.js",revision:"0a6161408cbde87d"},{url:"/_next/static/chunks/app/login/page-86d146e781a7cf40.js",revision:"86d146e781a7cf40"},{url:"/_next/static/chunks/app/page-73f79ba19d6e0d36.js",revision:"73f79ba19d6e0d36"},{url:"/_next/static/chunks/framework-acd67e14855de5a2.js",revision:"acd67e14855de5a2"},{url:"/_next/static/chunks/main-42943a01e42037f7.js",revision:"42943a01e42037f7"},{url:"/_next/static/chunks/main-app-d2b9e1f245e7c98e.js",revision:"d2b9e1f245e7c98e"},{url:"/_next/static/chunks/pages/_app-7d307437aca18ad4.js",revision:"7d307437aca18ad4"},{url:"/_next/static/chunks/pages/_error-cb2a52f75f2162e2.js",revision:"cb2a52f75f2162e2"},{url:"/_next/static/chunks/pages/_offline-66648f5ea58caafc.js",revision:"66648f5ea58caafc"},{url:"/_next/static/chunks/polyfills-42372ed130431b0a.js",revision:"846118c33b2c0e922d7b3a7676f81f6f"},{url:"/_next/static/chunks/webpack-639c22171dc50b3c.js",revision:"639c22171dc50b3c"},{url:"/_next/static/css/9cb5e3cfa7ad7774.css",revision:"9cb5e3cfa7ad7774"},{url:"/_next/static/tHr5jhwyM-jSAWCJXJZOL/_buildManifest.js",revision:"41947a7e42e3ed832bf1bbff7f3fe7fe"},{url:"/_next/static/tHr5jhwyM-jSAWCJXJZOL/_ssgManifest.js",revision:"b6652df95db52feb4daf4eca35380933"},{url:"/_offline",revision:"tHr5jhwyM-jSAWCJXJZOL"},{url:"/file.svg",revision:"d09f95206c3fa0bb9bd9fefabfd0ea71"},{url:"/globe.svg",revision:"2aaafa6a49b6563925fe440891e32717"},{url:"/icons/apple-touch-icon.png",revision:"19b4538d9941516ee6b5072827d5f593"},{url:"/icons/cbtlogo.png",revision:"ad6eca0549bce7189504a6dc6e20b0d7"},{url:"/icons/icon-128x128.png",revision:"26bad5c6d23d061f7bcd369dd4314a3d"},{url:"/icons/icon-144x144.png",revision:"cae109fbfddb2887a8256880c2e4575f"},{url:"/icons/icon-192x192.png",revision:"bc5936b3e91cfcd01add279ed19a3afd"},{url:"/icons/icon-384x384.png",revision:"6729006b6ad486c33d5379f00e28eeac"},{url:"/icons/icon-512x512.png",revision:"e8b685caab825e5013905b9eeadc7068"},{url:"/icons/icon-72x72.png",revision:"d05e2156005593a65f0e750844682dc8"},{url:"/icons/icon-96x96.png",revision:"b94c10e9a418b401f1f8b2a4e015c768"},{url:"/loader.mp4",revision:"9947a105d1cf0bfb50327be11e7e190a"},{url:"/logo.png",revision:"ad6eca0549bce7189504a6dc6e20b0d7"},{url:"/manifest.json",revision:"97c51d7504c7b7bd1c82b1eb83c2a85f"},{url:"/next.svg",revision:"8e061864f388b47f33a1c3780831193e"},{url:"/splash-animation.mp4",revision:"cdd9559ddbd72cb9d63c27fdf1a68bd5"},{url:"/splash.png",revision:"6e924eb872cb1a2aad8ae42fa16ebc97"},{url:"/vercel.svg",revision:"c0af2f507b369b085b35ef4bbe3bcf1e"},{url:"/window.svg",revision:"a2760511c65806022ad20adf74370ff3"}],{ignoreURLParametersMatching:[]}),e.cleanupOutdatedCaches(),e.registerRoute("/",new e.NetworkFirst({cacheName:"start-url",plugins:[{cacheWillUpdate:async({request:e,response:s,event:n,state:a})=>s&&"opaqueredirect"===s.type?new Response(s.body,{status:200,statusText:"OK",headers:s.headers}):s},{handlerDidError:async({request:e})=>self.fallback(e)}]}),"GET"),e.registerRoute(/^https:\/\/fonts\.(?:googleapis|gstatic)\.com\/.*/i,new e.CacheFirst({cacheName:"google-fonts",plugins:[new e.ExpirationPlugin({maxEntries:4,maxAgeSeconds:31536e3}),{handlerDidError:async({request:e})=>self.fallback(e)}]}),"GET"),e.registerRoute(/\.(?:jpg|jpeg|gif|png|svg|ico|webp)$/i,new e.StaleWhileRevalidate({cacheName:"static-image-assets",plugins:[new e.ExpirationPlugin({maxEntries:64,maxAgeSeconds:86400}),{handlerDidError:async({request:e})=>self.fallback(e)}]}),"GET"),e.registerRoute(/\/_next\/static\/.+\.(?:js|css)$/i,new e.CacheFirst({cacheName:"next-static",plugins:[new e.ExpirationPlugin({maxEntries:32,maxAgeSeconds:86400}),{handlerDidError:async({request:e})=>self.fallback(e)}]}),"GET"),e.registerRoute(/\/_next\/data\/.+\/.+\.json$/i,new e.NetworkFirst({cacheName:"next-data",plugins:[new e.ExpirationPlugin({maxEntries:32,maxAgeSeconds:86400}),{handlerDidError:async({request:e})=>self.fallback(e)}]}),"GET"),e.registerRoute(function(e){return"navigate"===e.request.mode},new e.NetworkFirst({cacheName:"pages",networkTimeoutSeconds:10,plugins:[new e.ExpirationPlugin({maxEntries:32,maxAgeSeconds:86400}),{handlerDidError:async({request:e})=>self.fallback(e)}]}),"GET"),e.registerRoute(/.*/i,new e.NetworkFirst({cacheName:"others",networkTimeoutSeconds:10,plugins:[new e.ExpirationPlugin({maxEntries:64,maxAgeSeconds:86400}),{handlerDidError:async({request:e})=>self.fallback(e)}]}),"GET")});
+const CACHE_NAME = 'waec-cbt-v1';
+
+self.addEventListener('install', event => {
+  self.skipWaiting();
+  event.waitUntil(
+    caches.open(CACHE_NAME).then(cache => {
+      return cache.addAll(['/offline']);
+    })
+  );
+});
+
+self.addEventListener('activate', event => {
+  event.waitUntil(
+    Promise.all([
+      caches.keys().then(keys => {
+        return Promise.all(
+          keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))
+        );
+      }),
+      self.clients.claim()
+    ])
+  );
+});
+
+self.addEventListener('fetch', event => {
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request).catch(() => {
+        return caches.match('/offline');
+      })
+    );
+  } else {
+    event.respondWith(
+      caches.match(event.request).then(response => {
+        return response || fetch(event.request);
+      })
+    );
+  }
+});
