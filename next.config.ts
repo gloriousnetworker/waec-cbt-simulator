@@ -32,17 +32,6 @@ const pwaConfig = withPWA({
       },
     },
     {
-      urlPattern: /\.(?:eot|otf|ttc|ttf|woff|woff2|font.css)$/i,
-      handler: 'StaleWhileRevalidate',
-      options: {
-        cacheName: 'static-font-assets',
-        expiration: {
-          maxEntries: 4,
-          maxAgeSeconds: 7 * 24 * 60 * 60,
-        },
-      },
-    },
-    {
       urlPattern: /\.(?:jpg|jpeg|gif|png|svg|ico|webp)$/i,
       handler: 'StaleWhileRevalidate',
       options: {
@@ -66,7 +55,7 @@ const pwaConfig = withPWA({
     },
     {
       urlPattern: /\/_next\/data\/.+\/.+\.json$/i,
-      handler: 'StaleWhileRevalidate',
+      handler: 'NetworkFirst',
       options: {
         cacheName: 'next-data',
         expiration: {
@@ -76,29 +65,15 @@ const pwaConfig = withPWA({
       },
     },
     {
-      urlPattern: /\.(?:mp3|wav|ogg)$/i,
-      handler: 'CacheFirst',
-      options: {
-        cacheName: 'static-audio-assets',
-        expiration: {
-          maxEntries: 16,
-          maxAgeSeconds: 7 * 24 * 60 * 60,
-        },
-      },
-    },
-    {
-      urlPattern: /api\/.*$/i,
+      urlPattern: ({ request }) => request.mode === 'navigate',
       handler: 'NetworkFirst',
       options: {
-        cacheName: 'apis',
-        networkTimeoutSeconds: 10,
+        cacheName: 'pages',
         expiration: {
           maxEntries: 32,
-          maxAgeSeconds: 5 * 60,
+          maxAgeSeconds: 24 * 60 * 60,
         },
-        cacheableResponse: {
-          statuses: [200],
-        },
+        networkTimeoutSeconds: 10,
       },
     },
     {

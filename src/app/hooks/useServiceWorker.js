@@ -7,29 +7,38 @@ export function useServiceWorker() {
   const [updateAvailable, setUpdateAvailable] = useState(false)
 
   useEffect(() => {
-    if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
+    if (typeof window === 'undefined' || !('serviceWorker' in navigator)) {
+      setSwStatus('unsupported')
+      return
+    }
+
+    if (process.env.NODE_ENV === 'production') {
       const registerSW = async () => {
         try {
           const registration = await navigator.serviceWorker.register('/sw.js')
           setSwStatus('registered')
 
-          // Check for updates
           registration.addEventListener('updatefound', () => {
             const newWorker = registration.installing
-            setSwStatus('updating')
-            
-            newWorker.addEventListener('statechange', () => {
-              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                setUpdateAvailable(true)
-                setSwStatus('updated')
-              }
-            })
+            if (newWorker) {
+              setSwStatus('updating')
+              
+              newWorker.addEventListener('statechange', () => {
+                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                  setUpdateAvailable(true)
+                  setSwStatus('updated')
+                }
+              })
+            }
           })
 
-          // Periodic update checks
+          if (registration.waiting) {
+            setUpdateAvailable(true)
+          }
+
           setInterval(() => {
             registration.update()
-          }, 60 * 60 * 1000) // Check every hour
+          }, 60 * 60 * 1000)
 
         } catch (error) {
           console.error('SW registration failed:', error)
@@ -37,18 +46,29 @@ export function useServiceWorker() {
         }
       }
 
-      registerSW()
+      if (document.readyState === 'complete') {
+        registerSW()
+      } else {
+        window.addEventListener('load', registerSW)
+      }
+
+      return () => {
+        window.removeEventListener('load', registerSW)
+      }
     } else {
-      setSwStatus('unsupported')
+      setSwStatus('disabled')
     }
   }, [])
 
   const skipWaiting = () => {
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.ready.then(registration => {
-        registration.waiting?.postMessage({ type: 'SKIP_WAITING' })
+        if (registration.waiting) {
+          registration.waiting.postMessage({ type: 'SKIP_WAITING' })
+          setUpdateAvailable(false)
+          window.location.reload()
+        }
       })
-      setUpdateAvailable(false)
     }
   }
 
