@@ -1,15 +1,31 @@
-const CACHE_NAME = 'waec-cbt-v3';
+const CACHE_NAME = 'waec-cbt-v4';
 
 console.log('SW: Script loaded');
 
 self.addEventListener('install', (event) => {
-  console.log('SW: Install event');
-  self.skipWaiting();
+  console.log('SW: Install event started');
+  
+  // Only cache files that definitely exist
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
-        console.log('SW: Caching offline page');
-        return cache.addAll(['/offline', '/']);
+        console.log('SW: Attempting to cache files');
+        // Only cache the offline page and manifest
+        return cache.addAll([
+          '/offline',
+          '/manifest.json'
+        ]).catch(err => {
+          console.log('SW: Cache addAll failed:', err);
+          // Still continue installation even if caching fails
+          return Promise.resolve();
+        });
+      })
+      .then(() => {
+        console.log('SW: Install completed');
+        self.skipWaiting();
+      })
+      .catch(err => {
+        console.log('SW: Install failed:', err);
       })
   );
 });
@@ -27,7 +43,9 @@ self.addEventListener('activate', (event) => {
         );
       }),
       self.clients.claim()
-    ])
+    ]).then(() => {
+      console.log('SW: Activated successfully');
+    })
   );
 });
 
@@ -38,27 +56,25 @@ self.addEventListener('fetch', (event) => {
       fetch(event.request)
         .catch(() => {
           console.log('SW: Serving offline page');
-          return caches.match('/offline');
+          return caches.match('/offline').then(response => {
+            if (!response) {
+              console.log('SW: Offline page not found in cache');
+              return new Response('Offline - Please check your connection', {
+                status: 503,
+                headers: new Headers({ 'Content-Type': 'text/plain' })
+              });
+            }
+            return response;
+          });
         })
     );
     return;
   }
 
-  // For all other requests, try network first, then cache
+  // For other requests, just try network, don't cache
   event.respondWith(
-    fetch(event.request)
-      .then(response => {
-        // Cache successful responses
-        if (response.status === 200) {
-          const responseClone = response.clone();
-          caches.open(CACHE_NAME).then(cache => {
-            cache.put(event.request, responseClone);
-          });
-        }
-        return response;
-      })
-      .catch(() => {
-        return caches.match(event.request);
-      })
+    fetch(event.request).catch(() => {
+      return caches.match(event.request);
+    })
   );
 });

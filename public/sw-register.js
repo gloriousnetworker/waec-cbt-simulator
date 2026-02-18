@@ -8,50 +8,56 @@
       return;
     }
   
-    // Function to register with retry
     function registerWithRetry(attempt = 1) {
       console.log(`SW Register: Attempt ${attempt}...`);
       
       navigator.serviceWorker.register('/sw.js')
         .then(registration => {
-          console.log('✅ SW Register: Success!', registration.scope);
+          console.log('✅ SW Register: Initial success', registration.scope);
           
-          // Log the state
-          if (registration.installing) {
-            console.log('SW: Installing');
-          } else if (registration.waiting) {
-            console.log('SW: Waiting');
-          } else if (registration.active) {
-            console.log('✅ SW: Active');
+          function checkState() {
+            if (registration.active) {
+              console.log('✅ SW: Active and ready');
+            } else if (registration.installing) {
+              console.log('SW: Installing...');
+              registration.installing.addEventListener('statechange', (e) => {
+                console.log('SW: State ->', e.target.state);
+                if (e.target.state === 'redundant') {
+                  console.log('❌ SW: Became redundant - retrying...');
+                  registration.unregister().then(() => {
+                    setTimeout(() => registerWithRetry(attempt + 1), 2000);
+                  });
+                }
+              });
+            } else if (registration.waiting) {
+              console.log('SW: Waiting for activation');
+            }
           }
           
-          // Listen for updates
+          checkState();
+          
           registration.addEventListener('updatefound', () => {
             console.log('SW: Update found');
-            const newWorker = registration.installing;
-            newWorker.addEventListener('statechange', () => {
-              console.log('SW: State ->', newWorker.state);
-            });
+            checkState();
           });
         })
         .catch(error => {
           console.error('❌ SW Register: Failed', error);
           
-          // Retry up to 3 times
-          if (attempt < 3) {
-            const delay = attempt * 2000;
+          if (attempt < 5) {
+            const delay = attempt * 3000;
             console.log(`SW Register: Retrying in ${delay}ms...`);
             setTimeout(() => registerWithRetry(attempt + 1), delay);
           }
         });
     }
   
-    // Try to register immediately
+    // Wait for page to be fully loaded
     if (document.readyState === 'complete') {
-      registerWithRetry();
+      setTimeout(registerWithRetry, 2000);
     } else {
       window.addEventListener('load', () => {
-        setTimeout(registerWithRetry, 1000);
+        setTimeout(registerWithRetry, 2000);
       });
     }
   })();
