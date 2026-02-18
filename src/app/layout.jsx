@@ -1,9 +1,11 @@
-'use client';
+'use client'
 
-import '../styles/globals.css';
-import { Toaster } from 'react-hot-toast';
-import { AuthProvider } from '../context/AuthContext';
-import { useEffect } from 'react';
+import '../styles/globals.css'
+import { Toaster } from 'react-hot-toast'
+import { AuthProvider } from '../context/AuthContext'
+import { useEffect, useState } from 'react'
+import { useServiceWorker } from './hooks/useServiceWorker'
+import UpdateNotification from '@/components/UpdateNotification'
 
 const toastOptions = {
   style: {
@@ -51,25 +53,23 @@ const toastOptions = {
     },
   },
   duration: 3000,
-};
+}
 
 export default function RootLayout({ children }) {
+  const [deferredPrompt, setDeferredPrompt] = useState(null)
+  const { updateAvailable, skipWaiting } = useServiceWorker()
+
   useEffect(() => {
-    // Handle PWA install prompt
-    let deferredPrompt;
-    
     window.addEventListener('beforeinstallprompt', (e) => {
-      e.preventDefault();
-      deferredPrompt = e;
-      console.log('✅ PWA can be installed');
-    });
-    
-    // Listen for app installation
+      e.preventDefault()
+      setDeferredPrompt(e)
+    })
+
     window.addEventListener('appinstalled', () => {
-      console.log('✅ PWA installed successfully');
-    });
-  }, []);
-  
+      setDeferredPrompt(null)
+    })
+  }, [])
+
   return (
     <html lang="en">
       <head>
@@ -102,8 +102,9 @@ export default function RootLayout({ children }) {
             }}
           />
           {children}
+          <UpdateNotification show={updateAvailable} onUpdate={skipWaiting} />
         </AuthProvider>
       </body>
     </html>
-  );
+  )
 }
