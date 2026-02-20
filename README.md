@@ -1,45 +1,80 @@
-NYSC CDS Attendance Portal
+WAEC CBT Exam Simulator - Student App
 
-A comprehensive digital attendance management system for National Youth Service Corps (NYSC) Community Development Service (CDS) groups in Nigeria.
-Live Demo
+A comprehensive Computer-Based Testing (CBT) simulation application for Nigerian students preparing for WAEC examinations. This app provides a real-world exam experience with practice tests, timed assessments, and performance tracking.
 
-🌐 Live Application: https://nysc-corpers-cds-attendance-app.vercel.app/
+Live Demo: https://waec-cbt-simulator.vercel.app/
 Features
 🎯 Core Features
 
-    Digital Attendance Tracking: Mark and monitor CDS attendance digitally
+    Real Exam Simulation: Experience what it feels like writing a WAEC CBT exam
 
-    User Authentication: Secure login/signup for corps members
+    Practice Exams: Unlimited practice with subject-based questions
 
-    Profile Management: Complete NYSC profile with all required details
+    Timed Tests: Simulate real exam conditions with countdown timers
 
-    Attendance Calendar: Visual monthly calendar with attendance status
+    Performance Tracking: Detailed analytics of your progress and scores
 
-    CDS Dues Management: Track and pay CDS group dues
+    Achievement System: Earn badges and rewards as you improve
 
-    Schedule Management: View upcoming CDS activities and meetings
+    Past Questions: Access and practice with previous WAEC questions
 
-    Reports Generation: Generate attendance and performance reports
+    Study Groups: Collaborate with other students preparing for exams
 
-    Multi-step Registration: User-friendly 3-step signup process with email verification
+    Support System: Reach out to administrators for help when needed
 
 📱 User Features
 
-    Dashboard Overview: Quick stats and recent activities
+    Dashboard Overview: Quick stats on exams taken, average scores, and achievements
 
-    Attendance History: Complete attendance record with visual indicators
+    Subject Selection: Choose from Mathematics, English, Physics, Chemistry, Biology, and more
 
-    Profile Customization: Update personal and NYSC information
+    Exam Modes: Practice mode, timed mode, and full mock exam simulation
 
-    Payment Integration: Manage CDS dues payments
+    Auto-Save: Progress saves automatically during exams
 
-    Calendar Integration: Sync CDS schedule with personal calendar
+    Tab Switching Detection: Maintains exam integrity with violation warnings
 
-    Report Export: Download reports in PDF, Excel, and CSV formats
+    Instant Results: Get immediate feedback and scores upon completion
 
-    Notification System: Email, SMS, and push notifications
+    Performance Analytics: Subject-wise breakdown of strengths and areas for improvement
 
-    Responsive Design: Works on desktop, tablet, and mobile devices
+    Offline Support: PWA capabilities for offline access
+
+    Mobile Responsive: Works perfectly on all devices
+
+📊 Available Subjects
+
+    Mathematics
+
+    English Language
+
+    Physics
+
+    Chemistry
+
+    Biology
+
+    Economics
+
+    Geography
+
+    Government
+
+    Christian Religious Knowledge (CRK)
+
+    Islamic Religious Knowledge (IRK)
+
+    Literature in English
+
+    Commerce
+
+    Financial Accounting
+
+    Agricultural Science
+
+    Civic Education
+
+    Data Processing
 
 Tech Stack
 Frontend
@@ -48,11 +83,9 @@ Frontend
 
     React - UI library
 
+    Framer Motion - Animation library
+
     Tailwind CSS - Utility-first CSS framework
-
-    GSAP - Animation library for smooth transitions
-
-    Font Awesome - Icons
 
 Key Dependencies
 
@@ -60,9 +93,9 @@ Key Dependencies
 
     react: ^18.0.0
 
-    react-dom: ^18.0.0
+    framer-motion: ^10.0.0
 
-    gsap: ^3.12.0
+    react-hot-toast: ^2.4.0
 
     next/image: Built-in image optimization
 
@@ -78,22 +111,19 @@ Prerequisites
 Setup Instructions
 
     Clone the repository
+    bash
 
-bash
+git clone https://github.com/yourusername/waec-cbt-simulator.git
+cd waec-cbt-simulator
 
-git clone https://github.com/gloriousnetworker/nysc-corpers-cds-attendance-app.git
-cd nysc-attendance-app
-
-    Install dependencies
-
+Install dependencies
 bash
 
 npm install
 # or
 yarn install
 
-    Run the development server
-
+Run the development server
 bash
 
 npm run dev
@@ -106,301 +136,200 @@ yarn dev
 Project Structure
 text
 
-nysc-attendance-app/
+waec-cbt-simulator/
 ├── app/
-│   ├── login/              # Login page
-│   ├── signup/            # Signup page (3-step process)
-│   ├── corpers-dashboard/ # Main dashboard
-│   └── page.jsx           # Landing page
+│   ├── layout.jsx           # Root layout with AuthProvider
+│   ├── page.jsx             # Landing page with splash screen
+│   ├── login/               # Login page
+│   ├── dashboard/           # Student dashboard
+│   │   └── page.jsx         # Dashboard with exam sections
+│   └── exam-room/           # Exam taking interface
+│       └── page.jsx         # Active exam room
 ├── components/
-│   ├── dashboard/         # Dashboard components
-│   │   ├── DashboardNavbar.jsx
-│   │   ├── DashboardSidebar.jsx
-│   │   ├── DashboardContent.jsx
-│   │   └── sections/      # Dashboard sections
-│   │       ├── OverviewSection.jsx
-│   │       ├── AttendanceSection.jsx
-│   │       ├── ProfileSection.jsx
-│   │       ├── DuesSection.jsx
-│   │       ├── ScheduleSection.jsx
-│   │       ├── ReportsSection.jsx
-│   │       ├── SettingsSection.jsx
-│   │       └── HelpSection.jsx
-│   ├── Navbar.jsx         # Main navigation
-│   └── Footer.jsx         # Site footer
+│   ├── dashboard-components/
+│   │   ├── Navbar.jsx       # Dashboard navigation
+│   │   └── Sidebar.jsx      # Dashboard sidebar menu
+│   ├── dashboard-content/
+│   │   ├── Home.jsx         # Dashboard home/overview
+│   │   ├── Exams.jsx        # Practice exams section
+│   │   ├── TimedTests.jsx   # Timed tests section
+│   │   ├── Performance.jsx  # Performance analytics
+│   │   ├── Achievements.jsx # Achievements and badges
+│   │   ├── PastQuestions.jsx # Past questions library
+│   │   ├── StudyGroups.jsx  # Study groups management
+│   │   ├── Settings.jsx     # User settings
+│   │   └── Help.jsx         # Help and support
+│   ├── SplashScreen.jsx     # App loading screen
+│   └── ProtectedRoute.jsx   # Route protection HOC
+├── context/
+│   └── AuthContext.jsx      # Authentication context
+├── data/
+│   └── questions.js         # Question bank database
 ├── public/
-│   ├── images/            # Static images
-│   │   └── nysc-logo.png  # NYSC logo
-│   └── videos/            # Video files
-├── styles/               # Global styles
+│   ├── icons/               # PWA icons
+│   ├── logo.png             # App logo
+│   └── manifest.json        # PWA manifest
+├── styles/
+│   └── globals.css          # Global styles
 └── package.json
 
 Usage Guide
-For Corps Members
+For Students
+Getting Started
 
-    Registration
+    Access the App
 
-        Visit the signup page
+        Visit the live URL or open locally
 
-        Complete 3-step registration process:
-
-            Step 1: Basic information (name, email, phone)
-
-            Step 2: NYSC details (state code, serving state, CDS group)
-
-            Step 3: Email verification
-
-        Verify email with 6-digit code
+        Splash screen appears with loading progress
 
     Login
 
-        Use email/state code and password
+        Use provided credentials from your school administrator
 
-        Demo login available for quick testing
+        Default password: 123456 (change after first login)
+
+        Demo accounts available for testing
 
     Dashboard Navigation
 
-        Overview: View stats and quick actions
+        Home: Overview of your stats and quick actions
 
-        Attendance: Mark and view attendance
+        Exams: Browse and start practice exams by subject
 
-        Profile: Update personal information
+        Timed Tests: Take exams under time constraints
 
-        CDS Dues: Manage payments
+        Performance: View detailed analytics of your progress
 
-        Schedule: View upcoming activities
+        Achievements: Track badges and rewards earned
 
-        Reports: Generate attendance reports
+        Past Questions: Access historical WAEC questions
 
-        Settings: Configure preferences
+        Study Groups: Join or create study groups
+
+        Settings: Customize your preferences
 
         Help: Access support resources
 
-    Marking Attendance
+Taking an Exam
 
-        Navigate to Attendance section
+    Select a subject from the Exams section
 
-        Click "Mark Today's Attendance"
+    Choose exam type:
 
-        Attendance recorded instantly
+        Practice Exam: Untimed with explanations
 
-For Administrators
+        Timed Exam: Simulates real exam time conditions
 
-(Note: Admin features to be implemented)
+        Mock Exam: Full WAEC simulation with strict rules
 
-    Monitor attendance across CDS groups
+    Answer questions by clicking on options
 
-    Generate group reports
+    Navigate using Previous/Next buttons
 
-    Manage user accounts
+    Track progress with the sidebar question grid
 
-    Configure system settings
+    Submit when complete or auto-submit on timer expiry
 
-Features in Detail
-🎨 Landing Page
+    View instant results with grade and percentage
 
-    Engaging hero section with NYSC video
+Exam Rules
 
-    Information about NYSC and CDS
+    Tab switching triggers warnings (3 warnings = auto-submit)
 
-    Call-to-action buttons for login/signup
+    Fullscreen mode enforced for mock exams
 
-    Responsive design with smooth animations
+    Cannot navigate away during timed/mock exams
 
-🔐 Authentication System
+    All questions must be attempted before final submission
 
-    Secure login with email/state code
+Performance Tracking
 
-    3-step signup with verification
+    Subject-wise average scores
 
-    Password protection
+    Best scores and recent attempts
 
-    Session management with localStorage
+    Pass rates and grade distribution
 
-📊 Dashboard Features
+    Strengths and areas for improvement identified
 
-    Real-time Stats: Attendance rate, days present, total days
+    Performance insights with recommendations
 
-    Interactive Calendar: Visual attendance tracking
+PWA Features
 
-    Profile Management: Full CRUD operations for user data
+The app is a Progressive Web Application with:
 
-    Payment System: Track and pay CDS dues
+    Installable: Add to home screen on mobile devices
 
-    Schedule View: Upcoming CDS activities
+    Offline Support: Access previously loaded content offline
 
-    Report Generation: Customizable reports in multiple formats
+    Push Notifications: Get updates on exam schedules
 
-    Settings: Customizable preferences and privacy controls
+    Fast Loading: Optimized for quick startup
 
-📱 Mobile Responsive
+    Responsive Design: Works on all screen sizes
 
-    Fully responsive design
+To install:
 
-    Mobile-optimized navigation
+    Mobile: Open in Chrome/Safari → Share menu → Add to Home Screen
 
-    Touch-friendly interface
+    Desktop: Click install icon in address bar
 
-    Progressive Web App capabilities
-
-API Endpoints
-
-(Note: Current implementation uses localStorage for demo. Backend integration pending)
-Planned Endpoints
-text
-
-POST   /api/auth/login          # User login
-POST   /api/auth/signup         # User registration
-POST   /api/auth/verify         # Email verification
-GET    /api/user/profile        # Get user profile
-PUT    /api/user/profile        # Update profile
-POST   /api/attendance/mark     # Mark attendance
-GET    /api/attendance          # Get attendance records
-POST   /api/payments            # Process payment
-GET    /api/reports             # Generate reports
-
-Environment Variables
-
-Create a .env.local file in the root directory:
-env
-
-NEXT_PUBLIC_APP_URL=http://localhost:3000
-NEXT_PUBLIC_API_URL=http://localhost:3000/api
-# Add more variables as needed for production
-
-Deployment
-Vercel Deployment
-
-    Push code to GitHub repository
-
-    Import project in Vercel dashboard
-
-    Configure build settings:
-
-        Build Command: npm run build
-
-        Output Directory: .next
-
-    Deploy
-
-Other Platforms
-
-The app can be deployed on any platform supporting Next.js:
-
-    Netlify
-
-    AWS Amplify
-
-    Railway
-
-    Heroku
-
-Testing
 Demo Credentials
 
-For testing purposes, use:
+For testing purposes:
 
-    Email/State Code: Any value
+    Email: student001@megatechsolutions.org
 
-    Password: Any value
+    Password: 123456
 
-    Demo Login: Click "Quick Demo Login" button
+Alternative demo:
 
-Test Scenarios
+    Email: student001@yourschool.org
 
-    User registration flow
-
-    Attendance marking
-
-    Profile updates
-
-    Report generation
-
-    Mobile responsiveness
-
-Contributing
-
-We welcome contributions! Please follow these steps:
-
-    Fork the repository
-
-    Create a feature branch (git checkout -b feature/AmazingFeature)
-
-    Commit your changes (git commit -m 'Add some AmazingFeature')
-
-    Push to the branch (git push origin feature/AmazingFeature)
-
-    Open a Pull Request
-
-Development Guidelines
-
-    Follow React/Next.js best practices
-
-    Use functional components with hooks
-
-    Maintain consistent code style
-
-    Add comments for complex logic
-
-    Test thoroughly before submitting
+    Password: 123456
 
 Roadmap
 Phase 1 (Completed)
 
-    Landing page design
+    Basic exam simulation
 
     User authentication
 
-    Basic dashboard
+    Dashboard interface
 
-    Attendance tracking
+    Performance tracking
 
-    Profile management
+    Multiple subject support
 
 Phase 2 (In Progress)
 
-    Backend API integration
+    Study groups integration
 
-    Database setup
-
-    Admin dashboard
-
-    Payment gateway integration
-
-    Email/SMS notifications
-
-Phase 3 (Planned)
-
-    Mobile app development
+    Real-time collaboration
 
     Advanced analytics
 
-    CDS group management
+    Leaderboards
 
     Certificate generation
 
-    API documentation
+Phase 3 (Planned)
+
+    AI-powered recommendations
+
+    Video tutorials
+
+    Live proctoring
+
+    Mobile app (React Native)
+
+    Parent/guardian portal
 
 Support
 
-For support, email: support@nysc-attendance.ng or use the in-app help section.
-License
+For support, use the in-app help section or contact your school administrator.
 
-This project is licensed under the MIT License - see the LICENSE file for details.
-Acknowledgments
+Built for Kogi State Ministry of Education in alliance with Mega Tech Solutions.
 
-    National Youth Service Corps (NYSC)
-
-    All contributing developers
-
-    Open source community
-
-    Nigerian corps members for inspiration
-
-Contact
-
-Project Link: https://github.com/gloriousnetworker/nysc-corpers-cds-attendance-app.git
-
-Live Demo: https://nysc-corpers-cds-attendance-app.vercel.app/
-
-Built with ❤️ for Nigerian Youth Service Corps Members
+© 2026 Mega Tech Solutions. All rights reserved.
