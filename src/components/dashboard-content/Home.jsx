@@ -67,7 +67,7 @@ export default function DashboardHome({ setActiveSection, onStartExam }) {
   ];
 
   const quickActions = [
-    { title: 'Start New Exam', icon: '📝', color: 'border-[#039994] text-[#039994] hover:bg-[#E8F8F6]', action: () => setActiveSection('exams') },
+    { title: 'Start New Examination', icon: '📝', color: 'border-[#039994] text-[#039994] hover:bg-[#E8F8F6]', action: () => setActiveSection('exams') },
     { title: 'Timed Practice', icon: '⏱️', color: 'border-[#10B981] text-[#10B981] hover:bg-[#D1FAE5]', action: () => setActiveSection('timed-tests') },
     { title: 'View Performance', icon: '📊', color: 'border-[#8B5CF6] text-[#8B5CF6] hover:bg-[#EDE9FE]', action: () => setActiveSection('performance') },
     { title: 'Past Questions', icon: '📚', color: 'border-[#F59E0B] text-[#F59E0B] hover:bg-[#FEF3C7]', action: () => setActiveSection('past-questions') },
