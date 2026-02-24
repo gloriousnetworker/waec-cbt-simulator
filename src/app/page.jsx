@@ -3,11 +3,11 @@
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import SplashScreen from '@/components/SplashScreen'
-import { useAuth } from '@/context/AuthContext'
+import { useStudentAuth } from '../context/AuthContext'
 
 export default function HomePage() {
   const router = useRouter()
-  const { isAuthenticated, authChecked } = useAuth()
+  const { isAuthenticated, authChecked } = useStudentAuth()
 
   useEffect(() => {
     const timer = setTimeout(() => {

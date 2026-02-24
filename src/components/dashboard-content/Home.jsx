@@ -1,109 +1,224 @@
+//HOME.JSX COMPONENT
 'use client';
 
-import { useAuth } from '../../context/AuthContext';
+import { useStudentAuth } from '../../context/AuthContext';
 import { motion } from 'framer-motion';
-import { useState } from 'react';
-import {
-  homeContainer,
-  homeHeader,
-  homeTitle,
-  homeSubtitle,
-  homeStatsGrid,
-  homeStatCard,
-  homeStatCardTop,
-  homeStatCardIcon,
-  homeStatCardValue,
-  homeStatCardLabel,
-  homeActionsGrid,
-  homeActionButton,
-  homeActionIcon,
-  homeActionTitle,
-  homeContentGrid,
-  homeCard,
-  homeCardTitle,
-  homeActivityItem,
-  homeActivityLeft,
-  homeActivityIcon,
-  homeActivitySubject,
-  homeActivityTime,
-  homeActivityScore,
-  homeActivityContinue,
-  homeSubjectGrid,
-  homeSubjectButton,
-  homeSubjectInner,
-  homeSubjectIcon,
-  homeSubjectName,
-  homeSubjectCount,
-  homeViewAllButton,
-  homeBanner,
-  homeBannerContent,
-  homeBannerTitle,
-  homeBannerText,
-  homeBannerActions,
-  homeBannerButtonPrimary,
-  homeBannerButtonSecondary,
-  homeBannerStats,
-  homeBannerStatItem,
-  homeBannerStatValue,
-  homeBannerStatLabel
-} from '../styles';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import toast from 'react-hot-toast';
+
+const API_BASE_URL = 'https://cbt-simulator-backend.vercel.app/api';
 
 export default function DashboardHome({ setActiveSection, onStartExam }) {
-  const { user } = useAuth();
-  const [stats] = useState({
-    totalExams: 24,
-    completed: 18,
-    averageScore: 78,
-    timeSpent: '45h 30m',
-    streak: 7,
-    rank: 'Top 15%'
+  const { user, fetchWithAuth, isOffline, getOfflineData } = useStudentAuth();
+  const router = useRouter();
+  const [stats, setStats] = useState({
+    totalExams: 0,
+    completed: 0,
+    averageScore: 0,
+    timeSpent: '0h 0m',
+    streak: 0,
+    rank: 'Top 100%'
   });
+  const [recentActivities, setRecentActivities] = useState([]);
+  const [studentSubjects, setStudentSubjects] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const recentActivities = [
-    { subject: 'Mathematics', score: 85, time: '2 hours ago', status: 'completed', subjectId: 'mathematics' },
-    { subject: 'English Language', score: 72, time: 'Yesterday', status: 'completed', subjectId: 'english' },
-    { subject: 'Physics', score: 0, time: 'In progress', status: 'active', subjectId: 'physics' },
-    { subject: 'Chemistry', score: 90, time: '3 days ago', status: 'completed', subjectId: 'chemistry' },
-  ];
-
-  const quickActions = [
-    { title: 'Start New Examination', icon: '📝', color: 'border-[#039994] text-[#039994] hover:bg-[#E8F8F6]', action: () => setActiveSection('exams') },
-    { title: 'Timed Practice', icon: '⏱️', color: 'border-[#10B981] text-[#10B981] hover:bg-[#D1FAE5]', action: () => setActiveSection('timed-tests') },
-    { title: 'View Performance', icon: '📊', color: 'border-[#8B5CF6] text-[#8B5CF6] hover:bg-[#EDE9FE]', action: () => setActiveSection('performance') },
-    { title: 'Past Questions', icon: '📚', color: 'border-[#F59E0B] text-[#F59E0B] hover:bg-[#FEF3C7]', action: () => setActiveSection('past-questions') },
-  ];
-
-  const popularSubjects = [
-    { id: 'mathematics', name: 'Mathematics', icon: '🧮' },
-    { id: 'english', name: 'English', icon: '📖' },
-    { id: 'physics', name: 'Physics', icon: '⚛️' },
-    { id: 'chemistry', name: 'Chemistry', icon: '🧪' },
-    { id: 'biology', name: 'Biology', icon: '🧬' },
-    { id: 'economics', name: 'Economics', icon: '📈' }
-  ];
-
-  const handleQuickStart = (subjectId) => {
-    onStartExam({ subject: subjectId, examType: 'practice' });
+  const subjectIcons = {
+    Mathematics: '🧮',
+    English: '📖',
+    Physics: '⚛️',
+    Chemistry: '🧪',
+    Biology: '🧬',
+    Economics: '📈',
+    Geography: '🗺️',
+    Government: '🏛️',
+    'Christian Religious Knowledge': '✝️',
+    'Islamic Religious Knowledge': '☪️',
+    'Literature in English': '📚',
+    Commerce: '💼',
+    'Financial Accounting': '💰',
+    'Agricultural Science': '🌾',
+    'Civic Education': '🏛️',
+    'Data Processing': '💻'
   };
 
-  const handleContinueActivity = (activity) => {
-    if (activity.status === 'active') {
-      onStartExam({ subject: activity.subjectId, examType: 'practice' });
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  const fetchDashboardData = async () => {
+    setLoading(true);
+    try {
+      if (!isOffline) {
+        const subjectsResponse = await fetchWithAuth(`${API_BASE_URL}/student/subjects`);
+        const subjectsData = await subjectsResponse.json();
+        setStudentSubjects(subjectsData.subjects || []);
+
+        const profileResponse = await fetchWithAuth(`${API_BASE_URL}/student/profile`);
+        const profileData = await profileResponse.json();
+
+        const performanceResponse = await fetchWithAuth(`${API_BASE_URL}/exam/performance/summary`);
+        const performanceData = await performanceResponse.json();
+
+        const resultsResponse = await fetchWithAuth(`${API_BASE_URL}/exam/results/all`);
+        const resultsData = await resultsResponse.json();
+
+        if (performanceData.performance) {
+          const perf = performanceData.performance;
+          const avgScore = perf.averageScore || 0;
+          
+          let rank = 'Top 100%';
+          if (avgScore >= 80) rank = 'Top 10%';
+          else if (avgScore >= 70) rank = 'Top 20%';
+          else if (avgScore >= 60) rank = 'Top 30%';
+          else if (avgScore >= 50) rank = 'Top 40%';
+
+          setStats({
+            totalExams: perf.totalExams || 0,
+            completed: perf.totalExams || 0,
+            averageScore: avgScore,
+            timeSpent: `${Math.floor((perf.totalExams * 2) / 60)}h ${(perf.totalExams * 2) % 60}m`,
+            streak: Math.min(perf.totalExams, 7),
+            rank: rank
+          });
+        }
+
+        if (resultsData.results) {
+          const activities = resultsData.results.slice(0, 4).map(result => ({
+            subject: result.subject,
+            score: result.score,
+            time: formatTimeAgo(result.date._seconds),
+            status: 'completed',
+            subjectId: result.subject.toLowerCase().replace(/\s+/g, '')
+          }));
+          setRecentActivities(activities);
+        }
+      } else {
+        const cachedSubjects = getOfflineData('studentSubjects');
+        if (cachedSubjects) {
+          setStudentSubjects(cachedSubjects);
+        }
+        
+        const cachedResults = getOfflineData('recentActivities');
+        if (cachedResults) {
+          setRecentActivities(cachedResults);
+        }
+        
+        setStats({
+          totalExams: 0,
+          completed: 0,
+          averageScore: 0,
+          timeSpent: '0h 0m',
+          streak: 0,
+          rank: 'Top 100%'
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+      toast.error('Failed to load dashboard data');
+    } finally {
+      setLoading(false);
     }
   };
 
+  const formatTimeAgo = (timestamp) => {
+    const seconds = Math.floor(Date.now() / 1000) - timestamp;
+    
+    if (seconds < 60) return 'Just now';
+    if (seconds < 3600) return `${Math.floor(seconds / 60)} minutes ago`;
+    if (seconds < 86400) return `${Math.floor(seconds / 3600)} hours ago`;
+    if (seconds < 604800) return `${Math.floor(seconds / 86400)} days ago`;
+    return 'Long ago';
+  };
+
+  const quickActions = [
+    { 
+      title: 'Start New Examination', 
+      icon: '📝', 
+      color: 'border-[#039994] text-[#039994] hover:bg-[#E8F8F6]', 
+      action: () => setActiveSection('exams') 
+    },
+    { 
+      title: 'Timed Practice', 
+      icon: '⏱️', 
+      color: 'border-[#10B981] text-[#10B981] hover:bg-[#D1FAE5]', 
+      action: () => {
+        setActiveSection('exams');
+        setTimeout(() => {
+          const timedTab = document.querySelector('[data-tab="timed"]');
+          if (timedTab) timedTab.click();
+        }, 100);
+      } 
+    },
+    { 
+      title: 'View Performance', 
+      icon: '📊', 
+      color: 'border-[#8B5CF6] text-[#8B5CF6] hover:bg-[#EDE9FE]', 
+      action: () => setActiveSection('performance') 
+    },
+    { 
+      title: 'Mock Exam', 
+      icon: '🎯', 
+      color: 'border-[#F59E0B] text-[#F59E0B] hover:bg-[#FEF3C7]', 
+      action: () => {
+        setActiveSection('exams');
+        setTimeout(() => {
+          const mockTab = document.querySelector('[data-tab="mock"]');
+          if (mockTab) mockTab.click();
+        }, 100);
+      } 
+    },
+  ];
+
+  const popularSubjects = studentSubjects.slice(0, 6).map(subject => ({
+    id: subject.toLowerCase().replace(/\s+/g, ''),
+    name: subject,
+    icon: subjectIcons[subject] || '📘'
+  }));
+
+  const handleQuickStart = (subjectId) => {
+    const subject = studentSubjects.find(s => 
+      s.toLowerCase().replace(/\s+/g, '') === subjectId
+    );
+    if (subject) {
+      router.push(`/dashboard/exam-room?subject=${encodeURIComponent(subject)}&type=practice&duration=60`);
+    }
+  };
+
+  const handleContinueActivity = (activity) => {
+    router.push(`/dashboard/exam-room?subject=${encodeURIComponent(activity.subject)}&type=practice&duration=60`);
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-[#039994] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-[14px] leading-[100%] font-[500] text-[#626060] font-playfair">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className={homeContainer}>
-      <div className={homeHeader}>
-        <h1 className={homeTitle}>
-          Welcome back, {user?.name || 'Student'}! 👋
+    <div className="max-w-7xl mx-auto px-4 py-6">
+      <div className="mb-8">
+        <h1 className="text-2xl md:text-3xl font-bold text-[#1E1E1E] font-playfair">
+          Welcome back, {user?.firstName || 'Student'}! 👋
         </h1>
-        <p className={homeSubtitle}>
+        <p className="text-[#626060] mt-2 font-playfair">
           Continue your journey to excellence. {stats.completed} exams completed.
         </p>
+        {isOffline && (
+          <div className="mt-4 bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded-lg flex items-center gap-2">
+            <span>📴</span>
+            <span className="text-sm font-playfair">You're offline. Some features may be limited.</span>
+          </div>
+        )}
       </div>
 
-      <div className={homeStatsGrid}>
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
         {[
           { label: 'Total Exams', value: stats.totalExams, icon: '📚' },
           { label: 'Completed', value: stats.completed, icon: '📈' },
@@ -117,78 +232,92 @@ export default function DashboardHome({ setActiveSection, onStartExam }) {
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: index * 0.1 }}
-            className={homeStatCard}
+            className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm"
           >
-            <div className={homeStatCardTop}>
-              <span className={homeStatCardIcon}>{stat.icon}</span>
-              <span className={homeStatCardValue}>{stat.value}</span>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-2xl">{stat.icon}</span>
+              <span className="text-xl font-bold text-[#1E1E1E] font-playfair">{stat.value}</span>
             </div>
-            <p className={homeStatCardLabel}>{stat.label}</p>
+            <p className="text-xs text-[#626060] font-playfair">{stat.label}</p>
           </motion.div>
         ))}
       </div>
 
-      <div className={homeActionsGrid}>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         {quickActions.map((action, index) => (
           <motion.button
             key={action.title}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             onClick={action.action}
-            className={`${homeActionButton} ${action.color}`}
+            className={`p-4 rounded-xl border-2 ${action.color} transition-all bg-white`}
           >
-            <div className={homeActionIcon}>{action.icon}</div>
-            <h3 className={homeActionTitle}>{action.title}</h3>
+            <div className="text-3xl mb-2">{action.icon}</div>
+            <h3 className="text-sm font-[600] font-playfair">{action.title}</h3>
           </motion.button>
         ))}
       </div>
 
-      <div className={homeContentGrid}>
-        <div className={homeCard}>
-          <h2 className={homeCardTitle}>Recent Activity</h2>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+          <h2 className="text-lg font-bold text-[#1E1E1E] mb-4 font-playfair">Recent Activity</h2>
           <div className="space-y-4">
-            {recentActivities.map((activity, index) => (
-              <div key={index} className={homeActivityItem}>
-                <div className={homeActivityLeft}>
-                  <div className={`${homeActivityIcon} ${activity.status === 'completed' ? 'bg-[#D1FAE5] text-[#10B981]' : 'bg-[#DBEAFE] text-[#3B82F6]'}`}>
-                    {activity.status === 'completed' ? '✓' : '▶️'}
+            {recentActivities.length > 0 ? (
+              recentActivities.map((activity, index) => (
+                <div key={index} className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                      activity.status === 'completed' ? 'bg-green-100 text-green-600' : 'bg-blue-100 text-blue-600'
+                    }`}>
+                      {activity.status === 'completed' ? '✓' : '▶️'}
+                    </div>
+                    <div>
+                      <p className="font-medium text-[#1E1E1E] font-playfair">{activity.subject}</p>
+                      <p className="text-xs text-[#626060] font-playfair">{activity.time}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className={homeActivitySubject}>{activity.subject}</p>
-                    <p className={homeActivityTime}>{activity.time}</p>
+                  <div className="text-right">
+                    {activity.score > 0 ? (
+                      <span className={`font-bold font-playfair ${
+                        activity.score >= 70 ? 'text-green-600' : 
+                        activity.score >= 50 ? 'text-yellow-600' : 
+                        'text-red-600'
+                      }`}>
+                        {activity.score}%
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => handleContinueActivity(activity)}
+                        className="text-[#039994] hover:text-[#028a85] text-sm font-playfair"
+                      >
+                        Continue →
+                      </button>
+                    )}
                   </div>
                 </div>
-                <div className="text-right">
-                  {activity.score > 0 ? (
-                    <span className={homeActivityScore}>{activity.score}%</span>
-                  ) : (
-                    <button
-                      onClick={() => handleContinueActivity(activity)}
-                      className={homeActivityContinue}
-                    >
-                      Continue →
-                    </button>
-                  )}
-                </div>
+              ))
+            ) : (
+              <div className="text-center py-8 text-[#626060] font-playfair">
+                No recent activity. Start an exam to see your progress.
               </div>
-            ))}
+            )}
           </div>
         </div>
 
-        <div className={homeCard}>
-          <h2 className={homeCardTitle}>Quick Start Subjects</h2>
-          <div className={homeSubjectGrid}>
+        <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+          <h2 className="text-lg font-bold text-[#1E1E1E] mb-4 font-playfair">Quick Start Subjects</h2>
+          <div className="grid grid-cols-2 gap-3 mb-4">
             {popularSubjects.map((subject, index) => (
               <button
                 key={index}
                 onClick={() => handleQuickStart(subject.id)}
-                className={homeSubjectButton}
+                className="p-3 border border-gray-200 rounded-lg hover:border-[#039994] hover:bg-[#E6FFFA] transition-all text-left"
               >
-                <div className={homeSubjectInner}>
-                  <span className={homeSubjectIcon}>{subject.icon}</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-2xl">{subject.icon}</span>
                   <div>
-                    <div className={homeSubjectName}>{subject.name}</div>
-                    <div className={homeSubjectCount}>50 Qs</div>
+                    <div className="text-sm font-medium text-[#1E1E1E] font-playfair">{subject.name}</div>
+                    <div className="text-xs text-[#626060] font-playfair">50 Qs</div>
                   </div>
                 </div>
               </button>
@@ -196,53 +325,54 @@ export default function DashboardHome({ setActiveSection, onStartExam }) {
           </div>
           <button
             onClick={() => setActiveSection('exams')}
-            className={homeViewAllButton}
+            className="w-full py-2 text-[#039994] border border-[#039994] rounded-lg hover:bg-[#E6FFFA] transition-colors text-sm font-playfair"
           >
             View All Subjects
           </button>
         </div>
       </div>
 
-      <div className={homeBanner}>
-        <div className={homeBannerContent}>
+      <div className="bg-gradient-to-r from-[#039994] to-[#028a85] rounded-xl p-6 md:p-8 text-white">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
-            <h3 className={homeBannerTitle}>Ready to Ace Your Exams?</h3>
-            <p className={homeBannerText}>
+            <h3 className="text-xl md:text-2xl font-bold mb-2 font-playfair">Ready to Ace Your Exams?</h3>
+            <p className="text-sm opacity-90 font-playfair">
               Practice makes perfect. Start with a subject you want to improve.
             </p>
           </div>
-          <div className={homeBannerActions}>
-            <button
-              onClick={() => handleQuickStart('mathematics')}
-              className={homeBannerButtonPrimary}
-            >
-              Start Mathematics
-            </button>
-            <button
-              onClick={() => handleQuickStart('english')}
-              className={homeBannerButtonSecondary}
-            >
-              Start English
-            </button>
+          <div className="flex flex-col sm:flex-row gap-3">
+            {studentSubjects.slice(0, 2).map((subject, index) => (
+              <button
+                key={index}
+                onClick={() => handleQuickStart(subject.toLowerCase().replace(/\s+/g, ''))}
+                className={`px-6 py-3 rounded-lg font-playfair text-sm font-[600] transition-all ${
+                  index === 0 
+                    ? 'bg-white text-[#039994] hover:bg-gray-100' 
+                    : 'border border-white text-white hover:bg-white/10'
+                }`}
+              >
+                Start {subject}
+              </button>
+            ))}
           </div>
         </div>
         
-        <div className={homeBannerStats}>
-          <div className={homeBannerStatItem}>
-            <div className={homeBannerStatValue}>{stats.completed}</div>
-            <div className={homeBannerStatLabel}>Exams Taken</div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 pt-6 border-t border-white/20">
+          <div>
+            <div className="text-2xl font-bold font-playfair">{stats.completed}</div>
+            <div className="text-xs opacity-90 font-playfair">Exams Taken</div>
           </div>
-          <div className={homeBannerStatItem}>
-            <div className={homeBannerStatValue}>{stats.averageScore}%</div>
-            <div className={homeBannerStatLabel}>Average Score</div>
+          <div>
+            <div className="text-2xl font-bold font-playfair">{stats.averageScore}%</div>
+            <div className="text-xs opacity-90 font-playfair">Average Score</div>
           </div>
-          <div className={homeBannerStatItem}>
-            <div className={homeBannerStatValue}>{stats.streak} days</div>
-            <div className={homeBannerStatLabel}>Study Streak</div>
+          <div>
+            <div className="text-2xl font-bold font-playfair">{stats.streak} days</div>
+            <div className="text-xs opacity-90 font-playfair">Study Streak</div>
           </div>
-          <div className={homeBannerStatItem}>
-            <div className={homeBannerStatValue}>{stats.rank}</div>
-            <div className={homeBannerStatLabel}>Global Rank</div>
+          <div>
+            <div className="text-2xl font-bold font-playfair">{stats.rank}</div>
+            <div className="text-xs opacity-90 font-playfair">Global Rank</div>
           </div>
         </div>
       </div>

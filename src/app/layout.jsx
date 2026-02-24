@@ -3,7 +3,7 @@
 
 import '../styles/globals.css'
 import { Toaster } from 'react-hot-toast'
-import { AuthProvider } from '../context/AuthContext'
+import { StudentAuthProvider } from '../context/AuthContext'
 import { useEffect, useState } from 'react'
 
 const toastOptions = {
@@ -58,29 +58,31 @@ export default function RootLayout({ children }) {
   const [deferredPrompt, setDeferredPrompt] = useState(null)
 
   useEffect(() => {
-    window.addEventListener('beforeinstallprompt', (e) => {
-      e.preventDefault()
-      setDeferredPrompt(e)
-    })
+    if (typeof window !== 'undefined') {
+      window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault()
+        setDeferredPrompt(e)
+      })
 
-    window.addEventListener('appinstalled', () => {
-      setDeferredPrompt(null)
-    })
+      window.addEventListener('appinstalled', () => {
+        setDeferredPrompt(null)
+      })
 
-    const handleOffline = () => {
-      console.log('App is offline')
-    }
-    
-    const handleOnline = () => {
-      console.log('App is online')
-    }
+      const handleOffline = () => {
+        console.log('App is offline')
+      }
+      
+      const handleOnline = () => {
+        console.log('App is online')
+      }
 
-    window.addEventListener('offline', handleOffline)
-    window.addEventListener('online', handleOnline)
+      window.addEventListener('offline', handleOffline)
+      window.addEventListener('online', handleOnline)
 
-    return () => {
-      window.removeEventListener('offline', handleOffline)
-      window.removeEventListener('online', handleOnline)
+      return () => {
+        window.removeEventListener('offline', handleOffline)
+        window.removeEventListener('online', handleOnline)
+      }
     }
   }, [])
 
@@ -108,7 +110,7 @@ export default function RootLayout({ children }) {
         <script src="/sw-register.js" defer></script>
       </head>
       <body className="bg-white min-h-screen font-playfair antialiased">
-        <AuthProvider>
+        <StudentAuthProvider>
           <Toaster 
             position="top-center" 
             toastOptions={toastOptions}
@@ -117,7 +119,7 @@ export default function RootLayout({ children }) {
             }}
           />
           {children}
-        </AuthProvider>
+        </StudentAuthProvider>
       </body>
     </html>
   )

@@ -1,61 +1,23 @@
+//EXAMS.JSX COMPONENT - Updated with correct endpoints
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import {
-  examsContainer,
-  examsHeader,
-  examsTitle,
-  examsSubtitle,
-  examsTabsGrid,
-  examsTabButton,
-  examsTabButtonActive,
-  examsTabButtonInactive,
-  examsTabTitle,
-  examsTabDesc,
-  examsSubjectsGrid,
-  examsSubjectCard,
-  examsSubjectColorBar,
-  examsSubjectCardInner,
-  examsSubjectHeader,
-  examsSubjectIcon,
-  examsSubjectName,
-  examsSubjectQuestions,
-  examsSubjectStats,
-  examsSubjectStatRow,
-  examsSubjectStatLabel,
-  examsSubjectStatValue,
-  examsSubjectButton,
-  examsInstructions,
-  examsInstructionsTitle,
-  examsInstructionsList,
-  examsInstructionsItem,
-  examsInstructionsBullet
-} from '../../styles/styles';
+import { useStudentAuth } from '../../context/AuthContext';
+import toast from 'react-hot-toast';
+import { getAllQuestionsCount } from '../../app/data/questions';
+
+const API_BASE_URL = 'https://cbt-simulator-backend.vercel.app/api';
 
 export default function Exams() {
   const [activeTab, setActiveTab] = useState('practice');
+  const [studentSubjects, setStudentSubjects] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [performance, setPerformance] = useState({});
+  const [questionsCount, setQuestionsCount] = useState({});
   const router = useRouter();
-
-  const subjects = [
-    { id: 'mathematics', name: 'Mathematics', icon: '🧮', color: 'bg-[#3B82F6]', questions: 60, duration: '3h', bestScore: 85, attempts: 12 },
-    { id: 'english', name: 'English Language', icon: '📖', color: 'bg-[#10B981]', questions: 100, duration: '2h 45m', bestScore: 78, attempts: 15 },
-    { id: 'physics', name: 'Physics', icon: '⚛️', color: 'bg-[#8B5CF6]', questions: 50, duration: '2h 30m', bestScore: 72, attempts: 8 },
-    { id: 'chemistry', name: 'Chemistry', icon: '🧪', color: 'bg-[#EF4444]', questions: 50, duration: '2h 30m', bestScore: 90, attempts: 10 },
-    { id: 'biology', name: 'Biology', icon: '🧬', color: 'bg-[#059669]', questions: 50, duration: '2h 30m', bestScore: 88, attempts: 11 },
-    { id: 'economics', name: 'Economics', icon: '📈', color: 'bg-[#F59E0B]', questions: 50, duration: '2h', bestScore: 76, attempts: 9 },
-    { id: 'geography', name: 'Geography', icon: '🗺️', color: 'bg-[#14B8A6]', questions: 50, duration: '2h', bestScore: 82, attempts: 7 },
-    { id: 'government', name: 'Government', icon: '🏛️', color: 'bg-[#6366F1]', questions: 50, duration: '2h', bestScore: 79, attempts: 6 },
-    { id: 'crk', name: 'Christian Religious Knowledge', icon: '✝️', color: 'bg-[#8B5CF6]', questions: 50, duration: '2h', bestScore: 91, attempts: 5 },
-    { id: 'irk', name: 'Islamic Religious Knowledge', icon: '☪️', color: 'bg-[#059669]', questions: 50, duration: '2h', bestScore: 87, attempts: 4 },
-    { id: 'literature', name: 'Literature in English', icon: '📚', color: 'bg-[#EC4899]', questions: 50, duration: '2h 30m', bestScore: 84, attempts: 8 },
-    { id: 'commerce', name: 'Commerce', icon: '💼', color: 'bg-[#F97316]', questions: 50, duration: '2h', bestScore: 81, attempts: 7 },
-    { id: 'accounting', name: 'Financial Accounting', icon: '💰', color: 'bg-[#10B981]', questions: 50, duration: '2h 30m', bestScore: 77, attempts: 9 },
-    { id: 'agricscience', name: 'Agricultural Science', icon: '🌾', color: 'bg-[#84CC16]', questions: 50, duration: '2h 30m', bestScore: 86, attempts: 6 },
-    { id: 'civiledu', name: 'Civic Education', icon: '🏛️', color: 'bg-[#0EA5E9]', questions: 50, duration: '2h', bestScore: 89, attempts: 5 },
-    { id: 'dataprocessing', name: 'Data Processing', icon: '💻', color: 'bg-[#6366F1]', questions: 50, duration: '2h', bestScore: 92, attempts: 10 },
-  ];
+  const { user, fetchWithAuth, isOffline, getOfflineData } = useStudentAuth();
 
   const examTypes = [
     { id: 'practice', name: 'Practice Exam', desc: 'Untimed practice with detailed explanations' },
@@ -63,100 +25,270 @@ export default function Exams() {
     { id: 'mock', name: 'Mock Exam', desc: 'Full WAEC simulation with strict rules' },
   ];
 
-  const handleStartExam = (subjectId) => {
-    router.push(`/dashboard/exam-room?subject=${subjectId}&type=${activeTab}`);
+  const subjectIcons = {
+    Mathematics: '🧮',
+    English: '📖',
+    Physics: '⚛️',
+    Chemistry: '🧪',
+    Biology: '🧬',
+    Economics: '📈',
+    Geography: '🗺️',
+    Government: '🏛️',
+    'Christian Religious Knowledge': '✝️',
+    'Islamic Religious Knowledge': '☪️',
+    'Literature in English': '📚',
+    Commerce: '💼',
+    'Financial Accounting': '💰',
+    'Agricultural Science': '🌾',
+    'Civic Education': '🏛️',
+    'Data Processing': '💻'
   };
 
+  const subjectColors = {
+    Mathematics: 'bg-[#3B82F6]',
+    English: 'bg-[#10B981]',
+    Physics: 'bg-[#8B5CF6]',
+    Chemistry: 'bg-[#EF4444]',
+    Biology: 'bg-[#059669]',
+    Economics: 'bg-[#F59E0B]',
+    Geography: 'bg-[#14B8A6]',
+    Government: 'bg-[#6366F1]',
+    'Christian Religious Knowledge': 'bg-[#8B5CF6]',
+    'Islamic Religious Knowledge': 'bg-[#059669]',
+    'Literature in English': 'bg-[#EC4899]',
+    Commerce: 'bg-[#F97316]',
+    'Financial Accounting': 'bg-[#10B981]',
+    'Agricultural Science': 'bg-[#84CC16]',
+    'Civic Education': 'bg-[#0EA5E9]',
+    'Data Processing': 'bg-[#6366F1]'
+  };
+
+  const subjectDurations = {
+    Mathematics: 180,
+    English: 165,
+    Physics: 150,
+    Chemistry: 150,
+    Biology: 150,
+    Economics: 120,
+    Geography: 120,
+    Government: 120,
+    'Christian Religious Knowledge': 120,
+    'Islamic Religious Knowledge': 120,
+    'Literature in English': 150,
+    Commerce: 120,
+    'Financial Accounting': 150,
+    'Agricultural Science': 150,
+    'Civic Education': 120,
+    'Data Processing': 120
+  };
+
+  const subjectIdMap = {
+    Mathematics: 'mathematics',
+    English: 'english',
+    Physics: 'physics',
+    Chemistry: 'chemistry',
+    Biology: 'biology',
+    Economics: 'economics',
+    Geography: 'geography',
+    Government: 'government',
+    'Christian Religious Knowledge': 'crk',
+    'Islamic Religious Knowledge': 'irk',
+    'Literature in English': 'literature',
+    Commerce: 'commerce',
+    'Financial Accounting': 'accounting',
+    'Agricultural Science': 'agricscience',
+    'Civic Education': 'civiledu',
+    'Data Processing': 'dataprocessing'
+  };
+
+  useEffect(() => {
+    const counts = getAllQuestionsCount();
+    setQuestionsCount(counts);
+    fetchSubjectsAndPerformance();
+  }, []);
+
+  const fetchSubjectsAndPerformance = async () => {
+    setLoading(true);
+    try {
+      if (!isOffline) {
+        const subjectsResponse = await fetchWithAuth('/subjects'); // Changed from /student/subjects
+        const subjectsData = await subjectsResponse.json();
+        setStudentSubjects(subjectsData.subjects || []);
+
+        const performanceResponse = await fetchWithAuth('/exam/performance/summary'); // Changed from /student/exam/performance/summary
+        const performanceData = await performanceResponse.json();
+        setPerformance(performanceData.performance || {});
+      } else {
+        const cachedSubjects = getOfflineData('studentSubjects');
+        if (cachedSubjects) {
+          setStudentSubjects(cachedSubjects);
+        }
+        
+        const cachedPerformance = getOfflineData('performance');
+        if (cachedPerformance) {
+          setPerformance(cachedPerformance);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      toast.error('Failed to load subjects');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleStartExam = (subjectName) => {
+    const subjectId = subjectIdMap[subjectName] || subjectName.toLowerCase().replace(/\s+/g, '');
+    const duration = subjectDurations[subjectName] || 60;
+    const questionCount = questionsCount[subjectId] || 50;
+    
+    router.push(`/dashboard/exam-room?subject=${encodeURIComponent(subjectName)}&subjectId=${subjectId}&type=${activeTab}&duration=${duration}&questionCount=${questionCount}`);
+  };
+
+  const getSubjectStats = (subjectName) => {
+    const subjectPerf = performance.subjects?.[subjectName];
+    if (subjectPerf) {
+      const avgScore = subjectPerf.attempts > 0 
+        ? Math.round(subjectPerf.totalScore / subjectPerf.attempts) 
+        : 0;
+      return {
+        bestScore: avgScore,
+        attempts: subjectPerf.attempts || 0
+      };
+    }
+    return {
+      bestScore: 0,
+      attempts: 0
+    };
+  };
+
+  const getQuestionCountForSubject = (subjectName) => {
+    const subjectId = subjectIdMap[subjectName] || subjectName.toLowerCase().replace(/\s+/g, '');
+    return questionsCount[subjectId] || 50;
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-[#039994] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-[14px] leading-[100%] font-[500] text-[#626060] font-playfair">Loading subjects...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className={examsContainer}>
-      <div className={examsHeader}>
-        <h1 className={examsTitle}>Practice Exams</h1>
-        <p className={examsSubtitle}>Select a subject and exam type to begin your practice</p>
+    <div className="max-w-7xl mx-auto px-4 py-6">
+      <div className="mb-8">
+        <h1 className="text-2xl md:text-3xl font-bold text-[#1E1E1E] font-playfair">Practice Exams</h1>
+        <p className="text-[#626060] mt-2 font-playfair">Select a subject and exam type to begin your practice</p>
       </div>
 
-      <div className={examsTabsGrid}>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
         {examTypes.map((type) => (
           <button
             key={type.id}
+            data-tab={type.id}
             onClick={() => setActiveTab(type.id)}
-            className={`${examsTabButton} ${
-              activeTab === type.id ? examsTabButtonActive : examsTabButtonInactive
+            className={`p-4 rounded-xl border-2 transition-all ${
+              activeTab === type.id
+                ? 'border-[#039994] bg-[#E6FFFA]'
+                : 'border-gray-200 hover:border-[#039994] bg-white'
             }`}
           >
-            <div className={examsTabTitle}>{type.name}</div>
-            <div className={examsTabDesc}>{type.desc}</div>
+            <div className={`text-[16px] leading-[120%] font-[600] mb-1 font-playfair ${
+              activeTab === type.id ? 'text-[#039994]' : 'text-[#1E1E1E]'
+            }`}>{type.name}</div>
+            <div className="text-[12px] leading-[140%] text-[#626060] font-playfair">{type.desc}</div>
           </button>
         ))}
       </div>
 
-      <div className={examsSubjectsGrid}>
-        {subjects.map((subject) => (
-          <motion.div
-            key={subject.id}
-            whileHover={{ y: -4 }}
-            className={examsSubjectCard}
-          >
-            <div className={`${examsSubjectColorBar} ${subject.color}`}></div>
-            <div className={examsSubjectCardInner}>
-              <div className={examsSubjectHeader}>
-                <span className={examsSubjectIcon}>{subject.icon}</span>
-                <div>
-                  <h3 className={examsSubjectName}>{subject.name}</h3>
-                  <p className={examsSubjectQuestions}>{subject.questions} questions</p>
-                </div>
-              </div>
-              
-              <div className={examsSubjectStats}>
-                <div className={examsSubjectStatRow}>
-                  <span className={examsSubjectStatLabel}>Duration:</span>
-                  <span className={examsSubjectStatValue}>{subject.duration}</span>
-                </div>
-                <div className={examsSubjectStatRow}>
-                  <span className={examsSubjectStatLabel}>Best Score:</span>
-                  <span className={`${examsSubjectStatValue} text-[#10B981]`}>{subject.bestScore}%</span>
-                </div>
-                <div className={examsSubjectStatRow}>
-                  <span className={examsSubjectStatLabel}>Attempts:</span>
-                  <span className={examsSubjectStatValue}>{subject.attempts}</span>
-                </div>
-              </div>
-
-              <button
-                onClick={() => handleStartExam(subject.id)}
-                className={examsSubjectButton}
+      {studentSubjects.length === 0 ? (
+        <div className="text-center py-12 bg-white rounded-xl border border-gray-200">
+          <div className="text-5xl mb-4">📚</div>
+          <h3 className="text-[18px] font-[600] text-[#1E1E1E] mb-2 font-playfair">No Subjects Available</h3>
+          <p className="text-[14px] text-[#626060] font-playfair">You haven't been assigned any subjects yet.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+          {studentSubjects.map((subjectName) => {
+            const stats = getSubjectStats(subjectName);
+            const questionCount = getQuestionCountForSubject(subjectName);
+            return (
+              <motion.div
+                key={subjectName}
+                whileHover={{ y: -4 }}
+                className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm"
               >
-                Start Exam
-              </button>
-            </div>
-          </motion.div>
-        ))}
-      </div>
+                <div className={`h-2 ${subjectColors[subjectName] || 'bg-[#039994]'}`}></div>
+                <div className="p-6">
+                  <div className="flex items-start gap-3 mb-4">
+                    <span className="text-3xl">{subjectIcons[subjectName] || '📘'}</span>
+                    <div>
+                      <h3 className="text-[16px] font-[600] text-[#1E1E1E] font-playfair">{subjectName}</h3>
+                      <p className="text-[12px] text-[#626060] font-playfair">{questionCount} questions</p>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2 mb-6">
+                    <div className="flex justify-between text-[13px]">
+                      <span className="text-[#626060] font-playfair">Duration:</span>
+                      <span className="font-[600] text-[#1E1E1E] font-playfair">
+                        {Math.floor(subjectDurations[subjectName] / 60)}h {subjectDurations[subjectName] % 60}m
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-[13px]">
+                      <span className="text-[#626060] font-playfair">Best Score:</span>
+                      <span className={`font-[600] ${stats.bestScore >= 70 ? 'text-[#10B981]' : 'text-[#F59E0B]'} font-playfair`}>
+                        {stats.bestScore}%
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-[13px]">
+                      <span className="text-[#626060] font-playfair">Attempts:</span>
+                      <span className="font-[600] text-[#1E1E1E] font-playfair">{stats.attempts}</span>
+                    </div>
+                  </div>
 
-      <div className={examsInstructions}>
-        <h3 className={examsInstructionsTitle}>📋 Exam Instructions</h3>
-        <ul className={examsInstructionsList}>
-          <li className={examsInstructionsItem}>
-            <span className={examsInstructionsBullet}>•</span>
+                  <button
+                    onClick={() => handleStartExam(subjectName)}
+                    className="w-full py-3 bg-[#039994] text-white rounded-lg hover:bg-[#028a85] transition-colors text-[14px] font-[600] font-playfair"
+                  >
+                    Start {activeTab === 'practice' ? 'Practice' : activeTab === 'timed' ? 'Timed' : 'Mock'} Exam
+                  </button>
+                </div>
+              </motion.div>
+            );
+          })}
+        </div>
+      )}
+
+      <div className="bg-gradient-to-r from-[#039994] to-[#028a85] rounded-xl p-8 text-white">
+        <h3 className="text-xl font-bold mb-4 font-playfair">📋 Exam Instructions</h3>
+        <ul className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <li className="flex items-center gap-2 text-sm">
+            <span>•</span>
             <span>Each exam follows WAEC examination standards and format</span>
           </li>
-          <li className={examsInstructionsItem}>
-            <span className={examsInstructionsBullet}>•</span>
+          <li className="flex items-center gap-2 text-sm">
+            <span>•</span>
             <span>You cannot navigate away during timed and mock exams</span>
           </li>
-          <li className={examsInstructionsItem}>
-            <span className={examsInstructionsBullet}>•</span>
+          <li className="flex items-center gap-2 text-sm">
+            <span>•</span>
             <span>Auto-submission occurs if you switch tabs or windows</span>
           </li>
-          <li className={examsInstructionsItem}>
-            <span className={examsInstructionsBullet}>•</span>
+          <li className="flex items-center gap-2 text-sm">
+            <span>•</span>
             <span>All questions must be attempted before final submission</span>
           </li>
-          <li className={examsInstructionsItem}>
-            <span className={examsInstructionsBullet}>•</span>
+          <li className="flex items-center gap-2 text-sm">
+            <span>•</span>
             <span>Review your answers before submitting the exam</span>
           </li>
-          <li className={examsInstructionsItem}>
-            <span className={examsInstructionsBullet}>•</span>
+          <li className="flex items-center gap-2 text-sm">
+            <span>•</span>
             <span>Practice exams allow unlimited time and hints</span>
           </li>
         </ul>

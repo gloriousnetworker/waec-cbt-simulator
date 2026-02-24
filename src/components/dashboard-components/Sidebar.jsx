@@ -1,6 +1,7 @@
+// components/sidebar/StudentSidebar.jsx
 'use client';
 
-import { useAuth } from '../../context/AuthContext';
+import { useStudentAuth } from '../../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 import {
@@ -27,8 +28,8 @@ import {
   sidebarHelpButton
 } from '../../styles/styles';
 
-export default function DashboardSidebar({ isOpen, onClose, activeSection, setActiveSection }) {
-  const { logout } = useAuth();
+export default function StudentSidebar({ isOpen, onClose, activeSection, setActiveSection }) {
+  const { logout } = useStudentAuth();
 
   const menuItems = [
     { icon: '🏠', label: 'Dashboard', id: 'home' },

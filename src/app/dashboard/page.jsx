@@ -5,7 +5,7 @@ import DashboardNavbar from '../../components/dashboard-components/Navbar';
 import DashboardSidebar from '../../components/dashboard-components/Sidebar';
 import { useState, useEffect, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useAuth } from '../../context/AuthContext';
+import { useStudentAuth } from '../../context/AuthContext';
 import { useSearchParams } from 'next/navigation';
 import DashboardHome from '../../components/dashboard-content/Home';
 import Exams from '../../components/dashboard-content/Exams';
@@ -35,7 +35,7 @@ function DashboardContent() {
   const [showExam, setShowExam] = useState(false);
   const [showResultModal, setShowResultModal] = useState(false);
   const [examResult, setExamResult] = useState(null);
-  const { isAuthenticated, authChecked } = useAuth();
+  const { isAuthenticated, authChecked } = useStudentAuth();
   const searchParams = useSearchParams();
 
   useEffect(() => {

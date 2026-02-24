@@ -1,34 +1,37 @@
+// login/page.jsx
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useAuth } from '../../context/AuthContext'
+import { useStudentAuth } from '../../context/AuthContext'
 import toast from 'react-hot-toast'
 
 const loginContainer = "min-h-screen bg-[#F9FAFB] flex items-center justify-center"
 const loginContent = "w-full max-w-sm px-4 py-2"
 
-export default function LoginPage() {
+export default function StudentLoginPage() {
   const [identifier, setIdentifier] = useState('')
   const [password, setPassword] = useState('')
+  const [loginType, setLoginType] = useState('nin')
   const [rememberMe, setRememberMe] = useState(false)
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const router = useRouter()
-  const { login, isAuthenticated } = useAuth()
+  const { login, isAuthenticated, authChecked } = useStudentAuth()
   const videoRef = useRef(null)
-
-  const demoCredentials = [
-    { email: 'student001@megatechsolutions.org', password: '123456' },
-    { email: 'student001@yourschool.org', password: '123456' }
-  ]
+  const currentYear = new Date().getFullYear()
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
-    if (isAuthenticated) {
-      router.push('/dashboard')
+    setMounted(true)
+  }, [])
+
+  useEffect(() => {
+    if (mounted && authChecked && isAuthenticated) {
+      router.replace('/dashboard')
     }
-  }, [isAuthenticated, router])
+  }, [isAuthenticated, authChecked, router, mounted])
 
   useEffect(() => {
     if (loading && videoRef.current) {
@@ -36,41 +39,36 @@ export default function LoginPage() {
     }
   }, [loading])
 
-  const handleDemoLogin = (email, password) => {
-    setIdentifier(email)
-    setPassword(password)
-    handleLogin(email, password)
-  }
-
-  const handleLogin = async (email, pass) => {
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    if (!identifier || !password) {
+      toast.error('Please enter your credentials')
+      return
+    }
     setLoading(true)
     const loginToast = toast.loading('Logging in...')
-
+    
     try {
-      const result = await login(email || identifier, pass || password)
+      const result = await login(identifier, password, loginType)
       
       if (result.success) {
-        toast.success('Login successful! Redirecting...', { id: loginToast })
+        toast.success(`Welcome back, ${result.user.firstName}!`, { id: loginToast })
         setTimeout(() => {
-          router.push('/dashboard')
+          router.replace('/dashboard')
         }, 1500)
       } else {
-        toast.error(result.message || 'Login failed', { id: loginToast })
+        toast.error(result.message || 'Invalid credentials', { id: loginToast })
         setLoading(false)
       }
     } catch (error) {
-      toast.error('An error occurred. Please try again.', { id: loginToast })
+      console.error('Login error:', error)
+      toast.error(error.message || 'Authentication failed. Please try again.', { id: loginToast })
       setLoading(false)
     }
   }
 
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-    if (!identifier || !password) {
-      toast.error('Please enter credentials or use demo accounts')
-      return
-    }
-    handleLogin(identifier, password)
+  const handleForgotPassword = () => {
+    toast.error('Please contact your school administrator to reset your password')
   }
 
   return (
@@ -122,13 +120,15 @@ export default function LoginPage() {
             transition={{ delay: 0.2, duration: 0.4 }}
           >
             <div>
-              <label className="block mb-1 text-[12px] leading-[100%] tracking-[-0.02em] font-[500] text-[#1E1E1E] font-playfair">Email Address</label>
+              <label className="block mb-1 text-[12px] leading-[100%] tracking-[-0.02em] font-[500] text-[#1E1E1E] font-playfair">
+                {loginType === 'nin' ? 'NIN (National ID Number)' : 'Login ID'}
+              </label>
               <input
                 type="text"
                 value={identifier}
                 onChange={(e) => setIdentifier(e.target.value)}
                 className="w-full px-3 py-2 border-b-2 border-gray-300 text-[13px] leading-[100%] tracking-[-0.02em] font-[500] text-[#1E1E1E] font-playfair focus:outline-none focus:border-[#039994] transition-colors bg-transparent placeholder-[#B0B0B0]"
-                placeholder="student@example.org"
+                placeholder={loginType === 'nin' ? "12345678901" : "john.doe"}
                 disabled={loading}
               />
             </div>
@@ -156,18 +156,29 @@ export default function LoginPage() {
             </div>
 
             <div className="flex items-center justify-between mb-4">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                  className="w-3 h-3 border-2 border-gray-300 rounded cursor-pointer accent-[#039994]"
-                  disabled={loading}
-                />
-                <span className="text-[11px] leading-[100%] font-[400] text-[#626060] font-playfair">Remember me</span>
-              </label>
+              <div className="flex gap-4">
+                <label className="flex items-center gap-1 cursor-pointer">
+                  <input
+                    type="radio"
+                    checked={loginType === 'nin'}
+                    onChange={() => setLoginType('nin')}
+                    className="w-3 h-3 accent-[#039994]"
+                  />
+                  <span className="text-[10px] leading-[100%] font-[400] text-[#626060] font-playfair">NIN</span>
+                </label>
+                <label className="flex items-center gap-1 cursor-pointer">
+                  <input
+                    type="radio"
+                    checked={loginType === 'loginId'}
+                    onChange={() => setLoginType('loginId')}
+                    className="w-3 h-3 accent-[#039994]"
+                  />
+                  <span className="text-[10px] leading-[100%] font-[400] text-[#626060] font-playfair">Login ID</span>
+                </label>
+              </div>
               <button 
-                type="button" 
+                type="button"
+                onClick={handleForgotPassword}
                 className="text-[11px] leading-[100%] font-[500] text-[#039994] hover:underline font-playfair"
                 disabled={loading}
               >
@@ -189,38 +200,9 @@ export default function LoginPage() {
             animate={{ opacity: 1 }}
             transition={{ delay: 0.3, duration: 0.4 }}
           >
-            <div className="flex items-center my-4">
-              <div className="flex-1 h-px bg-gray-300"></div>
-              <span className="px-3 text-[11px] leading-[100%] font-[500] text-[#626060] font-playfair">OR</span>
-              <div className="flex-1 h-px bg-gray-300"></div>
-            </div>
-
-            <div className="space-y-2 mb-4">
-              <h3 className="text-[13px] leading-[120%] font-[600] tracking-[-0.02em] text-[#1E1E1E] mb-2 font-playfair">Quick Access - Demo Accounts</h3>
-              
-              {demoCredentials.map((cred, index) => (
-                <motion.button
-                  key={index}
-                  whileHover={{ scale: loading ? 1 : 1.01 }}
-                  whileTap={{ scale: loading ? 1 : 0.99 }}
-                  onClick={() => handleDemoLogin(cred.email, cred.password)}
-                  disabled={loading}
-                  className="w-full px-3 py-2 border-2 border-[#039994] text-left rounded-md hover:bg-[#039994]/5 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="text-[12px] leading-[100%] font-[500] text-[#1E1E1E] font-playfair mb-0.5">{cred.email}</div>
-                      <div className="text-[10px] leading-[100%] font-[400] text-[#626060] font-playfair">Password: {cred.password}</div>
-                    </div>
-                    <div className="text-[#039994] text-[16px]">→</div>
-                  </div>
-                </motion.button>
-              ))}
-            </div>
-
-            <div className="mt-4 px-3 py-2 bg-[#FFF9E6] border-l-4 border-[#FFC107] rounded-r-md mb-4">
-              <p className="text-[10px] leading-[140%] font-[400] text-[#5D4E00] font-playfair">
-                <strong>Note:</strong> These are demo accounts. For full access, please contact your school administrator.
+            <div className="mt-4 px-3 py-2 bg-[#E6FFFA] border-l-4 border-[#039994] rounded-r-md mb-4">
+              <p className="text-[10px] leading-[140%] font-[400] text-[#036B67] font-playfair">
+                <strong>Demo Accounts:</strong> Use NIN: 12345678941 / Password: 123456 or Login ID: king.doe / Password: 123456
               </p>
             </div>
 
@@ -247,12 +229,18 @@ export default function LoginPage() {
               <p className="text-[9px] leading-[140%] font-[400] text-[#626060] font-playfair">
                 <span className="font-[600] text-[#1E1E1E]">Mega-Tech</span>
                 <span className="mx-1">•</span>
-                <span>© 2026 All rights reserved</span>
+                <span>© {currentYear} All rights reserved</span>
               </p>
             </div>
           </motion.div>
         </motion.div>
       </div>
+
+      <style jsx global>{`
+        input::placeholder {
+          color: #B0B0B0 !important;
+        }
+      `}</style>
     </>
   )
 }

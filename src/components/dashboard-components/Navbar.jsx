@@ -1,8 +1,9 @@
+// components/navbar/StudentNavbar.jsx
 'use client';
 
-import { useAuth } from '../../context/AuthContext';
+import { useStudentAuth } from '../../context/AuthContext';
 import { motion } from 'framer-motion';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import {
   navbarContainer,
@@ -47,9 +48,35 @@ import {
   modalButtonDanger
 } from '../../styles/styles';
 
-export default function DashboardNavbar({ activeSection, setActiveSection, onMenuClick }) {
-  const { user, logout } = useAuth();
+const BASE_URL = 'https://cbt-simulator-backend.vercel.app';
+
+export default function StudentNavbar({ activeSection, setActiveSection, onMenuClick }) {
+  const { user, logout, refreshUser } = useStudentAuth();
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [liveUser, setLiveUser] = useState(null);
+
+  useEffect(() => {
+    const fetchMe = async () => {
+      try {
+        const res = await fetch(`${BASE_URL}/api/student/me`, {
+          method: 'GET',
+          credentials: 'include',
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setLiveUser(data.user);
+        }
+      } catch {}
+    };
+    fetchMe();
+  }, []);
+
+  const displayUser = liveUser || user;
+
+  const getInitials = () => {
+    if (!displayUser) return 'ST';
+    return (displayUser.firstName?.[0] || '') + (displayUser.lastName?.[0] || '');
+  };
 
   const handleLogout = () => {
     logout();
@@ -76,7 +103,7 @@ export default function DashboardNavbar({ activeSection, setActiveSection, onMen
                 onClick={onMenuClick}
                 className={navbarMenuButton}
               >
-                <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                 </svg>
               </button>
@@ -118,19 +145,19 @@ export default function DashboardNavbar({ activeSection, setActiveSection, onMen
             <div className={navbarRight}>
               <div className={navbarSearch}>
                 <div className={navbarSearchIcon}>
-                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                   </svg>
                 </div>
                 <input
                   type="search"
                   className={navbarSearchInput}
-                  placeholder="Search..."
+                  placeholder="Search subjects..."
                 />
               </div>
 
               <button className={navbarNotification}>
-                <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                 </svg>
                 <span className={navbarNotificationBadge}></span>
@@ -139,24 +166,24 @@ export default function DashboardNavbar({ activeSection, setActiveSection, onMen
               <div className={navbarProfile}>
                 <button className={navbarProfileButton}>
                   <div className={navbarProfileAvatar}>
-                    <Image 
-                      src="/logo.png" 
-                      alt="Profile" 
-                      width={36} 
-                      height={36}
-                      className="object-cover"
-                    />
+                    <div className="w-9 h-9 rounded-full bg-[#039994] flex items-center justify-center text-white text-[14px] leading-[100%] font-[600]">
+                      {getInitials()}
+                    </div>
                   </div>
                   <div className={navbarProfileInfo}>
-                    <p className={navbarProfileName}>{user?.name || 'Student'}</p>
-                    <p className={navbarProfileId}>{user?.studentId || 'Student ID'}</p>
+                    <p className={navbarProfileName}>
+                      {displayUser ? `${displayUser.firstName} ${displayUser.lastName}` : 'Student'}
+                    </p>
+                    <p className={navbarProfileId}>{displayUser?.class || 'Student'}</p>
                   </div>
                 </button>
                 
                 <div className={navbarDropdown}>
                   <div className={navbarDropdownHeader}>
-                    <p className={navbarDropdownHeaderName}>{user?.name}</p>
-                    <p className={navbarDropdownHeaderEmail}>{user?.email}</p>
+                    <p className={navbarDropdownHeaderName}>
+                      {displayUser ? `${displayUser.firstName} ${displayUser.lastName}` : 'Student'}
+                    </p>
+                    <p className={navbarDropdownHeaderEmail}>{displayUser?.email}</p>
                   </div>
                   <div className={navbarDropdownMenu}>
                     <button 
