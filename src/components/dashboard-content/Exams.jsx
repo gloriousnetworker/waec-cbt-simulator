@@ -1,4 +1,3 @@
-//EXAMS.JSX COMPONENT - Updated with correct endpoints
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -6,16 +5,12 @@ import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { useStudentAuth } from '../../context/AuthContext';
 import toast from 'react-hot-toast';
-import { getAllQuestionsCount } from '../../app/data/questions';
-
-const API_BASE_URL = 'https://cbt-simulator-backend.vercel.app/api';
 
 export default function Exams() {
   const [activeTab, setActiveTab] = useState('practice');
-  const [studentSubjects, setStudentSubjects] = useState([]);
+  const [subjects, setSubjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [performance, setPerformance] = useState({});
-  const [questionsCount, setQuestionsCount] = useState({});
   const router = useRouter();
   const { user, fetchWithAuth, isOffline, getOfflineData } = useStudentAuth();
 
@@ -63,47 +58,7 @@ export default function Exams() {
     'Data Processing': 'bg-[#6366F1]'
   };
 
-  const subjectDurations = {
-    Mathematics: 180,
-    English: 165,
-    Physics: 150,
-    Chemistry: 150,
-    Biology: 150,
-    Economics: 120,
-    Geography: 120,
-    Government: 120,
-    'Christian Religious Knowledge': 120,
-    'Islamic Religious Knowledge': 120,
-    'Literature in English': 150,
-    Commerce: 120,
-    'Financial Accounting': 150,
-    'Agricultural Science': 150,
-    'Civic Education': 120,
-    'Data Processing': 120
-  };
-
-  const subjectIdMap = {
-    Mathematics: 'mathematics',
-    English: 'english',
-    Physics: 'physics',
-    Chemistry: 'chemistry',
-    Biology: 'biology',
-    Economics: 'economics',
-    Geography: 'geography',
-    Government: 'government',
-    'Christian Religious Knowledge': 'crk',
-    'Islamic Religious Knowledge': 'irk',
-    'Literature in English': 'literature',
-    Commerce: 'commerce',
-    'Financial Accounting': 'accounting',
-    'Agricultural Science': 'agricscience',
-    'Civic Education': 'civiledu',
-    'Data Processing': 'dataprocessing'
-  };
-
   useEffect(() => {
-    const counts = getAllQuestionsCount();
-    setQuestionsCount(counts);
     fetchSubjectsAndPerformance();
   }, []);
 
@@ -111,17 +66,18 @@ export default function Exams() {
     setLoading(true);
     try {
       if (!isOffline) {
-        const subjectsResponse = await fetchWithAuth('/subjects'); // Changed from /student/subjects
+        // Remove the extra /api/student prefix - subjects is already the full endpoint
+        const subjectsResponse = await fetchWithAuth('/subjects');
         const subjectsData = await subjectsResponse.json();
-        setStudentSubjects(subjectsData.subjects || []);
+        setSubjects(subjectsData.subjects || []);
 
-        const performanceResponse = await fetchWithAuth('/exam/performance/summary'); // Changed from /student/exam/performance/summary
+        const performanceResponse = await fetchWithAuth('/exam/performance/summary');
         const performanceData = await performanceResponse.json();
         setPerformance(performanceData.performance || {});
       } else {
         const cachedSubjects = getOfflineData('studentSubjects');
         if (cachedSubjects) {
-          setStudentSubjects(cachedSubjects);
+          setSubjects(cachedSubjects);
         }
         
         const cachedPerformance = getOfflineData('performance');
@@ -137,22 +93,22 @@ export default function Exams() {
     }
   };
 
-  const handleStartExam = (subjectName) => {
-    const subjectId = subjectIdMap[subjectName] || subjectName.toLowerCase().replace(/\s+/g, '');
-    const duration = subjectDurations[subjectName] || 60;
-    const questionCount = questionsCount[subjectId] || 50;
-    
-    router.push(`/dashboard/exam-room?subject=${encodeURIComponent(subjectName)}&subjectId=${subjectId}&type=${activeTab}&duration=${duration}&questionCount=${questionCount}`);
+  const handleStartExam = (subject) => {
+    let examDuration = subject.duration || 60;
+    if (activeTab === 'practice') {
+      examDuration = 0;
+    }
+    router.push(`/dashboard/exam-room?subjectId=${subject.id}&subject=${encodeURIComponent(subject.name)}&type=${activeTab}&duration=${examDuration}&questionCount=${subject.questionCount || 50}`);
   };
 
   const getSubjectStats = (subjectName) => {
     const subjectPerf = performance.subjects?.[subjectName];
     if (subjectPerf) {
-      const avgScore = subjectPerf.attempts > 0 
-        ? Math.round(subjectPerf.totalScore / subjectPerf.attempts) 
+      const avgPercentage = subjectPerf.attempts > 0 
+        ? Math.round((subjectPerf.totalPercentage || subjectPerf.totalScore) / subjectPerf.attempts) 
         : 0;
       return {
-        bestScore: avgScore,
+        bestScore: avgPercentage,
         attempts: subjectPerf.attempts || 0
       };
     }
@@ -160,11 +116,6 @@ export default function Exams() {
       bestScore: 0,
       attempts: 0
     };
-  };
-
-  const getQuestionCountForSubject = (subjectName) => {
-    const subjectId = subjectIdMap[subjectName] || subjectName.toLowerCase().replace(/\s+/g, '');
-    return questionsCount[subjectId] || 50;
   };
 
   if (loading) {
@@ -205,7 +156,7 @@ export default function Exams() {
         ))}
       </div>
 
-      {studentSubjects.length === 0 ? (
+      {subjects.length === 0 ? (
         <div className="text-center py-12 bg-white rounded-xl border border-gray-200">
           <div className="text-5xl mb-4">📚</div>
           <h3 className="text-[18px] font-[600] text-[#1E1E1E] mb-2 font-playfair">No Subjects Available</h3>
@@ -213,22 +164,22 @@ export default function Exams() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-          {studentSubjects.map((subjectName) => {
-            const stats = getSubjectStats(subjectName);
-            const questionCount = getQuestionCountForSubject(subjectName);
+          {subjects.map((subject) => {
+            const stats = getSubjectStats(subject.name);
             return (
               <motion.div
-                key={subjectName}
+                key={subject.id}
                 whileHover={{ y: -4 }}
                 className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm"
               >
-                <div className={`h-2 ${subjectColors[subjectName] || 'bg-[#039994]'}`}></div>
+                <div className={`h-2 ${subjectColors[subject.name] || 'bg-[#039994]'}`}></div>
                 <div className="p-6">
                   <div className="flex items-start gap-3 mb-4">
-                    <span className="text-3xl">{subjectIcons[subjectName] || '📘'}</span>
+                    <span className="text-3xl">{subjectIcons[subject.name] || '📘'}</span>
                     <div>
-                      <h3 className="text-[16px] font-[600] text-[#1E1E1E] font-playfair">{subjectName}</h3>
-                      <p className="text-[12px] text-[#626060] font-playfair">{questionCount} questions</p>
+                      <h3 className="text-[16px] font-[600] text-[#1E1E1E] font-playfair">{subject.name}</h3>
+                      <p className="text-[12px] text-[#626060] font-playfair">{subject.questionCount || 50} questions</p>
+                      <p className="text-[10px] text-[#626060] font-playfair">Class: {subject.class} | {subject.examType}</p>
                     </div>
                   </div>
                   
@@ -236,7 +187,7 @@ export default function Exams() {
                     <div className="flex justify-between text-[13px]">
                       <span className="text-[#626060] font-playfair">Duration:</span>
                       <span className="font-[600] text-[#1E1E1E] font-playfair">
-                        {Math.floor(subjectDurations[subjectName] / 60)}h {subjectDurations[subjectName] % 60}m
+                        {subject.duration ? `${Math.floor(subject.duration / 60)}h ${subject.duration % 60}m` : 'Variable'}
                       </span>
                     </div>
                     <div className="flex justify-between text-[13px]">
@@ -252,7 +203,7 @@ export default function Exams() {
                   </div>
 
                   <button
-                    onClick={() => handleStartExam(subjectName)}
+                    onClick={() => handleStartExam(subject)}
                     className="w-full py-3 bg-[#039994] text-white rounded-lg hover:bg-[#028a85] transition-colors text-[14px] font-[600] font-playfair"
                   >
                     Start {activeTab === 'practice' ? 'Practice' : activeTab === 'timed' ? 'Timed' : 'Mock'} Exam

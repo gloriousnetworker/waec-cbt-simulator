@@ -11,7 +11,22 @@ export function StudentAuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
+  const [isOffline, setIsOffline] = useState(false);
   const router = useRouter();
+
+  useEffect(() => {
+    const handleOnline = () => setIsOffline(false);
+    const handleOffline = () => setIsOffline(true);
+    
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    setIsOffline(!navigator.onLine);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   const checkAuth = useCallback(async () => {
     try {
@@ -157,6 +172,30 @@ export function StudentAuthProvider({ children }) {
     setUser(prev => ({ ...prev, ...updatedData }));
   }, []);
 
+  const saveOfflineData = useCallback((key, data) => {
+    try {
+      localStorage.setItem(`offline_${key}`, JSON.stringify({
+        data,
+        timestamp: Date.now()
+      }));
+    } catch (error) {
+      console.error('Error saving offline data:', error);
+    }
+  }, []);
+
+  const getOfflineData = useCallback((key) => {
+    try {
+      const stored = localStorage.getItem(`offline_${key}`);
+      if (stored) {
+        const { data } = JSON.parse(stored);
+        return data;
+      }
+    } catch (error) {
+      console.error('Error getting offline data:', error);
+    }
+    return null;
+  }, []);
+
   return (
     <StudentAuthContext.Provider value={{
       user,
@@ -168,6 +207,9 @@ export function StudentAuthProvider({ children }) {
       isAuthenticated: !!user,
       loading,
       authChecked,
+      isOffline,
+      saveOfflineData,
+      getOfflineData
     }}>
       {children}
     </StudentAuthContext.Provider>

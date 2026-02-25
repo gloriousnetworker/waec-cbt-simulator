@@ -6,8 +6,6 @@ import { motion } from 'framer-motion';
 import { useStudentAuth } from '../../context/AuthContext';
 import toast from 'react-hot-toast';
 
-const API_BASE_URL = 'https://cbt-simulator-backend.vercel.app/api';
-
 export default function Performance() {
   const [timeRange, setTimeRange] = useState('month');
   const [performanceData, setPerformanceData] = useState(null);
@@ -42,11 +40,11 @@ export default function Performance() {
     setLoading(true);
     try {
       if (!isOffline) {
-        const summaryResponse = await fetchWithAuth(`${API_BASE_URL}/exam/performance/summary`);
+        const summaryResponse = await fetchWithAuth('/exam/performance/summary');
         const summaryData = await summaryResponse.json();
         setPerformanceData(summaryData.performance);
 
-        const resultsResponse = await fetchWithAuth(`${API_BASE_URL}/exam/results/all`);
+        const resultsResponse = await fetchWithAuth('/exam/results/all');
         const resultsData = await resultsResponse.json();
         setExamResults(resultsData.results || []);
       } else {
@@ -92,7 +90,7 @@ export default function Performance() {
       filtered.forEach(result => {
         const date = new Date(result.date._seconds * 1000);
         const weekOfMonth = Math.floor(date.getDate() / 7);
-        if (weekOfMonth < 4) weeks[weekOfMonth].push(result.score);
+        if (weekOfMonth < 4) weeks[weekOfMonth].push(result.percentage || result.score);
       });
       return weeks.map(week => {
         if (week.length === 0) return 0;
@@ -105,7 +103,7 @@ export default function Performance() {
       filtered.forEach(result => {
         const date = new Date(result.date._seconds * 1000);
         const month = date.getMonth() % 3;
-        months[month].push(result.score);
+        months[month].push(result.percentage || result.score);
       });
       return months.map(month => {
         if (month.length === 0) return 0;
@@ -118,7 +116,7 @@ export default function Performance() {
       const date = new Date(result.date._seconds * 1000);
       const year = date.getFullYear();
       if (!years[year]) years[year] = [];
-      years[year].push(result.score);
+      years[year].push(result.percentage || result.score);
     });
 
     return Object.values(years).map(yearScores => 
@@ -140,26 +138,28 @@ export default function Performance() {
     if (!performanceData?.subjects) return [];
     
     return Object.entries(performanceData.subjects).map(([subject, data]) => {
-      const avgScore = data.attempts > 0 
-        ? Math.round(data.totalScore / data.attempts) 
+      const avgPercentage = data.attempts > 0 
+        ? Math.round((data.totalPercentage || data.totalScore) / data.attempts) 
         : 0;
       
       const recentExams = examResults
         .filter(r => r.subject === subject)
         .sort((a, b) => b.date._seconds - a.date._seconds);
       
-      const lastScore = recentExams.length > 0 ? recentExams[0].score : avgScore;
+      const lastScore = recentExams.length > 0 ? (recentExams[0].percentage || recentExams[0].score) : avgPercentage;
       
       let trend = 'stable';
       if (recentExams.length >= 2) {
-        if (recentExams[0].score > recentExams[1].score) trend = 'up';
-        if (recentExams[0].score < recentExams[1].score) trend = 'down';
+        const current = recentExams[0].percentage || recentExams[0].score;
+        const previous = recentExams[1].percentage || recentExams[1].score;
+        if (current > previous) trend = 'up';
+        if (current < previous) trend = 'down';
       }
       
       return {
         subject,
         score: lastScore,
-        avgScore,
+        avgScore: avgPercentage,
         attempts: data.attempts,
         trend,
         icon: subjectIcons[subject] || '📘'
@@ -178,7 +178,7 @@ export default function Performance() {
 
   const calculateAverageScore = () => {
     if (!performanceData) return 0;
-    return performanceData.averageScore || 0;
+    return Math.round(performanceData.averagePercentage || performanceData.averageScore || 0);
   };
 
   const getRankMessage = () => {
@@ -357,11 +357,11 @@ export default function Performance() {
                     </div>
                     <div className="text-right">
                       <div className={`font-bold font-playfair ${
-                        result.score >= 70 ? 'text-green-600' : 
-                        result.score >= 50 ? 'text-yellow-600' : 
+                        (result.percentage || result.score) >= 70 ? 'text-green-600' : 
+                        (result.percentage || result.score) >= 50 ? 'text-yellow-600' : 
                         'text-red-600'
                       }`}>
-                        {result.score}%
+                        {result.percentage || result.score}%
                       </div>
                       <div className="text-xs text-[#626060] font-playfair capitalize">{result.examType}</div>
                     </div>

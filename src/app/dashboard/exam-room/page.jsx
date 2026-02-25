@@ -7,7 +7,6 @@ import { motion, AnimatePresence } from 'framer-motion'
 import ProtectedRoute from '../../../components/ProtectedRoute'
 import { useStudentAuth } from '../../../context/AuthContext'
 import toast from 'react-hot-toast'
-import { getSubjectQuestions } from '../../data/questions'
 
 const examRoomContainer = "min-h-screen bg-[#F9FAFB]"
 const examRoomHeader = "bg-white border-b border-[#E8E8E8] sticky top-0 z-10"
@@ -68,97 +67,13 @@ const modalButtonSecondary = "flex-1 py-3 bg-white text-[#039994] border border-
 const modalButtonDanger = "flex-1 py-3 bg-[#DC2626] text-white rounded-lg font-playfair text-[14px] leading-[100%] font-[600] hover:bg-[#B91C1C]"
 const offlineBanner = "bg-[#FEF3C7] border border-[#F59E0B] text-[#92400E] px-4 py-2 rounded-lg mb-4 flex items-center gap-2 text-[13px] leading-[140%] font-[500] font-playfair"
 
-const shuffleArray = (array) => {
-  const newArray = [...array]
-  for (let i = newArray.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1))
-    ;[newArray[i], newArray[j]] = [newArray[j], newArray[i]]
-  }
-  return newArray
-}
-
-const shuffleOptions = (question) => {
-  const options = [...question.options]
-  const correctAnswerIndex = question.correctAnswer
-  const correctOption = options[correctAnswerIndex]
-  
-  const shuffledOptions = shuffleArray(options)
-  const newCorrectAnswerIndex = shuffledOptions.indexOf(correctOption)
-  
-  return {
-    ...question,
-    options: shuffledOptions,
-    correctAnswer: newCorrectAnswerIndex
-  }
-}
-
-const getRandomStartIndex = (totalQuestions, examSize) => {
-  if (totalQuestions <= examSize) return 0
-  const maxStartIndex = totalQuestions - examSize
-  return Math.floor(Math.random() * (maxStartIndex + 1))
-}
-
-const generateExamQuestions = (subjectId, requiredCount) => {
-  try {
-    const availableQuestions = getSubjectQuestions(subjectId)
-    
-    if (!availableQuestions || availableQuestions.length === 0) {
-      console.error(`No questions found for subject: ${subjectId}`)
-      return []
-    }
-    
-    if (availableQuestions.length <= requiredCount) {
-      const shuffledQuestions = shuffleArray(availableQuestions)
-      return shuffledQuestions.map((q, index) => ({
-        ...shuffleOptions(q),
-        id: `q${index + 1}`,
-        originalId: q.id,
-        marks: q.marks || 1
-      }))
-    }
-    
-    const shuffledAllQuestions = shuffleArray(availableQuestions)
-    const startIndex = getRandomStartIndex(shuffledAllQuestions.length, requiredCount)
-    const selectedQuestions = shuffledAllQuestions.slice(startIndex, startIndex + requiredCount)
-    
-    return selectedQuestions.map((q, index) => ({
-      ...shuffleOptions(q),
-      id: `q${index + 1}`,
-      originalId: q.id,
-      marks: q.marks || 1
-    }))
-  } catch (error) {
-    console.error('Error generating exam questions:', error)
-    return []
-  }
-}
-
-const subjectData = {
-  mathematics: { name: 'Mathematics', icon: '🧮', questions: 100, duration: 180 },
-  english: { name: 'English Language', icon: '📖', questions: 100, duration: 165 },
-  physics: { name: 'Physics', icon: '⚛️', questions: 50, duration: 150 },
-  chemistry: { name: 'Chemistry', icon: '🧪', questions: 50, duration: 150 },
-  biology: { name: 'Biology', icon: '🧬', questions: 50, duration: 150 },
-  economics: { name: 'Economics', icon: '📈', questions: 50, duration: 120 },
-  geography: { name: 'Geography', icon: '🗺️', questions: 50, duration: 120 },
-  government: { name: 'Government', icon: '🏛️', questions: 50, duration: 120 },
-  crk: { name: 'Christian Religious Knowledge', icon: '✝️', questions: 50, duration: 120 },
-  irk: { name: 'Islamic Religious Knowledge', icon: '☪️', questions: 50, duration: 120 },
-  literature: { name: 'Literature in English', icon: '📚', questions: 50, duration: 150 },
-  commerce: { name: 'Commerce', icon: '💼', questions: 50, duration: 120 },
-  accounting: { name: 'Financial Accounting', icon: '💰', questions: 50, duration: 150 },
-  agricscience: { name: 'Agricultural Science', icon: '🌾', questions: 50, duration: 150 },
-  civiledu: { name: 'Civic Education', icon: '🏛️', questions: 50, duration: 120 },
-  dataprocessing: { name: 'Data Processing', icon: '💻', questions: 50, duration: 120 },
-}
-
 function ExamRoomContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const subjectParam = searchParams.get('subject')
   const subjectId = searchParams.get('subjectId')
+  const subjectName = searchParams.get('subject')
   const examType = searchParams.get('type') || 'practice'
-  const duration = parseInt(searchParams.get('duration') || '60')
+  const duration = parseInt(searchParams.get('duration') || '0')
   const questionCount = parseInt(searchParams.get('questionCount') || '50')
   const { user, fetchWithAuth, isOffline, saveOfflineData, getOfflineData } = useStudentAuth()
 
@@ -175,21 +90,16 @@ function ExamRoomContent() {
   const [loading, setLoading] = useState(true)
   const [examId, setExamId] = useState(null)
   const [tabSwitches, setTabSwitches] = useState(0)
+  const [totalMarks, setTotalMarks] = useState(0)
   const violationTimeoutRef = useRef(null)
   const toastShownRef = useRef(false)
   const autoSaveIntervalRef = useRef(null)
 
-  const subject = subjectData[subjectId] || { 
-    name: subjectParam, 
-    icon: '📘', 
-    questions: questionCount, 
-    duration: duration 
-  }
   const isTimed = examType === 'timed' || examType === 'mock'
   const isStrictMode = examType === 'mock'
 
   useEffect(() => {
-    const loadQuestions = async () => {
+    const startExam = async () => {
       setLoading(true)
       try {
         if (!subjectId) {
@@ -198,75 +108,45 @@ function ExamRoomContent() {
           return
         }
 
-        const generatedQuestions = generateExamQuestions(subjectId, questionCount)
-        
-        if (!generatedQuestions || generatedQuestions.length === 0) {
-          toast.error('No questions available for this subject')
-          setQuestions([])
-          setLoading(false)
-          return
-        }
-        
-        setQuestions(generatedQuestions)
-        saveOfflineData(`questions_${subjectId}`, generatedQuestions)
-
         if (!isOffline) {
-          try {
-            const response = await fetchWithAuth('/exam/start', {
-              method: 'POST',
-              body: JSON.stringify({
-                subject: subject.name,
-                examType: examType,
-                duration: duration
-              })
+          const response = await fetchWithAuth('/exam/start', {
+            method: 'POST',
+            body: JSON.stringify({
+              subjectId: subjectId,
+              examType: examType,
+              duration: isTimed ? (duration || 60) : 0,
+              questionCount: questionCount
             })
-            
-            if (response && response.ok) {
-              const data = await response.json()
-              if (data.exam) {
-                setExamId(data.exam.id)
-                saveOfflineData(`exam_${data.exam.id}`, data.exam)
-              }
-            } else {
-              const mockExamId = 'mock_' + Date.now()
-              setExamId(mockExamId)
-              saveOfflineData(`exam_${mockExamId}`, {
-                id: mockExamId,
-                subject: subject.name,
-                examType,
-                duration,
-                startTime: new Date().toISOString(),
-                status: 'pending'
-              })
+          })
+          
+          if (response && response.ok) {
+            const data = await response.json()
+            if (data.exam) {
+              setExamId(data.exam.id)
+              setQuestions(data.exam.questions || [])
+              const total = data.exam.questions.reduce((sum, q) => sum + (q.marks || 1), 0)
+              setTotalMarks(total)
+              saveOfflineData(`exam_${data.exam.id}`, data.exam)
             }
-          } catch (error) {
-            const mockExamId = 'mock_' + Date.now()
-            setExamId(mockExamId)
-            saveOfflineData(`exam_${mockExamId}`, {
-              id: mockExamId,
-              subject: subject.name,
-              examType,
-              duration,
-              startTime: new Date().toISOString(),
-              status: 'pending'
-            })
+          } else {
+            toast.error('Failed to start exam')
           }
+        } else {
+          toast.error('Cannot start exam while offline')
         }
 
         if (isStrictMode) {
           enterFullscreen()
         }
       } catch (error) {
-        console.error('Error loading questions:', error)
-        toast.error('Failed to load exam questions')
+        console.error('Error starting exam:', error)
+        toast.error('Failed to start exam')
       } finally {
         setLoading(false)
       }
     }
 
-    if (subjectId) {
-      loadQuestions()
-    }
+    startExam()
 
     return () => {
       if (document.fullscreenElement) {
@@ -282,14 +162,14 @@ function ExamRoomContent() {
   }, [subjectId, examType, duration, questionCount])
 
   useEffect(() => {
-    if (!examId || examSubmitted || isOffline) return
+    if (!examId || examSubmitted || isOffline || !isTimed) return
 
     autoSaveIntervalRef.current = setInterval(() => {
       saveCurrentAnswers()
     }, 30000)
 
     return () => clearInterval(autoSaveIntervalRef.current)
-  }, [examId, answers, examSubmitted, isOffline])
+  }, [examId, answers, examSubmitted, isOffline, isTimed])
 
   const saveCurrentAnswers = async () => {
     if (!examId || Object.keys(answers).length === 0 || examSubmitted) return
@@ -297,21 +177,15 @@ function ExamRoomContent() {
     try {
       if (!isOffline) {
         Object.keys(answers).forEach(async (questionId) => {
-          const questionIndex = parseInt(questionId.replace('q', '')) - 1
-          const originalQuestion = questions[questionIndex]
-          if (originalQuestion) {
-            const letter = String.fromCharCode(65 + answers[questionId])
-            await fetchWithAuth(`/exam/${examId}/save-answer`, {
-              method: 'POST',
-              body: JSON.stringify({ 
-                questionId: originalQuestion.originalId || (questionIndex + 1).toString(),
-                answer: letter 
-              })
-            }).catch(() => {})
-          }
+          const letter = String.fromCharCode(65 + answers[questionId])
+          await fetchWithAuth(`/exam/${examId}/save-answer`, {
+            method: 'POST',
+            body: JSON.stringify({ 
+              questionId: questionId,
+              answer: letter 
+            })
+          }).catch(() => {})
         })
-      } else {
-        saveOfflineData(`answers_${examId}`, answers)
       }
     } catch (error) {
       console.error('Error saving answers:', error)
@@ -358,14 +232,6 @@ function ExamRoomContent() {
           if (data.autoSubmitted) {
             handleAutoSubmit('Auto-submitted due to multiple tab switches')
           }
-        }
-      } else {
-        const newCount = tabSwitches + 1
-        setTabSwitches(newCount)
-        saveOfflineData(`tabSwitches_${examId}`, newCount)
-        
-        if (newCount >= 3) {
-          handleAutoSubmit('Auto-submitted due to multiple tab switches (offline)')
         }
       }
     } catch (error) {
@@ -449,20 +315,8 @@ function ExamRoomContent() {
     }
   }, [isTimed, isStrictMode, handleVisibilityChange, handleBlur, handleFullscreenChange, handleContextMenu, handleKeyDown])
 
-  const calculateScore = () => {
-    let correct = 0
-    questions.forEach((q, index) => {
-      const questionId = `q${index + 1}`
-      if (answers[questionId] !== undefined && answers[questionId] === q.correctAnswer) {
-        correct++
-      }
-    })
-    return correct
-  }
-
   const handleAutoSubmit = async (reason) => {
     if (examSubmitted) return
-    
     await submitExam(true, reason)
   }
 
@@ -471,67 +325,41 @@ function ExamRoomContent() {
     
     setExamSubmitted(true)
     
-    const score = calculateScore()
-    const totalMarks = questions.length
-    const percentage = ((score / totalMarks) * 100).toFixed(1)
-    
     const formattedAnswers = {}
-    questions.forEach((q, index) => {
-      const questionId = `q${index + 1}`
-      if (answers[questionId] !== undefined) {
-        const letter = String.fromCharCode(65 + answers[questionId])
-        formattedAnswers[q.originalId || (index + 1).toString()] = letter
+    questions.forEach(q => {
+      if (answers[q.id] !== undefined) {
+        const letter = String.fromCharCode(65 + answers[q.id])
+        formattedAnswers[q.id] = letter
       }
     })
 
     try {
-      if (!isOffline && examId && !examId.startsWith('mock_')) {
-        try {
-          const response = await fetchWithAuth(`/exam/${examId}/submit`, {
-            method: 'POST',
-            body: JSON.stringify({ answers: formattedAnswers })
-          })
+      if (!isOffline && examId) {
+        const response = await fetchWithAuth(`/exam/${examId}/submit`, {
+          method: 'POST',
+          body: JSON.stringify({ answers: formattedAnswers })
+        })
+        
+        if (response && response.ok) {
+          const data = await response.json()
           
-          if (response && response.ok) {
-            const data = await response.json()
-            
-            if (!toastShownRef.current) {
-              toastShownRef.current = true
-              if (isAuto) {
-                toast.error(reason, { duration: 4000 })
-              } else {
-                toast.success('Exam submitted successfully!')
-              }
+          if (!toastShownRef.current) {
+            toastShownRef.current = true
+            if (isAuto) {
+              toast.error(reason, { duration: 4000 })
+            } else {
+              toast.success('Exam submitted successfully!')
             }
-            
-            setTimeout(() => {
-              router.push(`/dashboard?examResult=true&examId=${examId}&score=${score}&total=${totalMarks}&percentage=${percentage}&subject=${encodeURIComponent(subject.name)}`)
-            }, 1000)
-            return
           }
-        } catch (error) {
-          console.error('Error submitting exam to server:', error)
+          
+          setTimeout(() => {
+            router.push(`/dashboard?examResult=true&examId=${examId}&score=${data.exam.score}&total=${data.exam.totalMarks}&percentage=${data.exam.percentage}&subject=${encodeURIComponent(subjectName)}`)
+          }, 1000)
+          return
         }
       }
       
-      saveOfflineData(`submitted_${examId || Date.now()}`, {
-        examId,
-        answers: formattedAnswers,
-        subject: subject.name,
-        examType,
-        score,
-        totalMarks,
-        timestamp: Date.now()
-      })
-      
-      if (!toastShownRef.current) {
-        toastShownRef.current = true
-        toast.success('Exam saved offline. Will sync when online.')
-      }
-      
-      setTimeout(() => {
-        router.push(`/dashboard?examResult=true&examId=${examId || 'offline'}&score=${score}&total=${totalMarks}&percentage=${percentage}&subject=${encodeURIComponent(subject.name)}`)
-      }, 2000)
+      toast.error('Failed to submit exam')
       
     } catch (error) {
       console.error('Error submitting exam:', error)
@@ -546,21 +374,15 @@ function ExamRoomContent() {
         [questionId]: optionIndex
       }
       
-      if (examId && !isOffline && !examId.startsWith('mock_')) {
-        const questionIndex = parseInt(questionId.replace('q', '')) - 1
-        const originalQuestion = questions[questionIndex]
-        if (originalQuestion) {
-          const letter = String.fromCharCode(65 + optionIndex)
-          fetchWithAuth(`/exam/${examId}/save-answer`, {
-            method: 'POST',
-            body: JSON.stringify({ 
-              questionId: originalQuestion.originalId || (questionIndex + 1).toString(),
-              answer: letter 
-            })
-          }).catch(() => {})
-        }
-      } else if (examId && isOffline) {
-        saveOfflineData(`answers_${examId}`, newAnswers)
+      if (examId && !isOffline && isTimed) {
+        const letter = String.fromCharCode(65 + optionIndex)
+        fetchWithAuth(`/exam/${examId}/save-answer`, {
+          method: 'POST',
+          body: JSON.stringify({ 
+            questionId: questionId,
+            answer: letter 
+          })
+        }).catch(() => {})
       }
       
       return newAnswers
@@ -655,7 +477,7 @@ function ExamRoomContent() {
         <div className={examRoomHeaderInner}>
           <div>
             <h1 className={examRoomSubject}>
-              {subject.icon} {subject.name}
+              {subjectName}
             </h1>
             <p className="text-[11px] leading-[100%] font-[400] text-[#626060] font-playfair mt-1">
               {examType === 'practice' ? 'Practice Mode' : examType === 'timed' ? 'Timed Mode' : 'Mock Exam'}

@@ -1,4 +1,3 @@
-//HOME.JSX COMPONENT
 'use client';
 
 import { useStudentAuth } from '../../context/AuthContext';
@@ -7,8 +6,6 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 
-const API_BASE_URL = 'https://cbt-simulator-backend.vercel.app/api';
-
 export default function DashboardHome({ setActiveSection, onStartExam }) {
   const { user, fetchWithAuth, isOffline, getOfflineData } = useStudentAuth();
   const router = useRouter();
@@ -16,12 +13,13 @@ export default function DashboardHome({ setActiveSection, onStartExam }) {
     totalExams: 0,
     completed: 0,
     averageScore: 0,
+    averagePercentage: 0,
     timeSpent: '0h 0m',
     streak: 0,
     rank: 'Top 100%'
   });
   const [recentActivities, setRecentActivities] = useState([]);
-  const [studentSubjects, setStudentSubjects] = useState([]);
+  const [subjects, setSubjects] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const subjectIcons = {
@@ -51,33 +49,32 @@ export default function DashboardHome({ setActiveSection, onStartExam }) {
     setLoading(true);
     try {
       if (!isOffline) {
-        const subjectsResponse = await fetchWithAuth(`${API_BASE_URL}/student/subjects`);
+        // Remove the extra /api/student prefix - subjects is already the full endpoint
+        const subjectsResponse = await fetchWithAuth('/subjects');
         const subjectsData = await subjectsResponse.json();
-        setStudentSubjects(subjectsData.subjects || []);
+        setSubjects(subjectsData.subjects || []);
 
-        const profileResponse = await fetchWithAuth(`${API_BASE_URL}/student/profile`);
-        const profileData = await profileResponse.json();
-
-        const performanceResponse = await fetchWithAuth(`${API_BASE_URL}/exam/performance/summary`);
+        const performanceResponse = await fetchWithAuth('/exam/performance/summary');
         const performanceData = await performanceResponse.json();
 
-        const resultsResponse = await fetchWithAuth(`${API_BASE_URL}/exam/results/all`);
+        const resultsResponse = await fetchWithAuth('/exam/results/all');
         const resultsData = await resultsResponse.json();
 
         if (performanceData.performance) {
           const perf = performanceData.performance;
-          const avgScore = perf.averageScore || 0;
+          const avgPercentage = perf.averagePercentage || perf.averageScore || 0;
           
           let rank = 'Top 100%';
-          if (avgScore >= 80) rank = 'Top 10%';
-          else if (avgScore >= 70) rank = 'Top 20%';
-          else if (avgScore >= 60) rank = 'Top 30%';
-          else if (avgScore >= 50) rank = 'Top 40%';
+          if (avgPercentage >= 80) rank = 'Top 10%';
+          else if (avgPercentage >= 70) rank = 'Top 20%';
+          else if (avgPercentage >= 60) rank = 'Top 30%';
+          else if (avgPercentage >= 50) rank = 'Top 40%';
 
           setStats({
             totalExams: perf.totalExams || 0,
             completed: perf.totalExams || 0,
-            averageScore: avgScore,
+            averageScore: Math.round(perf.averageScore || 0),
+            averagePercentage: Math.round(avgPercentage),
             timeSpent: `${Math.floor((perf.totalExams * 2) / 60)}h ${(perf.totalExams * 2) % 60}m`,
             streak: Math.min(perf.totalExams, 7),
             rank: rank
@@ -86,33 +83,26 @@ export default function DashboardHome({ setActiveSection, onStartExam }) {
 
         if (resultsData.results) {
           const activities = resultsData.results.slice(0, 4).map(result => ({
+            id: result.id,
             subject: result.subject,
-            score: result.score,
+            subjectId: result.subjectId,
+            score: result.percentage || result.score,
             time: formatTimeAgo(result.date._seconds),
             status: 'completed',
-            subjectId: result.subject.toLowerCase().replace(/\s+/g, '')
+            examType: result.examType
           }));
           setRecentActivities(activities);
         }
       } else {
         const cachedSubjects = getOfflineData('studentSubjects');
         if (cachedSubjects) {
-          setStudentSubjects(cachedSubjects);
+          setSubjects(cachedSubjects);
         }
         
         const cachedResults = getOfflineData('recentActivities');
         if (cachedResults) {
           setRecentActivities(cachedResults);
         }
-        
-        setStats({
-          totalExams: 0,
-          completed: 0,
-          averageScore: 0,
-          timeSpent: '0h 0m',
-          streak: 0,
-          rank: 'Top 100%'
-        });
       }
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
@@ -171,23 +161,24 @@ export default function DashboardHome({ setActiveSection, onStartExam }) {
     },
   ];
 
-  const popularSubjects = studentSubjects.slice(0, 6).map(subject => ({
-    id: subject.toLowerCase().replace(/\s+/g, ''),
-    name: subject,
-    icon: subjectIcons[subject] || '📘'
+  const popularSubjects = subjects.slice(0, 6).map(subject => ({
+    id: subject.id,
+    name: subject.name,
+    icon: subjectIcons[subject.name] || '📘',
+    questionCount: subject.questionCount || 50
   }));
 
-  const handleQuickStart = (subjectId) => {
-    const subject = studentSubjects.find(s => 
-      s.toLowerCase().replace(/\s+/g, '') === subjectId
-    );
-    if (subject) {
-      router.push(`/dashboard/exam-room?subject=${encodeURIComponent(subject)}&type=practice&duration=60`);
-    }
+  const handleQuickStart = (subject) => {
+    const duration = subject.examType === 'WAEC' ? 120 : 60;
+    router.push(`/dashboard/exam-room?subjectId=${subject.id}&subject=${encodeURIComponent(subject.name)}&type=practice&duration=${duration}&questionCount=${subject.questionCount || 50}`);
   };
 
   const handleContinueActivity = (activity) => {
-    router.push(`/dashboard/exam-room?subject=${encodeURIComponent(activity.subject)}&type=practice&duration=60`);
+    const subject = subjects.find(s => s.id === activity.subjectId);
+    if (subject) {
+      const duration = subject.examType === 'WAEC' ? 120 : 60;
+      router.push(`/dashboard/exam-room?subjectId=${subject.id}&subject=${encodeURIComponent(subject.name)}&type=practice&duration=${duration}&questionCount=${subject.questionCount || 50}`);
+    }
   };
 
   if (loading) {
@@ -222,7 +213,7 @@ export default function DashboardHome({ setActiveSection, onStartExam }) {
         {[
           { label: 'Total Exams', value: stats.totalExams, icon: '📚' },
           { label: 'Completed', value: stats.completed, icon: '📈' },
-          { label: 'Avg Score', value: `${stats.averageScore}%`, icon: '🎯' },
+          { label: 'Avg Score', value: `${stats.averagePercentage}%`, icon: '🎯' },
           { label: 'Time Spent', value: stats.timeSpent, icon: '⏱️' },
           { label: 'Day Streak', value: stats.streak, icon: '🔥' },
           { label: 'Global Rank', value: stats.rank, icon: '🏆' },
@@ -310,14 +301,14 @@ export default function DashboardHome({ setActiveSection, onStartExam }) {
             {popularSubjects.map((subject, index) => (
               <button
                 key={index}
-                onClick={() => handleQuickStart(subject.id)}
+                onClick={() => handleQuickStart(subject)}
                 className="p-3 border border-gray-200 rounded-lg hover:border-[#039994] hover:bg-[#E6FFFA] transition-all text-left"
               >
                 <div className="flex items-center gap-2">
                   <span className="text-2xl">{subject.icon}</span>
                   <div>
                     <div className="text-sm font-medium text-[#1E1E1E] font-playfair">{subject.name}</div>
-                    <div className="text-xs text-[#626060] font-playfair">50 Qs</div>
+                    <div className="text-xs text-[#626060] font-playfair">{subject.questionCount} Qs</div>
                   </div>
                 </div>
               </button>
@@ -341,17 +332,17 @@ export default function DashboardHome({ setActiveSection, onStartExam }) {
             </p>
           </div>
           <div className="flex flex-col sm:flex-row gap-3">
-            {studentSubjects.slice(0, 2).map((subject, index) => (
+            {subjects.slice(0, 2).map((subject, index) => (
               <button
                 key={index}
-                onClick={() => handleQuickStart(subject.toLowerCase().replace(/\s+/g, ''))}
+                onClick={() => handleQuickStart(subject)}
                 className={`px-6 py-3 rounded-lg font-playfair text-sm font-[600] transition-all ${
                   index === 0 
                     ? 'bg-white text-[#039994] hover:bg-gray-100' 
                     : 'border border-white text-white hover:bg-white/10'
                 }`}
               >
-                Start {subject}
+                Start {subject.name}
               </button>
             ))}
           </div>
@@ -363,7 +354,7 @@ export default function DashboardHome({ setActiveSection, onStartExam }) {
             <div className="text-xs opacity-90 font-playfair">Exams Taken</div>
           </div>
           <div>
-            <div className="text-2xl font-bold font-playfair">{stats.averageScore}%</div>
+            <div className="text-2xl font-bold font-playfair">{stats.averagePercentage}%</div>
             <div className="text-xs opacity-90 font-playfair">Average Score</div>
           </div>
           <div>
