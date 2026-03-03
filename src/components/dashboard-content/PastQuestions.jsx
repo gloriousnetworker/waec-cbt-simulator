@@ -1,10 +1,10 @@
-//PastQuestions.jsx
+// components/dashboard-content/PastQuestions.jsx
 'use client';
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { useStudentAuth } from '../../context/AuthContext';
+import { useStudentAuth } from '../../context/StudentAuthContext';
 import toast from 'react-hot-toast';
 
 export default function PastQuestions() {
@@ -46,30 +46,35 @@ export default function PastQuestions() {
     try {
       if (!isOffline) {
         const subjectsResponse = await fetchWithAuth('/subjects');
-        const subjectsData = await subjectsResponse.json();
-        setSubjects(subjectsData.subjects || []);
+        let subjectsData = { subjects: [] };
+        if (subjectsResponse && subjectsResponse.ok) {
+          subjectsData = await subjectsResponse.json();
+          setSubjects(subjectsData.subjects || []);
+        }
 
-        const resultsResponse = await fetchWithAuth('/exam/results/all');
-        const resultsData = await resultsResponse.json();
-        
-        const questions = [];
-        resultsData.results.forEach(result => {
-          const date = new Date(result.date._seconds * 1000);
-          const year = date.getFullYear().toString();
-          questions.push({
-            id: result.id,
-            year: year,
-            subject: result.subject,
-            subjectId: result.subjectId,
-            paper: 'Past Question',
-            type: result.examType === 'practice' ? 'Practice' : 'Exam',
-            questions: 50,
-            duration: '2h',
-            difficulty: result.percentage >= 70 ? 'Easy' : result.percentage >= 50 ? 'Medium' : 'Hard',
-            score: result.percentage || result.score
+        const resultsResponse = await fetchWithAuth('/results/all');
+        if (resultsResponse && resultsResponse.ok) {
+          const resultsData = await resultsResponse.json();
+          
+          const questions = [];
+          resultsData.results.forEach(result => {
+            const date = new Date(result.date._seconds * 1000);
+            const year = date.getFullYear().toString();
+            questions.push({
+              id: result.id,
+              year: year,
+              subject: result.subject,
+              subjectId: result.subjectId,
+              paper: 'Past Question',
+              type: result.examType === 'practice' ? 'Practice' : 'Exam',
+              questions: 50,
+              duration: '2h',
+              difficulty: result.percentage >= 70 ? 'Easy' : result.percentage >= 50 ? 'Medium' : 'Hard',
+              score: result.percentage || result.score
+            });
           });
-        });
-        setPastQuestions(questions);
+          setPastQuestions(questions);
+        }
       } else {
         const cachedSubjects = getOfflineData('studentSubjects');
         if (cachedSubjects) {
@@ -86,7 +91,7 @@ export default function PastQuestions() {
 
   const handlePracticeNow = (subject) => {
     const duration = subject.examType === 'WAEC' ? 120 : 60;
-    router.push(`/dashboard/exam-room?subjectId=${subject.id}&subject=${encodeURIComponent(subject.name)}&type=practice&duration=${duration}&questionCount=${subject.questionCount || 50}`);
+    router.push(`/exam-room?subjectId=${subject.id}&subject=${encodeURIComponent(subject.name)}&type=practice&duration=${duration}&questionCount=${subject.questionCount || 50}`);
   };
 
   const filteredQuestions = pastQuestions.filter(question => {
@@ -96,7 +101,7 @@ export default function PastQuestions() {
   });
 
   const subjectOptions = [
-    { id: 'all', name: 'All Subjects', icon: '📚' },
+    { id: 'all', name: 'All Subjects', icon: '📚', count: filteredQuestions.length },
     ...subjects.map(s => ({
       id: s.id,
       name: s.name,
@@ -104,6 +109,10 @@ export default function PastQuestions() {
       count: pastQuestions.filter(q => q.subjectId === s.id).length
     }))
   ];
+
+  const averageScore = pastQuestions.length > 0 
+    ? Math.round(pastQuestions.reduce((sum, q) => sum + (q.score || 0), 0) / pastQuestions.length) 
+    : 0;
 
   if (loading) {
     return (
@@ -151,7 +160,7 @@ export default function PastQuestions() {
             className={`flex flex-col items-center p-3 rounded-lg ${selectedSubject === subject.id ? 'bg-[#E6FFFA] border-2 border-[#039994]' : 'bg-white border border-gray-200 hover:border-[#039994]'}`}
           >
             <span className="text-2xl mb-2">{subject.icon}</span>
-            <span className="text-xs font-medium text-gray-700 text-center">{subject.name}</span>
+            <span className="text-xs font-medium text-gray-700 text-center truncate w-full">{subject.name === 'All Subjects' ? 'All' : subject.name}</span>
             {subject.count !== undefined && (
               <span className="text-xs text-gray-500 mt-1">{subject.count} papers</span>
             )}
@@ -167,60 +176,59 @@ export default function PastQuestions() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {filteredQuestions.map((question) => (
-            <motion.div
-              key={question.id}
-              whileHover={{ y: -4 }}
-              className="bg-white rounded-xl shadow-sm border border-gray-200 p-5"
-            >
-              <div className="flex items-start justify-between mb-4">
-                <div>
-                  <div className="flex items-center mb-2">
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium mr-3 ${
-                      question.difficulty === 'Easy' ? 'bg-green-100 text-green-800' : 
-                      question.difficulty === 'Medium' ? 'bg-yellow-100 text-yellow-800' : 
-                      'bg-red-100 text-red-800'
-                    }`}>
-                      {question.difficulty}
-                    </span>
-                    <span className="text-sm text-gray-500">WAEC {question.year}</span>
+          {filteredQuestions.map((question) => {
+            const subject = subjects.find(s => s.id === question.subjectId) || { name: question.subject };
+            
+            return (
+              <motion.div
+                key={question.id}
+                whileHover={{ y: -4 }}
+                className="bg-white rounded-xl shadow-sm border border-gray-200 p-5"
+              >
+                <div className="flex items-start justify-between mb-4">
+                  <div>
+                    <div className="flex items-center mb-2">
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium mr-3 ${
+                        question.difficulty === 'Easy' ? 'bg-green-100 text-green-800' : 
+                        question.difficulty === 'Medium' ? 'bg-yellow-100 text-yellow-800' : 
+                        'bg-red-100 text-red-800'
+                      }`}>
+                        {question.difficulty}
+                      </span>
+                      <span className="text-sm text-gray-500">WAEC {question.year}</span>
+                    </div>
+                    <h3 className="text-lg font-bold text-gray-800">{question.subject}</h3>
+                    <p className="text-gray-600 text-sm">{question.type} Questions</p>
                   </div>
-                  <h3 className="text-lg font-bold text-gray-800">{question.subject}</h3>
-                  <p className="text-gray-600 text-sm">{question.type} Questions</p>
+                  <span className="text-3xl">
+                    {subjectIcons[question.subject] || '📘'}
+                  </span>
                 </div>
-                <span className="text-3xl">
-                  {subjectIcons[question.subject] || '📘'}
-                </span>
-              </div>
 
-              <div className="grid grid-cols-3 gap-4 mb-5">
-                <div className="text-center p-3 bg-gray-50 rounded-lg">
-                  <div className="text-lg font-bold text-gray-800">{question.questions}</div>
-                  <div className="text-xs text-gray-600">Questions</div>
+                <div className="grid grid-cols-3 gap-4 mb-5">
+                  <div className="text-center p-3 bg-gray-50 rounded-lg">
+                    <div className="text-lg font-bold text-gray-800">{question.questions}</div>
+                    <div className="text-xs text-gray-600">Questions</div>
+                  </div>
+                  <div className="text-center p-3 bg-gray-50 rounded-lg">
+                    <div className="text-lg font-bold text-gray-800">{question.duration}</div>
+                    <div className="text-xs text-gray-600">Duration</div>
+                  </div>
+                  <div className="text-center p-3 bg-gray-50 rounded-lg">
+                    <div className="text-lg font-bold text-gray-800">{question.score || 0}%</div>
+                    <div className="text-xs text-gray-600">Avg. Score</div>
+                  </div>
                 </div>
-                <div className="text-center p-3 bg-gray-50 rounded-lg">
-                  <div className="text-lg font-bold text-gray-800">{question.duration}</div>
-                  <div className="text-xs text-gray-600">Duration</div>
-                </div>
-                <div className="text-center p-3 bg-gray-50 rounded-lg">
-                  <div className="text-lg font-bold text-gray-800">{question.score || 0}%</div>
-                  <div className="text-xs text-gray-600">Avg. Score</div>
-                </div>
-              </div>
 
-              <div className="flex space-x-3">
                 <button
-                  onClick={() => {
-                    const subject = subjects.find(s => s.id === question.subjectId);
-                    if (subject) handlePracticeNow(subject);
-                  }}
-                  className="flex-1 py-2.5 bg-[#039994] text-white font-medium rounded-lg hover:bg-[#028a85] transition"
+                  onClick={() => handlePracticeNow(subject)}
+                  className="w-full py-2.5 bg-[#039994] text-white font-medium rounded-lg hover:bg-[#028a85] transition"
                 >
                   Practice Now
                 </button>
-              </div>
-            </motion.div>
-          ))}
+              </motion.div>
+            );
+          })}
         </div>
       )}
 
@@ -240,9 +248,7 @@ export default function PastQuestions() {
             <div className="text-sm text-gray-700">Subjects</div>
           </div>
           <div className="text-center p-4 bg-white rounded-lg border border-blue-100">
-            <div className="text-2xl font-bold text-blue-600 mb-2">
-              {Math.round(pastQuestions.reduce((sum, q) => sum + (q.score || 0), 0) / (pastQuestions.length || 1))}%
-            </div>
+            <div className="text-2xl font-bold text-blue-600 mb-2">{averageScore}%</div>
             <div className="text-sm text-gray-700">Avg. Score</div>
           </div>
         </div>

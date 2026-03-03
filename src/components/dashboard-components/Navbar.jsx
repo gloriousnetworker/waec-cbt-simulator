@@ -1,7 +1,7 @@
 // components/navbar/StudentNavbar.jsx
 'use client';
 
-import { useStudentAuth } from '../../context/AuthContext';
+import { useStudentAuth } from '../../context/StudentAuthContext';
 import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
@@ -28,7 +28,6 @@ import {
   navbarProfile,
   navbarProfileButton,
   navbarProfileAvatar,
-  navbarProfileAvatarText,
   navbarProfileInfo,
   navbarProfileName,
   navbarProfileId,
@@ -48,38 +47,29 @@ import {
   modalButtonDanger
 } from '../../styles/styles';
 
-const BASE_URL = 'https://cbt-simulator-backend.vercel.app';
-
 export default function StudentNavbar({ activeSection, setActiveSection, onMenuClick }) {
-  const { user, logout, refreshUser } = useStudentAuth();
+  const { user, logout } = useStudentAuth();
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  const [liveUser, setLiveUser] = useState(null);
+  const [showDropdown, setShowDropdown] = useState(false);
 
   useEffect(() => {
-    const fetchMe = async () => {
-      try {
-        const res = await fetch(`${BASE_URL}/api/student/me`, {
-          method: 'GET',
-          credentials: 'include',
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setLiveUser(data.user);
-        }
-      } catch {}
+    const handleClickOutside = (e) => {
+      if (!e.target.closest('.profile-container')) {
+        setShowDropdown(false);
+      }
     };
-    fetchMe();
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
   }, []);
 
-  const displayUser = liveUser || user;
-
   const getInitials = () => {
-    if (!displayUser) return 'ST';
-    return (displayUser.firstName?.[0] || '') + (displayUser.lastName?.[0] || '');
+    if (!user) return 'ST';
+    return `${user.firstName?.[0] || ''}${user.lastName?.[0] || ''}`;
   };
 
   const handleLogout = () => {
     logout();
+    setShowLogoutConfirm(false);
   };
 
   const navSections = [
@@ -92,6 +82,10 @@ export default function StudentNavbar({ activeSection, setActiveSection, onMenuC
     { id: 'study-groups', label: 'Groups', icon: '👥' },
     { id: 'settings', label: 'Settings', icon: '⚙️' },
   ];
+
+  if (user?.examMode) {
+    return null;
+  }
 
   return (
     <>
@@ -163,8 +157,11 @@ export default function StudentNavbar({ activeSection, setActiveSection, onMenuC
                 <span className={navbarNotificationBadge}></span>
               </button>
 
-              <div className={navbarProfile}>
-                <button className={navbarProfileButton}>
+              <div className="profile-container relative">
+                <button
+                  onClick={() => setShowDropdown(!showDropdown)}
+                  className={navbarProfileButton}
+                >
                   <div className={navbarProfileAvatar}>
                     <div className="w-9 h-9 rounded-full bg-[#039994] flex items-center justify-center text-white text-[14px] leading-[100%] font-[600]">
                       {getInitials()}
@@ -172,40 +169,51 @@ export default function StudentNavbar({ activeSection, setActiveSection, onMenuC
                   </div>
                   <div className={navbarProfileInfo}>
                     <p className={navbarProfileName}>
-                      {displayUser ? `${displayUser.firstName} ${displayUser.lastName}` : 'Student'}
+                      {user ? `${user.firstName} ${user.lastName}` : 'Student'}
                     </p>
-                    <p className={navbarProfileId}>{displayUser?.class || 'Student'}</p>
+                    <p className={navbarProfileId}>{user?.class || 'Student'}</p>
                   </div>
                 </button>
                 
-                <div className={navbarDropdown}>
-                  <div className={navbarDropdownHeader}>
-                    <p className={navbarDropdownHeaderName}>
-                      {displayUser ? `${displayUser.firstName} ${displayUser.lastName}` : 'Student'}
-                    </p>
-                    <p className={navbarDropdownHeaderEmail}>{displayUser?.email}</p>
+                {showDropdown && (
+                  <div className={navbarDropdown}>
+                    <div className={navbarDropdownHeader}>
+                      <p className={navbarDropdownHeaderName}>
+                        {user ? `${user.firstName} ${user.lastName}` : 'Student'}
+                      </p>
+                      <p className={navbarDropdownHeaderEmail}>{user?.email}</p>
+                    </div>
+                    <div className={navbarDropdownMenu}>
+                      <button 
+                        onClick={() => {
+                          setActiveSection('settings');
+                          setShowDropdown(false);
+                        }}
+                        className={navbarDropdownItem}
+                      >
+                        Profile Settings
+                      </button>
+                      <button 
+                        onClick={() => {
+                          setActiveSection('performance');
+                          setShowDropdown(false);
+                        }}
+                        className={navbarDropdownItem}
+                      >
+                        Exam History
+                      </button>
+                      <button
+                        onClick={() => {
+                          setShowLogoutConfirm(true);
+                          setShowDropdown(false);
+                        }}
+                        className={navbarDropdownItemDanger}
+                      >
+                        Logout
+                      </button>
+                    </div>
                   </div>
-                  <div className={navbarDropdownMenu}>
-                    <button 
-                      onClick={() => setActiveSection('settings')}
-                      className={navbarDropdownItem}
-                    >
-                      Profile Settings
-                    </button>
-                    <button 
-                      onClick={() => setActiveSection('performance')}
-                      className={navbarDropdownItem}
-                    >
-                      Exam History
-                    </button>
-                    <button
-                      onClick={() => setShowLogoutConfirm(true)}
-                      className={navbarDropdownItemDanger}
-                    >
-                      Logout
-                    </button>
-                  </div>
-                </div>
+                )}
               </div>
             </div>
           </div>

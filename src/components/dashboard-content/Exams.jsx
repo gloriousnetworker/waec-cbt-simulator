@@ -1,9 +1,10 @@
+// components/dashboard-content/Exams.jsx
 'use client';
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { useStudentAuth } from '../../context/AuthContext';
+import { useStudentAuth } from '../../context/StudentAuthContext';
 import toast from 'react-hot-toast';
 
 export default function Exams() {
@@ -12,7 +13,7 @@ export default function Exams() {
   const [loading, setLoading] = useState(true);
   const [performance, setPerformance] = useState({});
   const router = useRouter();
-  const { user, fetchWithAuth, isOffline, getOfflineData } = useStudentAuth();
+  const { fetchWithAuth, isOffline, getOfflineData } = useStudentAuth();
 
   const examTypes = [
     { id: 'practice', name: 'Practice Exam', desc: 'Untimed practice with detailed explanations' },
@@ -66,14 +67,17 @@ export default function Exams() {
     setLoading(true);
     try {
       if (!isOffline) {
-        // Remove the extra /api/student prefix - subjects is already the full endpoint
         const subjectsResponse = await fetchWithAuth('/subjects');
-        const subjectsData = await subjectsResponse.json();
-        setSubjects(subjectsData.subjects || []);
+        if (subjectsResponse && subjectsResponse.ok) {
+          const subjectsData = await subjectsResponse.json();
+          setSubjects(subjectsData.subjects || []);
+        }
 
-        const performanceResponse = await fetchWithAuth('/exam/performance/summary');
-        const performanceData = await performanceResponse.json();
-        setPerformance(performanceData.performance || {});
+        const performanceResponse = await fetchWithAuth('/performance/summary');
+        if (performanceResponse && performanceResponse.ok) {
+          const performanceData = await performanceResponse.json();
+          setPerformance(performanceData.performance || {});
+        }
       } else {
         const cachedSubjects = getOfflineData('studentSubjects');
         if (cachedSubjects) {
@@ -93,12 +97,29 @@ export default function Exams() {
     }
   };
 
-  const handleStartExam = (subject) => {
-    let examDuration = subject.duration || 60;
-    if (activeTab === 'practice') {
-      examDuration = 0;
+  const handleStartExam = async (subject) => {
+    const toastId = toast.loading('Starting exam...');
+    
+    try {
+      const response = await fetchWithAuth('/exams/start', {
+        method: 'POST',
+        body: JSON.stringify({ subjectId: subject.id })
+      });
+
+      if (response && response.ok) {
+        const data = await response.json();
+        toast.success('Exam started!', { id: toastId });
+        
+        const examType = activeTab === 'practice' ? 'practice' : activeTab === 'timed' ? 'timed' : 'mock';
+        router.push(`/exam-room?subjectId=${subject.id}&examId=${data.exam.id}&subject=${encodeURIComponent(subject.name)}&type=${examType}`);
+      } else {
+        const error = await response.json();
+        toast.error(error.message || 'Failed to start exam', { id: toastId });
+      }
+    } catch (error) {
+      console.error('Error starting exam:', error);
+      toast.error('Failed to start exam', { id: toastId });
     }
-    router.push(`/dashboard/exam-room?subjectId=${subject.id}&subject=${encodeURIComponent(subject.name)}&type=${activeTab}&duration=${examDuration}&questionCount=${subject.questionCount || 50}`);
   };
 
   const getSubjectStats = (subjectName) => {

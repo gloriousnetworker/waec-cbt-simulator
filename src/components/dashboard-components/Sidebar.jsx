@@ -1,9 +1,10 @@
 // components/sidebar/StudentSidebar.jsx
 'use client';
 
-import { useStudentAuth } from '../../context/AuthContext';
+import { useStudentAuth } from '../../context/StudentAuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
+import { useState, useEffect } from 'react';
 import {
   sidebarContainer,
   sidebarOverlay,
@@ -29,7 +30,17 @@ import {
 } from '../../styles/styles';
 
 export default function StudentSidebar({ isOpen, onClose, activeSection, setActiveSection }) {
-  const { logout } = useStudentAuth();
+  const { logout, user } = useStudentAuth();
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 1024);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   const menuItems = [
     { icon: '🏠', label: 'Dashboard', id: 'home' },
@@ -45,13 +56,23 @@ export default function StudentSidebar({ isOpen, onClose, activeSection, setActi
 
   const handleMenuItemClick = (sectionId) => {
     setActiveSection(sectionId);
-    onClose();
+    if (isMobile) {
+      onClose();
+    }
   };
+
+  const handleLogout = () => {
+    logout();
+  };
+
+  if (user?.examMode) {
+    return null;
+  }
 
   return (
     <>
       <AnimatePresence>
-        {isOpen && (
+        {isOpen && isMobile && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -65,12 +86,12 @@ export default function StudentSidebar({ isOpen, onClose, activeSection, setActi
       <motion.aside
         initial={false}
         animate={{ 
-          x: isOpen ? 0 : -280,
+          x: isOpen || !isMobile ? 0 : -280,
         }}
         transition={{ type: 'spring', stiffness: 300, damping: 30 }}
         className={sidebarContainer}
         style={{
-          visibility: isOpen || window.innerWidth >= 1024 ? 'visible' : 'hidden'
+          visibility: isOpen || !isMobile ? 'visible' : 'hidden'
         }}
       >
         <div className={sidebarHeader}>
@@ -116,7 +137,7 @@ export default function StudentSidebar({ isOpen, onClose, activeSection, setActi
 
         <div className={sidebarFooter}>
           <button
-            onClick={logout}
+            onClick={handleLogout}
             className={sidebarLogout}
           >
             <span className={sidebarLogoutIcon}>🚪</span>

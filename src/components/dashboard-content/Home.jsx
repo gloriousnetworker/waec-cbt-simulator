@@ -1,6 +1,7 @@
+// components/dashboard-content/Home.jsx
 'use client';
 
-import { useStudentAuth } from '../../context/AuthContext';
+import { useStudentAuth } from '../../context/StudentAuthContext';
 import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -49,49 +50,54 @@ export default function DashboardHome({ setActiveSection, onStartExam }) {
     setLoading(true);
     try {
       if (!isOffline) {
-        // Remove the extra /api/student prefix - subjects is already the full endpoint
         const subjectsResponse = await fetchWithAuth('/subjects');
-        const subjectsData = await subjectsResponse.json();
-        setSubjects(subjectsData.subjects || []);
-
-        const performanceResponse = await fetchWithAuth('/exam/performance/summary');
-        const performanceData = await performanceResponse.json();
-
-        const resultsResponse = await fetchWithAuth('/exam/results/all');
-        const resultsData = await resultsResponse.json();
-
-        if (performanceData.performance) {
-          const perf = performanceData.performance;
-          const avgPercentage = perf.averagePercentage || perf.averageScore || 0;
-          
-          let rank = 'Top 100%';
-          if (avgPercentage >= 80) rank = 'Top 10%';
-          else if (avgPercentage >= 70) rank = 'Top 20%';
-          else if (avgPercentage >= 60) rank = 'Top 30%';
-          else if (avgPercentage >= 50) rank = 'Top 40%';
-
-          setStats({
-            totalExams: perf.totalExams || 0,
-            completed: perf.totalExams || 0,
-            averageScore: Math.round(perf.averageScore || 0),
-            averagePercentage: Math.round(avgPercentage),
-            timeSpent: `${Math.floor((perf.totalExams * 2) / 60)}h ${(perf.totalExams * 2) % 60}m`,
-            streak: Math.min(perf.totalExams, 7),
-            rank: rank
-          });
+        if (subjectsResponse && subjectsResponse.ok) {
+          const subjectsData = await subjectsResponse.json();
+          setSubjects(subjectsData.subjects || []);
         }
 
-        if (resultsData.results) {
-          const activities = resultsData.results.slice(0, 4).map(result => ({
-            id: result.id,
-            subject: result.subject,
-            subjectId: result.subjectId,
-            score: result.percentage || result.score,
-            time: formatTimeAgo(result.date._seconds),
-            status: 'completed',
-            examType: result.examType
-          }));
-          setRecentActivities(activities);
+        const performanceResponse = await fetchWithAuth('/performance/summary');
+        if (performanceResponse && performanceResponse.ok) {
+          const performanceData = await performanceResponse.json();
+          
+          if (performanceData.performance) {
+            const perf = performanceData.performance;
+            const avgPercentage = perf.averagePercentage || perf.averageScore || 0;
+            
+            let rank = 'Top 100%';
+            if (avgPercentage >= 80) rank = 'Top 10%';
+            else if (avgPercentage >= 70) rank = 'Top 20%';
+            else if (avgPercentage >= 60) rank = 'Top 30%';
+            else if (avgPercentage >= 50) rank = 'Top 40%';
+
+            setStats({
+              totalExams: perf.totalExams || 0,
+              completed: perf.totalExams || 0,
+              averageScore: Math.round(perf.averageScore || 0),
+              averagePercentage: Math.round(avgPercentage),
+              timeSpent: `${Math.floor((perf.totalExams * 2) / 60)}h ${(perf.totalExams * 2) % 60}m`,
+              streak: Math.min(perf.totalExams, 7),
+              rank: rank
+            });
+          }
+        }
+
+        const resultsResponse = await fetchWithAuth('/results/all');
+        if (resultsResponse && resultsResponse.ok) {
+          const resultsData = await resultsResponse.json();
+          
+          if (resultsData.results) {
+            const activities = resultsData.results.slice(0, 4).map(result => ({
+              id: result.id,
+              subject: result.subject,
+              subjectId: result.subjectId,
+              score: result.percentage || result.score,
+              time: formatTimeAgo(result.date._seconds),
+              status: 'completed',
+              examType: result.examType
+            }));
+            setRecentActivities(activities);
+          }
         }
       } else {
         const cachedSubjects = getOfflineData('studentSubjects');
@@ -170,14 +176,14 @@ export default function DashboardHome({ setActiveSection, onStartExam }) {
 
   const handleQuickStart = (subject) => {
     const duration = subject.examType === 'WAEC' ? 120 : 60;
-    router.push(`/dashboard/exam-room?subjectId=${subject.id}&subject=${encodeURIComponent(subject.name)}&type=practice&duration=${duration}&questionCount=${subject.questionCount || 50}`);
+    router.push(`/exam-room?subjectId=${subject.id}&subject=${encodeURIComponent(subject.name)}&type=practice&duration=${duration}&questionCount=${subject.questionCount || 50}`);
   };
 
   const handleContinueActivity = (activity) => {
     const subject = subjects.find(s => s.id === activity.subjectId);
     if (subject) {
       const duration = subject.examType === 'WAEC' ? 120 : 60;
-      router.push(`/dashboard/exam-room?subjectId=${subject.id}&subject=${encodeURIComponent(subject.name)}&type=practice&duration=${duration}&questionCount=${subject.questionCount || 50}`);
+      router.push(`/exam-room?subjectId=${subject.id}&subject=${encodeURIComponent(subject.name)}&type=practice&duration=${duration}&questionCount=${subject.questionCount || 50}`);
     }
   };
 

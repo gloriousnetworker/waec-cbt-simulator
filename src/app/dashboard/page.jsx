@@ -1,19 +1,18 @@
+// app/dashboard/page.jsx
 'use client';
-
-import ProtectedRoute from '../../components/ProtectedRoute';
-import DashboardNavbar from '../../components/dashboard-components/Navbar';
-import DashboardSidebar from '../../components/dashboard-components/Sidebar';
+import StudentProtectedRoute from '../../components/StudentProtectedRoute';
+import StudentNavbar from '../../components/dashboard-components/Navbar';
+import StudentSidebar from '../../components/dashboard-components/Sidebar';
 import { useState, useEffect, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useStudentAuth } from '../../context/AuthContext';
-import { useSearchParams } from 'next/navigation';
+import { useStudentAuth } from '../../context/StudentAuthContext';
+import { useRouter, useSearchParams } from 'next/navigation';
 import DashboardHome from '../../components/dashboard-content/Home';
 import Exams from '../../components/dashboard-content/Exams';
 import TimedTests from '../../components/dashboard-content/TimedTests';
 import Performance from '../../components/dashboard-content/Performance';
 import Achievements from '../../components/dashboard-content/Achievements';
 import PastQuestions from '../../components/dashboard-content/PastQuestions';
-import StudyGroups from '../../components/dashboard-content/StudyGroups';
 import Settings from '../../components/dashboard-content/Settings';
 import Help from '../../components/dashboard-content/Help';
 import toast from 'react-hot-toast';
@@ -31,21 +30,24 @@ function DashboardContent() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [pageLoading, setPageLoading] = useState(true);
   const [activeSection, setActiveSection] = useState('home');
-  const [examData, setExamData] = useState(null);
-  const [showExam, setShowExam] = useState(false);
   const [showResultModal, setShowResultModal] = useState(false);
   const [examResult, setExamResult] = useState(null);
-  const { isAuthenticated, authChecked } = useStudentAuth();
+  const { user, isAuthenticated, authChecked } = useStudentAuth();
+  const router = useRouter();
   const searchParams = useSearchParams();
 
   useEffect(() => {
     if (authChecked && isAuthenticated) {
+      if (user?.examMode) {
+        router.replace('/dashboard/exam-room');
+        return;
+      }
       const timer = setTimeout(() => {
         setPageLoading(false);
       }, 100);
       return () => clearTimeout(timer);
     }
-  }, [authChecked, isAuthenticated]);
+  }, [authChecked, isAuthenticated, user, router]);
 
   useEffect(() => {
     const hasResult = searchParams.get('examResult');
@@ -83,11 +85,6 @@ function DashboardContent() {
     }
   }, [searchParams]);
 
-  const handleStartExam = (subject, examType) => {
-    setExamData({ subject, examType });
-    setShowExam(true);
-  };
-
   const handleCloseResult = () => {
     setShowResultModal(false);
     setExamResult(null);
@@ -100,16 +97,15 @@ function DashboardContent() {
 
   const renderSection = () => {
     switch (activeSection) {
-      case 'home': return <DashboardHome setActiveSection={handleNavigation} onStartExam={handleStartExam} />;
-      case 'exams': return <Exams setActiveSection={handleNavigation} onStartExam={handleStartExam} />;
-      case 'timed-tests': return <TimedTests setActiveSection={handleNavigation} onStartExam={handleStartExam} />;
+      case 'home': return <DashboardHome setActiveSection={handleNavigation} />;
+      case 'exams': return <Exams setActiveSection={handleNavigation} />;
+      case 'timed-tests': return <TimedTests setActiveSection={handleNavigation} />;
       case 'performance': return <Performance setActiveSection={handleNavigation} />;
       case 'achievements': return <Achievements setActiveSection={handleNavigation} />;
-      case 'past-questions': return <PastQuestions setActiveSection={handleNavigation} onStartExam={handleStartExam} />;
-      case 'study-groups': return <StudyGroups setActiveSection={handleNavigation} />;
+      case 'past-questions': return <PastQuestions setActiveSection={handleNavigation} />;
       case 'settings': return <Settings setActiveSection={handleNavigation} />;
       case 'help': return <Help setActiveSection={handleNavigation} />;
-      default: return <DashboardHome setActiveSection={handleNavigation} onStartExam={handleStartExam} />;
+      default: return <DashboardHome setActiveSection={handleNavigation} />;
     }
   };
 
@@ -134,14 +130,14 @@ function DashboardContent() {
 
   return (
     <div className={dashboardContainer}>
-      <DashboardNavbar 
+      <StudentNavbar 
         activeSection={activeSection}
         setActiveSection={handleNavigation}
         onMenuClick={() => setSidebarOpen(!sidebarOpen)} 
       />
       
       <div className={dashboardMain}>
-        <DashboardSidebar 
+        <StudentSidebar 
           isOpen={sidebarOpen} 
           onClose={() => setSidebarOpen(false)}
           activeSection={activeSection}
@@ -253,7 +249,7 @@ function DashboardContent() {
 
 export default function DashboardPage() {
   return (
-    <ProtectedRoute>
+    <StudentProtectedRoute>
       <Suspense fallback={
         <div className={dashboardLoading}>
           <div className={dashboardLoadingInner}>
@@ -264,6 +260,6 @@ export default function DashboardPage() {
       }>
         <DashboardContent />
       </Suspense>
-    </ProtectedRoute>
+    </StudentProtectedRoute>
   );
 }

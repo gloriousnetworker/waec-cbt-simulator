@@ -3,7 +3,7 @@
 
 import '../styles/globals.css'
 import { Toaster } from 'react-hot-toast'
-import { StudentAuthProvider } from '../context/AuthContext'
+import { StudentAuthProvider } from '../context/StudentAuthContext'
 import { useEffect, useState } from 'react'
 
 const toastOptions = {

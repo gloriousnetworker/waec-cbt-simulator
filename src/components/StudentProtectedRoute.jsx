@@ -2,7 +2,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useStudentAuth } from '../context/AuthContext';
+import { useStudentAuth } from '../context/StudentAuthContext';
 import { motion } from 'framer-motion';
 
 export default function StudentProtectedRoute({ children }) {

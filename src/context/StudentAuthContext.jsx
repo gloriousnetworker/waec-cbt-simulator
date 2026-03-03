@@ -38,7 +38,7 @@ export function StudentAuthProvider({ children }) {
 
       if (response.ok) {
         const data = await response.json();
-        setUser(data.user);
+        setUser(data.student);
         return true;
       } else {
         setUser(null);
@@ -78,9 +78,18 @@ export function StudentAuthProvider({ children }) {
 
       if (response.ok && data.user) {
         setUser(data.user);
+        
+        if (data.examMode) {
+          router.replace('/exam-instructions');
+        } else {
+          router.replace('/dashboard');
+        }
+        
         return { 
           success: true, 
-          user: data.user
+          user: data.user,
+          examMode: data.examMode,
+          currentExam: data.currentExam
         };
       }
       
@@ -97,7 +106,7 @@ export function StudentAuthProvider({ children }) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [router]);
 
   const logout = useCallback(async () => {
     try {
@@ -110,6 +119,7 @@ export function StudentAuthProvider({ children }) {
     } finally {
       setUser(null);
       toast.success('Logged out successfully');
+      localStorage.removeItem('examProgress');
       router.push('/login');
     }
   }, [router]);

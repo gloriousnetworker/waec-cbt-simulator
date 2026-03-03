@@ -1,9 +1,9 @@
-//PERFORMANCE.JSX COMPONENT
+// components/dashboard-content/Performance.jsx
 'use client';
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { useStudentAuth } from '../../context/AuthContext';
+import { useStudentAuth } from '../../context/StudentAuthContext';
 import toast from 'react-hot-toast';
 
 export default function Performance() {
@@ -40,13 +40,17 @@ export default function Performance() {
     setLoading(true);
     try {
       if (!isOffline) {
-        const summaryResponse = await fetchWithAuth('/exam/performance/summary');
-        const summaryData = await summaryResponse.json();
-        setPerformanceData(summaryData.performance);
+        const summaryResponse = await fetchWithAuth('/performance/summary');
+        if (summaryResponse && summaryResponse.ok) {
+          const summaryData = await summaryResponse.json();
+          setPerformanceData(summaryData.performance);
+        }
 
-        const resultsResponse = await fetchWithAuth('/exam/results/all');
-        const resultsData = await resultsResponse.json();
-        setExamResults(resultsData.results || []);
+        const resultsResponse = await fetchWithAuth('/results/all');
+        if (resultsResponse && resultsResponse.ok) {
+          const resultsData = await resultsResponse.json();
+          setExamResults(resultsData.results || []);
+        }
       } else {
         const cachedSummary = getOfflineData('performanceSummary');
         if (cachedSummary) {
@@ -363,7 +367,7 @@ export default function Performance() {
                       }`}>
                         {result.percentage || result.score}%
                       </div>
-                      <div className="text-xs text-[#626060] font-playfair capitalize">{result.examType}</div>
+                      <div className="text-xs text-[#626060] font-playfair capitalize">{result.examType || 'Practice'}</div>
                     </div>
                   </div>
                 );

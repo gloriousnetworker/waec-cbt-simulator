@@ -3,7 +3,7 @@
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import SplashScreen from '@/components/SplashScreen'
-import { useStudentAuth } from '../context/AuthContext'
+import { useStudentAuth } from '../context/StudentAuthContext'
 
 export default function HomePage() {
   const router = useRouter()

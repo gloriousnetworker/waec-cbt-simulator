@@ -4,7 +4,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useStudentAuth } from '../../context/AuthContext'
+import { useStudentAuth } from '../../context/StudentAuthContext'
 import toast from 'react-hot-toast'
 
 const loginContainer = "min-h-screen bg-[#F9FAFB] flex items-center justify-center"
@@ -14,7 +14,6 @@ export default function StudentLoginPage() {
   const [identifier, setIdentifier] = useState('')
   const [password, setPassword] = useState('')
   const [loginType, setLoginType] = useState('nin')
-  const [rememberMe, setRememberMe] = useState(false)
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const router = useRouter()
@@ -53,9 +52,14 @@ export default function StudentLoginPage() {
       
       if (result.success) {
         toast.success(`Welcome back, ${result.user.firstName}!`, { id: loginToast })
-        setTimeout(() => {
-          router.replace('/dashboard')
-        }, 1500)
+        
+        if (result.examMode) {
+          router.replace('/exam-instructions')
+        } else {
+          setTimeout(() => {
+            router.replace('/dashboard')
+          }, 1500)
+        }
       } else {
         toast.error(result.message || 'Invalid credentials', { id: loginToast })
         setLoading(false)

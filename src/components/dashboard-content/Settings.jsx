@@ -1,19 +1,19 @@
-//SETTINGS.JSX COMPONENT
+// components/dashboard-content/Settings.jsx
 'use client';
 
-import { useState, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { useStudentAuth } from '../../context/AuthContext'
-import toast from 'react-hot-toast'
-import ProtectedRoute from '../../components/ProtectedRoute'
+import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useStudentAuth } from '../../context/StudentAuthContext';
+import toast from 'react-hot-toast';
+import StudentProtectedRoute from '../StudentProtectedRoute';
 
 function SettingsContent() {
-  const { user, updateUser, fetchWithAuth, refreshUser } = useStudentAuth()
-  const [activeTab, setActiveTab] = useState('profile')
-  const [isEditing, setIsEditing] = useState(false)
-  const [showPasswordModal, setShowPasswordModal] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [profileLoading, setProfileLoading] = useState(true)
+  const { user, updateUser, fetchWithAuth, refreshUser } = useStudentAuth();
+  const [activeTab, setActiveTab] = useState('profile');
+  const [isEditing, setIsEditing] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [profileLoading, setProfileLoading] = useState(true);
   
   const [profileData, setProfileData] = useState({
     firstName: '',
@@ -24,71 +24,72 @@ function SettingsContent() {
     school: '',
     nin: '',
     dateOfBirth: ''
-  })
+  });
 
   const [passwordData, setPasswordData] = useState({
     current: '',
     new: '',
     confirm: ''
-  })
+  });
 
   const [notificationSettings, setNotificationSettings] = useState({
     notifications: true,
     examReminders: true,
     studyReminders: true
-  })
+  });
 
   const [examSettings, setExamSettings] = useState({
     autoSave: true,
     timerSound: true,
     tabWarning: true
-  })
+  });
 
   const [appearanceSettings, setAppearanceSettings] = useState({
     darkMode: false,
     theme: 'teal'
-  })
+  });
 
   useEffect(() => {
-    fetchProfileData()
-  }, [])
+    fetchProfileData();
+  }, []);
 
   const fetchProfileData = async () => {
-    setProfileLoading(true)
+    setProfileLoading(true);
     try {
-      const response = await fetchWithAuth('/profile')
-      const data = await response.json()
-      
-      if (data.student) {
-        setProfileData({
-          firstName: data.student.firstName || '',
-          lastName: data.student.lastName || '',
-          email: data.student.email || '',
-          phone: data.student.phone || '',
-          class: data.student.class || '',
-          school: data.student.school || '',
-          nin: data.student.nin || '',
-          dateOfBirth: data.student.dateOfBirth || ''
-        })
+      const response = await fetchWithAuth('/profile');
+      if (response && response.ok) {
+        const data = await response.json();
+        if (data.student) {
+          setProfileData({
+            firstName: data.student.firstName || '',
+            lastName: data.student.lastName || '',
+            email: data.student.email || '',
+            phone: data.student.phone || '',
+            class: data.student.class || '',
+            school: data.student.school || '',
+            nin: data.student.nin || '',
+            dateOfBirth: data.student.dateOfBirth || ''
+          });
+        }
       }
     } catch (error) {
-      console.error('Error fetching profile:', error)
-      toast.error('Failed to load profile data')
+      console.error('Error fetching profile:', error);
+      toast.error('Failed to load profile data');
     } finally {
-      setProfileLoading(false)
+      setProfileLoading(false);
     }
-  }
+  };
 
   const tabs = [
     { id: 'profile', label: 'Profile', icon: '👤' },
     { id: 'notifications', label: 'Notifications', icon: '🔔' },
     { id: 'exam', label: 'Exam Settings', icon: '📝' },
     { id: 'appearance', label: 'Appearance', icon: '🎨' },
-  ]
+  ];
 
   const handleProfileUpdate = async () => {
-    setLoading(true)
-    const toastId = toast.loading('Updating profile...')
+    setLoading(true);
+    const toastId = toast.loading('Updating profile...');
     try {
       const response = await fetchWithAuth('/profile', {
         method: 'PUT',
@@ -96,37 +97,37 @@ function SettingsContent() {
           phone: profileData.phone,
           dateOfBirth: profileData.dateOfBirth
         })
-      })
+      });
       
-      const data = await response.json()
-      
-      if (response.ok) {
-        updateUser(profileData)
-        setIsEditing(false)
-        toast.success('Profile updated successfully!', { id: toastId })
-        await refreshUser()
+      if (response && response.ok) {
+        const data = await response.json();
+        updateUser(profileData);
+        setIsEditing(false);
+        toast.success('Profile updated successfully!', { id: toastId });
+        await refreshUser();
       } else {
-        toast.error(data.message || 'Failed to update profile', { id: toastId })
+        const data = await response?.json();
+        toast.error(data?.message || 'Failed to update profile', { id: toastId });
       }
     } catch (error) {
-      toast.error('Network error', { id: toastId })
+      toast.error('Network error', { id: toastId });
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const handlePasswordChange = async () => {
     if (passwordData.new !== passwordData.confirm) {
-      toast.error('New passwords do not match')
-      return
+      toast.error('New passwords do not match');
+      return;
     }
     if (passwordData.new.length < 6) {
-      toast.error('Password must be at least 6 characters')
-      return
+      toast.error('Password must be at least 6 characters');
+      return;
     }
     
-    setLoading(true)
-    const toastId = toast.loading('Changing password...')
+    setLoading(true);
+    const toastId = toast.loading('Changing password...');
     
     try {
       const response = await fetchWithAuth('/change-password', {
@@ -135,67 +136,67 @@ function SettingsContent() {
           currentPassword: passwordData.current,
           newPassword: passwordData.new
         })
-      })
+      });
       
-      const data = await response.json()
-      
-      if (response.ok) {
-        toast.success('Password changed successfully!', { id: toastId })
-        setShowPasswordModal(false)
-        setPasswordData({ current: '', new: '', confirm: '' })
+      if (response && response.ok) {
+        const data = await response.json();
+        toast.success('Password changed successfully!', { id: toastId });
+        setShowPasswordModal(false);
+        setPasswordData({ current: '', new: '', confirm: '' });
       } else {
-        toast.error(data.message || 'Failed to change password', { id: toastId })
+        const data = await response?.json();
+        toast.error(data?.message || 'Failed to change password', { id: toastId });
       }
     } catch (error) {
-      toast.error('Network error', { id: toastId })
+      toast.error('Network error', { id: toastId });
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const saveNotificationSettings = async () => {
-    const toastId = toast.loading('Saving notification settings...')
+    const toastId = toast.loading('Saving notification settings...');
     try {
-      await new Promise(resolve => setTimeout(resolve, 500))
-      toast.success('Notification settings saved!', { id: toastId })
+      await new Promise(resolve => setTimeout(resolve, 500));
+      toast.success('Notification settings saved!', { id: toastId });
     } catch (error) {
-      toast.error('Network error', { id: toastId })
+      toast.error('Network error', { id: toastId });
     }
-  }
+  };
 
   const saveExamSettings = async () => {
-    const toastId = toast.loading('Saving exam settings...')
+    const toastId = toast.loading('Saving exam settings...');
     try {
-      await new Promise(resolve => setTimeout(resolve, 500))
-      toast.success('Exam settings saved!', { id: toastId })
+      await new Promise(resolve => setTimeout(resolve, 500));
+      toast.success('Exam settings saved!', { id: toastId });
     } catch (error) {
-      toast.error('Network error', { id: toastId })
+      toast.error('Network error', { id: toastId });
     }
-  }
+  };
 
   const saveAppearanceSettings = async () => {
-    const toastId = toast.loading('Saving appearance settings...')
+    const toastId = toast.loading('Saving appearance settings...');
     try {
-      await new Promise(resolve => setTimeout(resolve, 500))
-      toast.success('Appearance settings saved!', { id: toastId })
+      await new Promise(resolve => setTimeout(resolve, 500));
+      toast.success('Appearance settings saved!', { id: toastId });
     } catch (error) {
-      toast.error('Network error', { id: toastId })
+      toast.error('Network error', { id: toastId });
     }
-  }
+  };
 
   const handleDeleteAccount = async () => {
-    const confirmDelete = window.confirm('Are you sure you want to delete your account? This action cannot be undone.')
-    if (!confirmDelete) return
+    const confirmDelete = window.confirm('Are you sure you want to delete your account? This action cannot be undone.');
+    if (!confirmDelete) return;
 
-    const toastId = toast.loading('Deleting account...')
+    const toastId = toast.loading('Deleting account...');
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      toast.success('Account deleted', { id: toastId })
-      setTimeout(() => { window.location.href = '/login' }, 2000)
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      toast.success('Account deleted', { id: toastId });
+      setTimeout(() => { window.location.href = '/login'; }, 2000);
     } catch (error) {
-      toast.error('Network error', { id: toastId })
+      toast.error('Network error', { id: toastId });
     }
-  }
+  };
 
   if (profileLoading) {
     return (
@@ -592,13 +593,13 @@ function SettingsContent() {
         )}
       </AnimatePresence>
     </div>
-  )
+  );
 }
 
 export default function Settings() {
   return (
-    <ProtectedRoute>
+    <StudentProtectedRoute>
       <SettingsContent />
-    </ProtectedRoute>
-  )
+    </StudentProtectedRoute>
+  );
 }
