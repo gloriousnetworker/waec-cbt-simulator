@@ -8,17 +8,16 @@ import StudentProtectedRoute from '../../components/StudentProtectedRoute';
 import toast from 'react-hot-toast';
 
 function ExamInstructionsContent() {
-  const [subjects, setSubjects] = useState([]);
+  const [availableExams, setAvailableExams] = useState([]);
   const [examProgress, setExamProgress] = useState({});
   const [loading, setLoading] = useState(true);
   const [startingExam, setStartingExam] = useState(false);
-  const [submittingAll, setSubmittingAll] = useState(false);
   const router = useRouter();
   const { user, fetchWithAuth, logout } = useStudentAuth();
 
   useEffect(() => {
     loadExamProgress();
-    fetchSubjects();
+    fetchAvailableExams();
   }, []);
 
   const loadExamProgress = () => {
@@ -28,29 +27,28 @@ function ExamInstructionsContent() {
     }
   };
 
-  const fetchSubjects = async () => {
+  const fetchAvailableExams = async () => {
     try {
-      const response = await fetchWithAuth('/subjects');
+      const response = await fetchWithAuth('/available-exams');
       if (response && response.ok) {
         const data = await response.json();
-        setSubjects(data.subjects || []);
+        setAvailableExams(data.exams || []);
       }
     } catch (error) {
-      console.error('Error fetching subjects:', error);
-      toast.error('Failed to load subjects');
+      toast.error('Failed to load exams');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleStartSubject = async (subject) => {
+  const handleStartExam = async (exam) => {
     setStartingExam(true);
-    const toastId = toast.loading(`Starting ${subject.name} exam...`);
+    const toastId = toast.loading(`Starting exam...`);
 
     try {
       const response = await fetchWithAuth('/exams/start', {
         method: 'POST',
-        body: JSON.stringify({ subjectId: subject.id })
+        body: JSON.stringify({ examSetupId: exam.id })
       });
 
       if (response && response.ok) {
@@ -58,96 +56,73 @@ function ExamInstructionsContent() {
         
         const updatedProgress = {
           ...examProgress,
-          [subject.id]: {
+          [exam.id]: {
             examId: data.exam.id,
-            subject: subject.name,
+            title: exam.title,
             status: 'in_progress',
             answers: {},
-            startTime: data.exam.startTime
+            startTime: data.exam.startTime,
+            duration: data.exam.duration
           }
         };
         
         localStorage.setItem('examProgress', JSON.stringify(updatedProgress));
         setExamProgress(updatedProgress);
         
-        toast.success(`${subject.name} exam started!`, { id: toastId });
-        router.push(`/exam-room?subjectId=${subject.id}&examId=${data.exam.id}`);
+        toast.success(`Exam started!`, { id: toastId });
+        router.push(`/exam-room?examId=${data.exam.id}&examSetupId=${exam.id}`);
       } else {
         const error = await response.json();
         toast.error(error.message || 'Failed to start exam', { id: toastId });
       }
     } catch (error) {
-      console.error('Error starting exam:', error);
       toast.error('Failed to start exam', { id: toastId });
     } finally {
       setStartingExam(false);
     }
   };
 
-  const handleContinueExam = (subjectId) => {
-    const progress = examProgress[subjectId];
-    router.push(`/exam-room?subjectId=${subjectId}&examId=${progress.examId}`);
+  const handleContinueExam = (examId, examSetupId) => {
+    const progress = examProgress[examId];
+    router.push(`/exam-room?examId=${progress.examId}&examSetupId=${examSetupId}`);
   };
 
-  const handleSubmitAllExams = async () => {
-    const inProgressSubjects = subjects.filter(s => 
-      examProgress[s.id] && examProgress[s.id].status === 'in_progress'
-    );
-
-    if (inProgressSubjects.length === 0) {
-      toast.success('All exams completed! Logging out...');
-      localStorage.removeItem('examProgress');
-      setTimeout(() => {
-        logout();
-      }, 1500);
-      return;
-    }
-
-    setSubmittingAll(true);
-    const toastId = toast.loading(`Submitting ${inProgressSubjects.length} exams...`);
-
-    try {
-      const submissionPromises = inProgressSubjects.map(async (subject) => {
-        const progress = examProgress[subject.id];
-        if (progress.examId) {
-          return fetchWithAuth(`/exams/${progress.examId}/submit`, {
-            method: 'POST'
-          });
-        }
-        return null;
-      });
-
-      const results = await Promise.all(submissionPromises);
-      
-      const allSuccessful = results.every(r => r && r.ok);
-
-      if (allSuccessful) {
-        toast.success('All exams submitted successfully! Logging out...', { id: toastId });
-        localStorage.removeItem('examProgress');
-        setTimeout(() => {
-          logout();
-        }, 2000);
-      } else {
-        toast.error('Some exams failed to submit. Please try again.', { id: toastId });
-      }
-    } catch (error) {
-      console.error('Error submitting exams:', error);
-      toast.error('Failed to submit exams. Please try again.', { id: toastId });
-    } finally {
-      setSubmittingAll(false);
-    }
+  const handleLogout = async () => {
+    await logout();
   };
 
-  const getSubjectStatus = (subjectId) => {
-    const progress = examProgress[subjectId];
+  const getExamStatus = (examId) => {
+    const progress = examProgress[examId];
     if (!progress) return 'not_started';
     return progress.status;
   };
 
-  const allCompleted = subjects.every(s => getSubjectStatus(s.id) === 'completed');
-  const completedCount = subjects.filter(s => getSubjectStatus(s.id) === 'completed').length;
-  const inProgressCount = subjects.filter(s => getSubjectStatus(s.id) === 'in_progress').length;
-  const hasStartedAny = subjects.some(s => getSubjectStatus(s.id) !== 'not_started');
+  const formatDateTime = (timestamp) => {
+    if (!timestamp) return 'N/A';
+    if (timestamp._seconds) {
+      return new Date(timestamp._seconds * 1000).toLocaleString();
+    }
+    return new Date(timestamp).toLocaleString();
+  };
+
+  const isExamActive = (exam) => {
+    const now = new Date();
+    const start = exam.startDateTime?._seconds ? new Date(exam.startDateTime._seconds * 1000) : new Date(exam.startDateTime);
+    const end = exam.endDateTime?._seconds ? new Date(exam.endDateTime._seconds * 1000) : new Date(exam.endDateTime);
+    return now >= start && now <= end;
+  };
+
+  const formatDuration = (minutes) => {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    if (hours > 0) {
+      return `${hours}h ${mins}m`;
+    }
+    return `${mins} minutes`;
+  };
+
+  const completedCount = availableExams.filter(e => getExamStatus(e.id) === 'completed').length;
+  const inProgressCount = availableExams.filter(e => getExamStatus(e.id) === 'in_progress').length;
 
   if (loading) {
     return (
@@ -179,19 +154,16 @@ function ExamInstructionsContent() {
                     Welcome, {user?.firstName} {user?.lastName}!
                   </h1>
                   <p className="text-white/90 font-playfair">
-                    {user?.class} • {user?.school || 'Kogi State College of Education'}
+                    {user?.class} • Login ID: {user?.loginId}
                   </p>
                 </div>
               </div>
-              {hasStartedAny && (
-                <button
-                  onClick={handleSubmitAllExams}
-                  disabled={submittingAll}
-                  className="px-6 py-3 bg-white text-[#039994] rounded-lg hover:bg-gray-100 transition-colors font-playfair text-sm font-medium disabled:opacity-50"
-                >
-                  {submittingAll ? 'Submitting...' : 'Submit & Logout'}
-                </button>
-              )}
+              <button
+                onClick={handleLogout}
+                className="px-4 py-2 bg-white/20 text-white rounded-lg hover:bg-white/30 transition-colors font-playfair text-sm"
+              >
+                Logout
+              </button>
             </div>
           </div>
 
@@ -202,14 +174,14 @@ function ExamInstructionsContent() {
                 <span className="text-2xl">⏱️</span>
                 <div>
                   <h3 className="font-semibold text-blue-800 mb-1">Timed Exams</h3>
-                  <p className="text-sm text-blue-600">Each subject has a specific time limit. Timer starts immediately.</p>
+                  <p className="text-sm text-blue-600">Each exam has a specific time limit. Timer starts immediately.</p>
                 </div>
               </div>
               <div className="flex items-start gap-3 p-4 bg-green-50 rounded-lg">
                 <span className="text-2xl">📝</span>
                 <div>
-                  <h3 className="font-semibold text-green-800 mb-1">One Subject at a Time</h3>
-                  <p className="text-sm text-green-600">Complete subjects in any order. Progress is saved automatically.</p>
+                  <h3 className="font-semibold text-green-800 mb-1">Answer Format</h3>
+                  <p className="text-sm text-green-600">Select answers by clicking or using keys A, B, C, D.</p>
                 </div>
               </div>
               <div className="flex items-start gap-3 p-4 bg-yellow-50 rounded-lg">
@@ -223,72 +195,90 @@ function ExamInstructionsContent() {
                 <span className="text-2xl">💾</span>
                 <div>
                   <h3 className="font-semibold text-purple-800 mb-1">Auto-Save</h3>
-                  <p className="text-sm text-purple-600">Answers are saved automatically every minute.</p>
+                  <p className="text-sm text-purple-600">Answers are saved automatically.</p>
                 </div>
               </div>
             </div>
 
             <div className="mb-8">
               <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold text-[#1E1E1E] font-playfair">Your Subjects</h2>
+                <h2 className="text-xl font-bold text-[#1E1E1E] font-playfair">Your Exams</h2>
                 <div className="text-sm bg-gray-100 px-3 py-1 rounded-full">
-                  Progress: {completedCount}/{subjects.length} completed • {inProgressCount} in progress
+                  {completedCount} completed • {inProgressCount} in progress
                 </div>
               </div>
               
               <div className="space-y-4">
-                {subjects.map((subject) => {
-                  const status = getSubjectStatus(subject.id);
+                {availableExams.map((exam) => {
+                  const status = getExamStatus(exam.id);
+                  const isActive = isExamActive(exam);
                   const statusColors = {
-                    not_started: 'border-gray-200 hover:border-[#039994]',
+                    not_started: isActive ? 'border-gray-200 hover:border-[#039994]' : 'border-gray-200 bg-gray-50 opacity-60',
                     in_progress: 'border-yellow-400 bg-yellow-50',
                     completed: 'border-green-400 bg-green-50'
                   };
                   
+                  const totalQuestions = exam.subjects?.reduce((sum, s) => sum + (s.questionCount || 0), 0) || 0;
+                  const totalMarks = exam.subjects?.reduce((sum, s) => sum + (s.totalMarks || 0), 0) || 0;
+                  
                   return (
                     <motion.div
-                      key={subject.id}
+                      key={exam.id}
                       initial={{ opacity: 0, x: -20 }}
                       animate={{ opacity: 1, x: 0 }}
                       className={`border-2 rounded-xl p-6 transition-all ${statusColors[status]}`}
                     >
-                      <div className="flex items-center justify-between">
+                      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                         <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-2">
-                            <h3 className="text-lg font-bold text-[#1E1E1E] font-playfair">{subject.name}</h3>
+                          <div className="flex items-center gap-3 mb-2 flex-wrap">
+                            <h3 className="text-lg font-bold text-[#1E1E1E] font-playfair">{exam.title}</h3>
                             <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                               status === 'completed' ? 'bg-green-100 text-green-700' :
                               status === 'in_progress' ? 'bg-yellow-100 text-yellow-700' :
-                              'bg-gray-100 text-gray-700'
+                              isActive ? 'bg-gray-100 text-gray-700' : 'bg-red-100 text-red-700'
                             }`}>
                               {status === 'completed' ? '✓ Completed' : 
                                status === 'in_progress' ? '⏳ In Progress' : 
-                               '⏺️ Not Started'}
+                               isActive ? '⏺️ Available' : '⏰ Expired'}
                             </span>
                           </div>
-                          <p className="text-sm text-[#626060] mb-2">
-                            Duration: {Math.floor(subject.duration / 60)}h {subject.duration % 60}m • Questions: {subject.questionCount || 50}
+                          
+                          <p className="text-sm text-[#626060] mb-3">
+                            {exam.class} • {totalQuestions} questions • Total Marks: {totalMarks} • Pass Mark: {exam.passMark}% • Duration: {formatDuration(exam.duration)}
                           </p>
+                          
+                          <div className="grid grid-cols-2 gap-4 text-xs text-[#626060]">
+                            <div>
+                              <span className="font-[600]">Starts:</span> {formatDateTime(exam.startDateTime)}
+                            </div>
+                            <div>
+                              <span className="font-[600]">Ends:</span> {formatDateTime(exam.endDateTime)}
+                            </div>
+                          </div>
                         </div>
                         
                         {status === 'completed' ? (
                           <div className="text-green-600 text-2xl">✓</div>
                         ) : status === 'in_progress' ? (
                           <button
-                            onClick={() => handleContinueExam(subject.id)}
-                            disabled={startingExam || submittingAll}
-                            className="px-6 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors font-playfair text-sm font-medium disabled:opacity-50"
+                            onClick={() => handleContinueExam(exam.id, exam.id)}
+                            disabled={startingExam}
+                            className="px-6 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors font-playfair text-sm font-medium disabled:opacity-50 whitespace-nowrap"
                           >
                             Continue Exam
                           </button>
-                        ) : (
+                        ) : isActive ? (
                           <button
-                            onClick={() => handleStartSubject(subject)}
-                            disabled={startingExam || submittingAll}
-                            className="px-6 py-2 bg-[#039994] text-white rounded-lg hover:bg-[#02857f] transition-colors font-playfair text-sm font-medium disabled:opacity-50"
+                            onClick={() => handleStartExam(exam)}
+                            disabled={startingExam}
+                            className="px-6 py-2 bg-[#039994] text-white rounded-lg hover:bg-[#02857f] transition-colors font-playfair text-sm font-medium disabled:opacity-50 whitespace-nowrap"
                           >
                             Start Exam
                           </button>
+                        ) : (
+                          <div className="text-red-500 text-sm font-medium whitespace-nowrap">
+                            Exam Period Ended
+                          </div>
                         )}
                       </div>
                     </motion.div>
@@ -297,22 +287,18 @@ function ExamInstructionsContent() {
               </div>
             </div>
 
-            {allCompleted && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="bg-green-50 border border-green-200 rounded-xl p-6 text-center"
-              >
-                <div className="text-5xl mb-4">🎉</div>
-                <h3 className="text-xl font-bold text-green-800 mb-2">Congratulations!</h3>
-                <p className="text-green-600 mb-4">You have completed all your exams. Logging out...</p>
+            {availableExams.length === 0 && (
+              <div className="text-center py-12">
+                <div className="text-5xl mb-4">📚</div>
+                <h3 className="text-xl font-bold text-[#1E1E1E] mb-2 font-playfair">No Exams Available</h3>
+                <p className="text-[#626060] mb-4">You don't have any active exams at the moment.</p>
                 <button
-                  onClick={logout}
-                  className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-playfair"
+                  onClick={handleLogout}
+                  className="px-6 py-3 bg-[#039994] text-white rounded-lg hover:bg-[#02857f] transition-colors font-playfair"
                 >
                   Logout
                 </button>
-              </motion.div>
+              </div>
             )}
           </div>
         </motion.div>

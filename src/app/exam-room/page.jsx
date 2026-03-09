@@ -50,7 +50,6 @@ const examRoomQuestionDotCurrent = "bg-[#039994] text-white";
 const examRoomActions = "space-y-3";
 const examRoomActionButton = "w-full py-3 rounded-lg font-playfair text-[14px] leading-[100%] font-[600] transition-all";
 const examRoomSubmitButton = "bg-[#DC2626] text-white hover:bg-[#B91C1C]";
-const examRoomFinishButton = "bg-[#10B981] text-white hover:bg-[#059669]";
 const examWarningModal = "fixed inset-0 bg-black/50 flex items-center justify-center z-50";
 const examWarningCard = "bg-white rounded-xl p-6 max-w-md mx-4";
 const examWarningIcon = "text-5xl mb-4 text-center";
@@ -68,38 +67,35 @@ const modalButtonDanger = "flex-1 py-3 bg-[#DC2626] text-white rounded-lg font-p
 function ExamRoomContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const subjectId = searchParams.get('subjectId');
   const examId = searchParams.get('examId');
-  const subjectName = searchParams.get('subject');
-  const { fetchWithAuth, saveOfflineData, getOfflineData } = useStudentAuth();
+  const examSetupId = searchParams.get('examSetupId');
+  const { user, fetchWithAuth, saveOfflineData, getOfflineData } = useStudentAuth();
 
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState({});
   const [timeLeft, setTimeLeft] = useState(0);
   const [questions, setQuestions] = useState([]);
+  const [examTitle, setExamTitle] = useState('');
   const [showWarning, setShowWarning] = useState(false);
   const [showSubmitModal, setShowSubmitModal] = useState(false);
   const [warningCount, setWarningCount] = useState(0);
   const [lastViolationType, setLastViolationType] = useState('');
   const [examSubmitted, setExamSubmitted] = useState(false);
-  const [isFullscreen, setIsFullscreen] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [tabSwitches, setTabSwitches] = useState(0);
   const [totalMarks, setTotalMarks] = useState(0);
-  const [duration, setDuration] = useState(0);
+  const [startTime, setStartTime] = useState(null);
   const violationTimeoutRef = useRef(null);
-  const toastShownRef = useRef(false);
   const autoSaveIntervalRef = useRef(null);
+  const toastShownRef = useRef(false);
 
   useEffect(() => {
-    if (!examId || !subjectId) {
+    if (!examId || !examSetupId) {
       toast.error('Invalid exam session');
       router.push('/exam-instructions');
       return;
     }
 
     fetchExam();
-
     enterFullscreen();
 
     return () => {
@@ -113,7 +109,7 @@ function ExamRoomContent() {
         clearInterval(autoSaveIntervalRef.current);
       }
     };
-  }, [examId, subjectId]);
+  }, [examId]);
 
   const fetchExam = async () => {
     setLoading(true);
@@ -123,9 +119,10 @@ function ExamRoomContent() {
       if (offlineData) {
         setQuestions(offlineData.questions || []);
         setAnswers(offlineData.answers || {});
-        setDuration(offlineData.duration || 0);
-        setTimeLeft(offlineData.timeLeft || offlineData.duration * 60 || 0);
+        setTimeLeft(offlineData.timeLeft || 0);
+        setExamTitle(offlineData.title || '');
         setTotalMarks(offlineData.totalMarks || 0);
+        setStartTime(offlineData.startTime);
         setLoading(false);
         return;
       }
@@ -136,16 +133,33 @@ function ExamRoomContent() {
         const data = await response.json();
         setQuestions(data.exam.questions || []);
         setAnswers(data.exam.answers || {});
-        setDuration(data.exam.duration || 0);
-        setTimeLeft(data.exam.duration * 60 || 0);
+        setExamTitle(data.exam.title || '');
+        
+        const start = data.exam.startTime ? new Date(data.exam.startTime) : new Date();
+        const duration = data.exam.duration || 120;
+        const endTime = new Date(start.getTime() + duration * 60 * 1000);
+        const now = new Date();
+        const remaining = Math.max(0, Math.floor((endTime - now) / 1000));
+        
+        setTimeLeft(remaining);
+        setStartTime(start);
+        
         const total = data.exam.questions.reduce((sum, q) => sum + (q.marks || 1), 0);
         setTotalMarks(total);
+        
+        saveOfflineData(`exam_${examId}`, {
+          questions: data.exam.questions,
+          answers: data.exam.answers || {},
+          timeLeft: remaining,
+          title: data.exam.title,
+          totalMarks: total,
+          startTime: start
+        });
       } else {
         toast.error('Failed to load exam');
         router.push('/exam-instructions');
       }
     } catch (error) {
-      console.error('Error loading exam:', error);
       toast.error('Failed to load exam');
       router.push('/exam-instructions');
     } finally {
@@ -169,31 +183,30 @@ function ExamRoomContent() {
     try {
       const answerEntries = Object.entries(answers);
       for (const [questionId, index] of answerEntries) {
-        const answer = String.fromCharCode(65 + index);
+        const optionLetter = String.fromCharCode(65 + index);
+        const optionText = questions.find(q => q.id === questionId)?.options[index] || optionLetter;
+        
         await fetchWithAuth(`/exams/${examId}/save-answer`, {
           method: 'POST',
-          body: JSON.stringify({ questionId, answer })
+          body: JSON.stringify({ questionId, answer: optionText })
         }).catch(() => {});
       }
 
       saveOfflineData(`exam_${examId}`, {
         questions,
         answers,
-        duration,
-        timeLeft: timeLeft,
-        totalMarks
+        timeLeft,
+        title: examTitle,
+        totalMarks,
+        startTime
       });
-    } catch (error) {
-      console.error('Error saving answers:', error);
-    }
+    } catch (error) {}
   };
 
   const enterFullscreen = () => {
     const elem = document.documentElement;
     if (elem.requestFullscreen) {
-      elem.requestFullscreen().then(() => {
-        setIsFullscreen(true);
-      }).catch(() => {});
+      elem.requestFullscreen().catch(() => {});
     }
   };
 
@@ -223,15 +236,11 @@ function ExamRoomContent() {
       
       if (response && response.ok) {
         const data = await response.json();
-        setTabSwitches(data.tabSwitches);
-        
         if (data.autoSubmitted) {
           handleAutoSubmit('Auto-submitted due to multiple tab switches');
         }
       }
-    } catch (error) {
-      console.error('Error recording tab switch:', error);
-    }
+    } catch (error) {}
   };
 
   const handleViolation = useCallback((type) => {
@@ -249,7 +258,7 @@ function ExamRoomContent() {
 
       if (newCount >= 3) {
         violationTimeoutRef.current = setTimeout(() => {
-          handleAutoSubmit(`Malpractice detected after 3 warnings: ${type}`);
+          handleAutoSubmit(`Malpractice detected: ${type}`);
         }, 100);
       }
 
@@ -288,7 +297,17 @@ function ExamRoomContent() {
     if (e.key === 'F12' || (e.ctrlKey && e.shiftKey && e.key === 'I')) {
       e.preventDefault();
     }
-  }, []);
+    
+    if (!examSubmitted && questions.length > 0) {
+      const key = e.key.toUpperCase();
+      if (['A', 'B', 'C', 'D'].includes(key)) {
+        const index = key.charCodeAt(0) - 65;
+        if (index < (questions[currentQuestion]?.options.length || 0)) {
+          handleAnswerSelect(questions[currentQuestion].id, index);
+        }
+      }
+    }
+  }, [examSubmitted, questions, currentQuestion]);
 
   useEffect(() => {
     document.addEventListener('visibilitychange', handleVisibilityChange);
@@ -324,9 +343,11 @@ function ExamRoomContent() {
       if (response && response.ok) {
         const data = await response.json();
         
+        localStorage.removeItem(`offline_exam_${examId}`);
+        
         const examProgress = JSON.parse(localStorage.getItem('examProgress') || '{}');
-        examProgress[subjectId] = {
-          ...examProgress[subjectId],
+        examProgress[examSetupId] = {
+          ...examProgress[examSetupId],
           status: 'completed',
           score: data.exam.score,
           percentage: data.exam.percentage
@@ -349,7 +370,6 @@ function ExamRoomContent() {
         toast.error('Failed to submit exam');
       }
     } catch (error) {
-      console.error('Error submitting exam:', error);
       toast.error('Failed to submit exam');
     }
   };
@@ -362,19 +382,20 @@ function ExamRoomContent() {
       };
       
       if (examId) {
-        const answer = String.fromCharCode(65 + optionIndex);
+        const optionText = questions.find(q => q.id === questionId)?.options[optionIndex] || String.fromCharCode(65 + optionIndex);
         fetchWithAuth(`/exams/${examId}/save-answer`, {
           method: 'POST',
-          body: JSON.stringify({ questionId, answer })
+          body: JSON.stringify({ questionId, answer: optionText })
         }).catch(() => {});
       }
       
       saveOfflineData(`exam_${examId}`, {
         questions,
         answers: newAnswers,
-        duration,
         timeLeft,
-        totalMarks
+        title: examTitle,
+        totalMarks,
+        startTime
       });
       
       return newAnswers;
@@ -406,6 +427,7 @@ function ExamRoomContent() {
   };
 
   const formatTime = (seconds) => {
+    if (isNaN(seconds) || seconds < 0) return "00:00:00";
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
     const secs = seconds % 60;
@@ -447,7 +469,7 @@ function ExamRoomContent() {
             No Questions Available
           </h2>
           <p className="text-[14px] leading-[150%] font-[400] text-[#626060] mb-6 font-playfair">
-            No questions available for this subject.
+            No questions available for this exam.
           </p>
           <button
             onClick={() => router.push('/exam-instructions')}
@@ -469,8 +491,11 @@ function ExamRoomContent() {
         <div className={examRoomHeaderInner}>
           <div>
             <h1 className={examRoomSubject}>
-              {subjectName || 'Exam'}
+              {examTitle}
             </h1>
+            <p className="text-[11px] leading-[100%] font-[400] text-[#626060] font-playfair mt-1">
+              Student: {user?.firstName} {user?.lastName} • {user?.loginId} • {user?.class}
+            </p>
             <p className="text-[11px] leading-[100%] font-[400] text-[#626060] font-playfair mt-1">
               Strict Mode • {warningCount} warnings
               {warningCount > 0 && (
@@ -507,26 +532,33 @@ function ExamRoomContent() {
               <p className={examRoomQuestionText}>{currentQ.question}</p>
 
               <div className={examRoomOptionsGrid}>
-                {currentQ.options.map((option, index) => (
-                  <div
-                    key={index}
-                    onClick={() => handleAnswerSelect(currentQ.id, index)}
-                    className={`${examRoomOption} ${
-                      answers[currentQ.id] === index
-                        ? examRoomOptionActive
-                        : examRoomOptionInactive
-                    }`}
-                  >
-                    <div className={`${examRoomOptionLabel} ${
-                      answers[currentQ.id] === index
-                        ? examRoomOptionLabelActive
-                        : examRoomOptionLabelInactive
-                    }`}>
-                      {String.fromCharCode(65 + index)}
+                {currentQ.options.map((option, index) => {
+                  const letter = String.fromCharCode(65 + index);
+                  return (
+                    <div
+                      key={index}
+                      onClick={() => handleAnswerSelect(currentQ.id, index)}
+                      className={`${examRoomOption} ${
+                        answers[currentQ.id] === index
+                          ? examRoomOptionActive
+                          : examRoomOptionInactive
+                      }`}
+                    >
+                      <div className={`${examRoomOptionLabel} ${
+                        answers[currentQ.id] === index
+                          ? examRoomOptionLabelActive
+                          : examRoomOptionLabelInactive
+                      }`}>
+                        {letter}
+                      </div>
+                      <span className={examRoomOptionText}>{option}</span>
                     </div>
-                    <span className={examRoomOptionText}>{option}</span>
-                  </div>
-                ))}
+                  );
+                })}
+              </div>
+              
+              <div className="mt-4 text-[11px] text-[#626060] font-playfair border-t pt-4">
+                <span className="font-[600]">Keyboard Shortcuts:</span> Press A, B, C, D keys to select answers
               </div>
             </div>
 
@@ -594,12 +626,6 @@ function ExamRoomContent() {
               className={`${examRoomActionButton} ${examRoomSubmitButton}`}
             >
               Submit Exam
-            </button>
-            <button
-              onClick={() => router.push('/exam-instructions')}
-              className={`${examRoomActionButton} bg-gray-500 text-white hover:bg-gray-600`}
-            >
-              Back to Subjects
             </button>
           </div>
         </div>

@@ -1,6 +1,5 @@
-// login/page.jsx
+// app/login/page.jsx
 'use client'
-
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -65,7 +64,6 @@ export default function StudentLoginPage() {
         setLoading(false)
       }
     } catch (error) {
-      console.error('Login error:', error)
       toast.error(error.message || 'Authentication failed. Please try again.', { id: loginToast })
       setLoading(false)
     }
@@ -206,7 +204,7 @@ export default function StudentLoginPage() {
           >
             <div className="mt-4 px-3 py-2 bg-[#E6FFFA] border-l-4 border-[#039994] rounded-r-md mb-4">
               <p className="text-[10px] leading-[140%] font-[400] text-[#036B67] font-playfair">
-                <strong>Demo Accounts:</strong> Use NIN: 12345678941 / Password: 123456 or Login ID: king.doe / Password: 123456
+                <strong>Demo Accounts:</strong> Use NIN: 12345678941 / Password: 123456 or Login ID: alice.johnson / Password: 654321
               </p>
             </div>
 
@@ -239,12 +237,6 @@ export default function StudentLoginPage() {
           </motion.div>
         </motion.div>
       </div>
-
-      <style jsx global>{`
-        input::placeholder {
-          color: #B0B0B0 !important;
-        }
-      `}</style>
     </>
   )
 }
