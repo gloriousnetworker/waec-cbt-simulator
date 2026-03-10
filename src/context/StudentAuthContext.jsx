@@ -30,7 +30,7 @@ export function StudentAuthProvider({ children }) {
 
   const checkAuth = useCallback(async () => {
     try {
-      const response = await fetch(`${BASE_URL}/api/student/me`, {
+      const response = await fetch(`${BASE_URL}/api/auth/me`, {
         method: 'GET',
         credentials: 'include',
         cache: 'no-store'
@@ -38,7 +38,8 @@ export function StudentAuthProvider({ children }) {
 
       if (response.ok) {
         const data = await response.json();
-        setUser(data.student);
+        // The response has a 'user' object that contains the student data
+        setUser(data.user);
         return true;
       } else {
         setUser(null);
@@ -79,20 +80,31 @@ export function StudentAuthProvider({ children }) {
       if (response.ok && data.user) {
         setUser(data.user);
         
-        // Use window.location for production to ensure correct routing
-        if (data.examMode) {
-          // Check if we're in production
-          if (window.location.hostname !== 'localhost') {
-            window.location.href = '/exam-instructions';
+        // Verify auth by checking /api/auth/me immediately
+        const meCheck = await fetch(`${BASE_URL}/api/auth/me`, {
+          credentials: 'include'
+        });
+        
+        if (meCheck.ok) {
+          const meData = await meCheck.json();
+          setUser(meData.user);
+          
+          if (data.examMode) {
+            if (window.location.hostname !== 'localhost') {
+              window.location.href = '/exam-instructions';
+            } else {
+              router.push('/exam-instructions');
+            }
           } else {
-            router.push('/exam-instructions');
+            if (window.location.hostname !== 'localhost') {
+              window.location.href = '/dashboard';
+            } else {
+              router.push('/dashboard');
+            }
           }
         } else {
-          if (window.location.hostname !== 'localhost') {
-            window.location.href = '/dashboard';
-          } else {
-            router.push('/dashboard');
-          }
+          console.error('Auth check failed after login');
+          toast.error('Authentication verification failed. Please try again.');
         }
         
         return { 
@@ -120,7 +132,7 @@ export function StudentAuthProvider({ children }) {
 
   const logout = useCallback(async () => {
     try {
-      await fetch(`${BASE_URL}/api/student/logout`, {
+      await fetch(`${BASE_URL}/api/auth/logout`, {
         method: 'POST',
         credentials: 'include',
       });
@@ -156,7 +168,7 @@ export function StudentAuthProvider({ children }) {
         if (response.status === 401 && retryCount < maxRetries) {
           retryCount++;
           
-          const refreshResponse = await fetch(`${BASE_URL}/api/student/refresh`, {
+          const refreshResponse = await fetch(`${BASE_URL}/api/auth/refresh`, {
             method: 'POST',
             credentials: 'include',
           });
