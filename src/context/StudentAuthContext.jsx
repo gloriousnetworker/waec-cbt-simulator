@@ -79,10 +79,20 @@ export function StudentAuthProvider({ children }) {
       if (response.ok && data.user) {
         setUser(data.user);
         
+        // Use window.location for production to ensure correct routing
         if (data.examMode) {
-          router.replace('/exam-instructions');
+          // Check if we're in production
+          if (window.location.hostname !== 'localhost') {
+            window.location.href = '/exam-instructions';
+          } else {
+            router.push('/exam-instructions');
+          }
         } else {
-          router.replace('/dashboard');
+          if (window.location.hostname !== 'localhost') {
+            window.location.href = '/dashboard';
+          } else {
+            router.push('/dashboard');
+          }
         }
         
         return { 
@@ -232,4 +242,4 @@ export const useStudentAuth = () => {
     throw new Error('useStudentAuth must be used within a StudentAuthProvider');
   }
   return context;
-}
+};
