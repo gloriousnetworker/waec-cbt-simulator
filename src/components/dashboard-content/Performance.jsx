@@ -47,21 +47,74 @@ export default function Performance() {
     setLoading(true);
     try {
       // First get local storage history for immediate display
-      const localHistory = JSON.parse(localStorage.getItem('practice_history') || '[]');
+      const localPracticeHistory = JSON.parse(localStorage.getItem('practice_history') || '[]');
+      const localExamHistory = JSON.parse(localStorage.getItem('exam_history') || '[]');
       
       if (!isOffline) {
-        // Fetch from API
-        const [practiceRes, statsRes] = await Promise.all([
-          fetchWithAuth('/practice/history?limit=100'),
-          fetchWithAuth('/practice/stats')
+        // Fetch from APIs
+        const [examHistoryRes, practiceRes, statsRes] = await Promise.all([
+          fetchWithAuth('/student/history'), // Fetch exam history
+          fetchWithAuth('/practice/history?limit=100'), // Fetch practice history
+          fetchWithAuth('/practice/stats') // Fetch practice stats
         ]);
 
-        let apiPractices = [];
-        let apiStats = null;
+        // Handle Exam History
+        if (examHistoryRes?.ok) {
+          const examData = await examHistoryRes.json();
+          const apiExams = examData.exams || [];
+          
+          // Format API exams to match our display format
+          const formattedApiExams = apiExams.map(exam => {
+            // Handle multi-subject exams - take the first subject for display
+            const mainSubject = exam.subjects && exam.subjects.length > 0 
+              ? exam.subjects[0] 
+              : { subjectName: 'General', questionCount: exam.questionCount || 0 };
+            
+            // If there are multiple subjects, create a combined subject name
+            const subjectName = exam.subjects && exam.subjects.length > 1
+              ? `${exam.subjects.length} Subjects Combined`
+              : mainSubject.subjectName || 'General';
+            
+            return {
+              id: exam.id,
+              examSetupId: exam.examSetupId,
+              subject: subjectName,
+              subjectName: subjectName,
+              subjects: exam.subjects || [], // Keep full subjects array for detailed view
+              score: exam.score || 0,
+              totalMarks: exam.totalMarks || 0,
+              percentage: exam.percentage || 0,
+              date: exam.date?._seconds ? new Date(exam.date._seconds * 1000).toISOString() : new Date().toISOString(),
+              duration: exam.duration,
+              questionCount: exam.questionCount || 0,
+              status: exam.status || 'completed',
+              type: 'exam',
+              isMockExam: true, // Mark as real exam
+              source: 'api'
+            };
+          });
+          
+          // Merge with local exam history, avoiding duplicates
+          const mergedExams = [...formattedApiExams];
+          localExamHistory.forEach(local => {
+            if (!mergedExams.some(api => api.id === local.id)) {
+              mergedExams.push(local);
+            }
+          });
+          
+          setExamHistory(mergedExams);
+          
+          // Save to localStorage for offline access
+          localStorage.setItem('exam_history', JSON.stringify(mergedExams));
+        } else {
+          // If API fails, use local history
+          setExamHistory(localExamHistory);
+        }
 
+        // Handle Practice History
         if (practiceRes?.ok) {
           const practiceData = await practiceRes.json();
-          apiPractices = practiceData.practices || [];
+          const apiPractices = practiceData.practices || [];
           
           // Format API practices to match our local format
           const formattedApiPractices = apiPractices.map(p => ({
@@ -79,50 +132,50 @@ export default function Performance() {
             isTimedTest: p.isTimedTest,
             isMockExam: p.isMockExam || false,
             studentClass: p.studentClass,
+            questions: p.questions || [],
+            type: 'practice',
             source: 'api'
           }));
           
           // Merge with local history, avoiding duplicates
           const mergedPractices = [...formattedApiPractices];
-          localHistory.forEach(local => {
+          localPracticeHistory.forEach(local => {
             if (!mergedPractices.some(api => api.id === local.id)) {
               mergedPractices.push(local);
             }
           });
           
           setPracticeHistory(mergedPractices);
+          
+          // Save to localStorage for offline access
+          localStorage.setItem('practice_history', JSON.stringify(mergedPractices));
         } else {
           // If API fails, use local history
-          setPracticeHistory(localHistory);
+          setPracticeHistory(localPracticeHistory);
         }
 
+        // Handle Practice Stats
         if (statsRes?.ok) {
           const statsData = await statsRes.json();
           setPracticeStats(statsData.stats);
         }
-
-        // Get exam history from localStorage (if any)
-        const localExams = JSON.parse(localStorage.getItem('exam_history') || '[]');
-        setExamHistory(localExams);
       } else {
         // Offline mode - use cached data
-        const cachedExams = getOfflineData('examHistory');
-        if (cachedExams) setExamHistory(cachedExams);
+        const cachedExams = getOfflineData('examHistory') || localExamHistory;
+        setExamHistory(cachedExams);
         
-        const cachedPractices = getOfflineData('practiceHistory');
-        if (cachedPractices) {
-          setPracticeHistory(cachedPractices);
-        } else {
-          setPracticeHistory(localHistory);
-        }
+        const cachedPractices = getOfflineData('practiceHistory') || localPracticeHistory;
+        setPracticeHistory(cachedPractices);
       }
     } catch (error) {
       console.error('Error fetching performance data:', error);
       toast.error('Failed to load performance data');
       
       // Fallback to local storage
-      const localHistory = JSON.parse(localStorage.getItem('practice_history') || '[]');
-      setPracticeHistory(localHistory);
+      const localPracticeHistory = JSON.parse(localStorage.getItem('practice_history') || '[]');
+      const localExamHistory = JSON.parse(localStorage.getItem('exam_history') || '[]');
+      setPracticeHistory(localPracticeHistory);
+      setExamHistory(localExamHistory);
     } finally {
       setLoading(false);
     }
@@ -186,6 +239,26 @@ export default function Performance() {
     router.push('/dashboard/practice-review');
   };
 
+  const handleViewExamDetails = (exam) => {
+    // Store exam details in localStorage for review
+    const examDetails = {
+      id: exam.id,
+      examSetupId: exam.examSetupId,
+      subject: exam.subject,
+      subjects: exam.subjects,
+      score: exam.score,
+      totalMarks: exam.totalMarks,
+      percentage: exam.percentage,
+      date: exam.date,
+      duration: exam.duration,
+      questionCount: exam.questionCount
+    };
+    localStorage.setItem('exam_review', JSON.stringify(examDetails));
+    // You can navigate to an exam review page if you have one
+    // router.push('/dashboard/exam-review');
+    toast.success('Exam details loaded');
+  };
+
   const getFilteredResults = () => {
     const now = new Date();
     const allResults = [
@@ -216,24 +289,67 @@ export default function Performance() {
   const getSubjectPerformance = () => {
     const subjectStats = {};
     
+    // Process exam history
     examHistory.forEach(result => {
-      if (!result.subject) return;
-      if (!subjectStats[result.subject]) {
-        subjectStats[result.subject] = { 
-          total: 0, 
-          count: 0, 
-          lastScore: 0, 
-          icon: subjectIcons[result.subject] || '📘',
-          examAttempts: 0,
-          practiceAttempts: 0
-        };
+      if (result.subjects && result.subjects.length > 0) {
+        // Handle multi-subject exams
+        result.subjects.forEach(subject => {
+          const subjectName = subject.subjectName;
+          if (!subjectName) return;
+          
+          if (!subjectStats[subjectName]) {
+            subjectStats[subjectName] = { 
+              total: 0, 
+              count: 0, 
+              lastScore: 0, 
+              icon: subjectIcons[subjectName] || '📘',
+              examAttempts: 0,
+              practiceAttempts: 0,
+              totalPossibleMarks: 0,
+              totalAchievedMarks: 0
+            };
+          }
+          
+          // For subjects in multi-subject exams, we need to calculate individual scores
+          // This is simplified - you might need to adjust based on your data structure
+          const subjectScore = (result.score / result.subjects.length) || 0;
+          const subjectTotal = (result.totalMarks / result.subjects.length) || 0;
+          const subjectPercentage = subjectTotal > 0 ? (subjectScore / subjectTotal) * 100 : result.percentage;
+          
+          subjectStats[subjectName].total += subjectPercentage || 0;
+          subjectStats[subjectName].count++;
+          subjectStats[subjectName].lastScore = subjectPercentage || 0;
+          subjectStats[subjectName].examAttempts++;
+          subjectStats[subjectName].totalAchievedMarks += subjectScore;
+          subjectStats[subjectName].totalPossibleMarks += subjectTotal;
+        });
+      } else {
+        // Single subject exam
+        const subjectName = result.subject;
+        if (!subjectName) return;
+        
+        if (!subjectStats[subjectName]) {
+          subjectStats[subjectName] = { 
+            total: 0, 
+            count: 0, 
+            lastScore: 0, 
+            icon: subjectIcons[subjectName] || '📘',
+            examAttempts: 0,
+            practiceAttempts: 0,
+            totalPossibleMarks: 0,
+            totalAchievedMarks: 0
+          };
+        }
+        subjectStats[subjectName].total += result.percentage || 0;
+        subjectStats[subjectName].count++;
+        subjectStats[subjectName].lastScore = result.percentage || 0;
+        subjectStats[subjectName].examAttempts++;
+        subjectStats[subjectName].totalAchievedMarks += result.score || 0;
+        subjectStats[subjectName].totalPossibleMarks += result.totalMarks || 0;
       }
-      subjectStats[result.subject].total += result.percentage || 0;
-      subjectStats[result.subject].count++;
-      subjectStats[result.subject].lastScore = result.percentage || 0;
-      subjectStats[result.subject].examAttempts++;
     });
 
+    // Process practice history
     practiceHistory.forEach(practice => {
       if (!practice.subjectName) return;
       if (!subjectStats[practice.subjectName]) {
@@ -243,7 +359,9 @@ export default function Performance() {
           lastScore: 0, 
           icon: subjectIcons[practice.subjectName] || '📘',
           examAttempts: 0,
-          practiceAttempts: 0
+          practiceAttempts: 0,
+          totalPossibleMarks: 0,
+          totalAchievedMarks: 0
         };
       }
       subjectStats[practice.subjectName].total += practice.percentage || 0;
@@ -259,7 +377,9 @@ export default function Performance() {
       attempts: data.count,
       examAttempts: data.examAttempts,
       practiceAttempts: data.practiceAttempts,
-      icon: data.icon
+      icon: data.icon,
+      totalAchievedMarks: data.totalAchievedMarks,
+      totalPossibleMarks: data.totalPossibleMarks
     })).sort((a, b) => b.avgScore - a.avgScore);
   };
 
@@ -380,7 +500,7 @@ export default function Performance() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
           <h2 className="text-xl font-bold text-[#1E1E1E] mb-6 font-playfair">Subject Performance</h2>
-          <div className="space-y-4">
+          <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
             {subjectPerformance.length > 0 ? (
               subjectPerformance.map((subject, index) => (
                 <div key={index} className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg">
@@ -439,6 +559,7 @@ export default function Performance() {
                       <div className="text-xs text-[#626060] font-playfair">
                         {formattedDate} • {result.type === 'practice' ? 'Practice' : 'Exam'}
                         {result.isMockExam && ' • Mock Exam'}
+                        {result.subjects && result.subjects.length > 1 && ' • Combined Exam'}
                       </div>
                     </div>
                   </div>
@@ -448,9 +569,9 @@ export default function Performance() {
                       score >= 50 ? 'text-yellow-600' : 
                       'text-red-600'
                     }`}>
-                      {score}%
+                      {typeof score === 'number' ? score.toFixed(1) : score}%
                     </div>
-                    {result.type === 'practice' && (
+                    {result.type === 'practice' ? (
                       <>
                         <button
                           onClick={() => handleReviewPractice(result)}
@@ -468,6 +589,13 @@ export default function Performance() {
                           Delete
                         </button>
                       </>
+                    ) : (
+                      <button
+                        onClick={() => handleViewExamDetails(result)}
+                        className="text-xs text-[#039994] hover:underline font-playfair"
+                      >
+                        View Details
+                      </button>
                     )}
                   </div>
                 </div>
@@ -482,6 +610,80 @@ export default function Performance() {
         </div>
       </div>
 
+      {/* Exam History Section */}
+      {examHistory.length > 0 && (
+        <div className="bg-gradient-to-r from-[#DBEAFE] to-[#BFDBFE] rounded-xl p-6 border border-blue-300 mb-6">
+          <h2 className="text-lg font-bold text-blue-800 mb-4 font-playfair flex items-center gap-2">
+            <span>📋</span> Exam History
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {examHistory.slice(0, 6).map((exam, idx) => {
+              const subjectName = exam.subject || 
+                (exam.subjects && exam.subjects.length > 0 ? 
+                  (exam.subjects.length > 1 ? `${exam.subjects.length} Subjects` : exam.subjects[0].subjectName) 
+                  : 'General');
+              
+              return (
+                <div key={exam.id || idx} className="bg-white rounded-lg p-4">
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <p className="font-medium text-[#1E1E1E] font-playfair">{subjectName}</p>
+                      <p className="text-xs text-[#626060] font-playfair">
+                        {formatDate(exam.date)}
+                      </p>
+                    </div>
+                    <span className={`px-2 py-1 rounded text-xs font-bold ${
+                      exam.percentage >= 70 ? 'bg-green-100 text-green-700' : 
+                      exam.percentage >= 50 ? 'bg-yellow-100 text-yellow-700' : 
+                      'bg-red-100 text-red-700'
+                    }`}>
+                      {typeof exam.percentage === 'number' ? exam.percentage.toFixed(1) : exam.percentage}%
+                    </span>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-2 text-center text-xs mb-3">
+                    <div>
+                      <span className="block font-bold text-green-600">{exam.score || 0}</span>
+                      <span className="text-[#626060]">Score</span>
+                    </div>
+                    <div>
+                      <span className="block font-bold text-blue-600">{exam.totalMarks || 0}</span>
+                      <span className="text-[#626060]">Total</span>
+                    </div>
+                  </div>
+                  
+                  {exam.subjects && exam.subjects.length > 0 && (
+                    <div className="mb-3">
+                      <p className="text-xs text-[#626060] mb-1 font-playfair">Subjects:</p>
+                      <div className="flex flex-wrap gap-1">
+                        {exam.subjects.map((subject, i) => (
+                          <span key={i} className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded">
+                            {subject.subjectName}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  <button
+                    onClick={() => handleViewExamDetails(exam)}
+                    className="w-full py-2 bg-blue-600 text-white rounded text-xs font-bold hover:bg-blue-700 transition"
+                  >
+                    View Details
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+          {examHistory.length > 6 && (
+            <button className="mt-4 text-sm text-blue-600 hover:underline font-playfair">
+              View All {examHistory.length} Exams →
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Practice History Section */}
       {practiceHistory.length > 0 && (
         <div className="bg-gradient-to-r from-[#FEF3C7] to-[#FDE68A] rounded-xl p-6 border border-yellow-300">
           <h2 className="text-lg font-bold text-yellow-800 mb-4 font-playfair flex items-center gap-2">
@@ -502,7 +704,7 @@ export default function Performance() {
                     practice.percentage >= 50 ? 'bg-yellow-100 text-yellow-700' : 
                     'bg-red-100 text-red-700'
                   }`}>
-                    {practice.percentage}%
+                    {typeof practice.percentage === 'number' ? practice.percentage.toFixed(1) : practice.percentage}%
                   </span>
                 </div>
                 <div className="grid grid-cols-3 gap-2 text-center text-xs mb-3">
