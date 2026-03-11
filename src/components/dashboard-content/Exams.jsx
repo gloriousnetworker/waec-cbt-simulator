@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import { useStudentAuth } from '../../context/StudentAuthContext';
 import toast from 'react-hot-toast';
 
-export default function Exams() {
+export default function Exams({ setActiveSection }) {
   const [activeTab, setActiveTab] = useState('practice');
   const [subjects, setSubjects] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -18,7 +18,6 @@ export default function Exams() {
 
   const examTypes = [
     { id: 'practice', name: 'Practice Exam', desc: 'Untimed practice with detailed explanations' },
-    { id: 'timed', name: 'Timed Exam', desc: 'Simulate real exam time conditions' },
     { id: 'mock', name: 'Mock Exam', desc: 'Full WAEC simulation with strict rules' },
   ];
 
@@ -103,35 +102,25 @@ export default function Exams() {
     }
   };
 
-  const handleStartExam = async (subject) => {
+  const handleStartExam = (subject) => {
     if (activeTab === 'practice') {
       localStorage.setItem('practice_subject', JSON.stringify({ id: subject.id, name: subject.name }));
       router.push('/dashboard/practice-setup');
-      return;
+    } else if (activeTab === 'mock') {
+      localStorage.setItem('practice_subject', JSON.stringify({ 
+        id: subject.id, 
+        name: subject.name,
+        isMockExam: true,
+        duration: 60,
+        questionCount: 30
+      }));
+      localStorage.setItem('mock_exam_active', 'true');
+      router.push('/dashboard/exam-mock-instructions');
     }
+  };
 
-    const toastId = toast.loading('Starting exam...');
-    
-    try {
-      const response = await fetchWithAuth('/exams/start', {
-        method: 'POST',
-        body: JSON.stringify({ subjectId: subject.id })
-      });
-
-      if (response?.ok) {
-        const data = await response.json();
-        toast.success('Exam started!', { id: toastId });
-        
-        const examType = activeTab === 'timed' ? 'timed' : 'mock';
-        router.push(`/dashboard/exam-room?examId=${data.exam.id}&subject=${encodeURIComponent(subject.name)}&type=${examType}`);
-      } else {
-        const error = await response.json();
-        toast.error(error.message || 'Failed to start exam', { id: toastId });
-      }
-    } catch (error) {
-      console.error('Error starting exam:', error);
-      toast.error('Failed to start exam', { id: toastId });
-    }
+  const handleTimedTestClick = () => {
+    setActiveSection('timed-tests');
   };
 
   const getSubjectStats = (subjectName) => {
@@ -168,28 +157,34 @@ export default function Exams() {
   return (
     <div className="max-w-7xl mx-auto px-4 py-6">
       <div className="mb-8">
-        <h1 className="text-2xl md:text-3xl font-bold text-[#1E1E1E] font-playfair">Practice Exams</h1>
-        <p className="text-[#626060] mt-2 font-playfair">Select a subject and exam type to begin your practice</p>
+        <h1 className="text-2xl md:text-3xl font-bold text-[#1E1E1E] font-playfair">Practice & Mock Exams</h1>
+        <p className="text-[#626060] mt-2 font-playfair">Select a subject and exam type to begin</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-        {examTypes.map((type) => (
-          <button
-            key={type.id}
-            data-tab={type.id}
-            onClick={() => setActiveTab(type.id)}
-            className={`p-4 rounded-xl border-2 transition-all ${
-              activeTab === type.id
-                ? 'border-[#039994] bg-[#E6FFFA]'
-                : 'border-gray-200 hover:border-[#039994] bg-white'
-            }`}
-          >
-            <div className={`text-[16px] leading-[120%] font-[600] mb-1 font-playfair ${
-              activeTab === type.id ? 'text-[#039994]' : 'text-[#1E1E1E]'
-            }`}>{type.name}</div>
-            <div className="text-[12px] leading-[140%] text-[#626060] font-playfair">{type.desc}</div>
-          </button>
-        ))}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+        <div className="flex gap-4">
+          {examTypes.map((type) => (
+            <button
+              key={type.id}
+              data-tab={type.id}
+              onClick={() => setActiveTab(type.id)}
+              className={`px-6 py-3 rounded-xl border-2 transition-all ${
+                activeTab === type.id
+                  ? 'border-[#039994] bg-[#E6FFFA] text-[#039994]'
+                  : 'border-gray-200 hover:border-[#039994] bg-white text-[#1E1E1E]'
+              }`}
+            >
+              <span className="font-[600] text-[14px] font-playfair">{type.name}</span>
+            </button>
+          ))}
+        </div>
+        <button
+          onClick={handleTimedTestClick}
+          className="px-6 py-3 bg-gradient-to-r from-[#10B981] to-[#059669] text-white rounded-xl font-playfair text-[14px] font-[600] hover:shadow-lg transition-all flex items-center gap-2"
+        >
+          <span>⏱️</span>
+          Go to Timed Tests
+        </button>
       </div>
 
       {subjects.length === 0 ? (
@@ -242,9 +237,13 @@ export default function Exams() {
 
                   <button
                     onClick={() => handleStartExam(subject)}
-                    className="w-full py-3 bg-[#039994] text-white rounded-lg hover:bg-[#028a85] transition-colors text-[14px] font-[600] font-playfair"
+                    className={`w-full py-3 rounded-lg transition-colors text-[14px] font-[600] font-playfair ${
+                      activeTab === 'practice' 
+                        ? 'bg-[#039994] text-white hover:bg-[#028a85]' 
+                        : 'bg-[#DC2626] text-white hover:bg-[#B91C1C]'
+                    }`}
                   >
-                    Start {activeTab === 'practice' ? 'Practice' : activeTab === 'timed' ? 'Timed' : 'Mock'} Exam
+                    Start {activeTab === 'practice' ? 'Practice' : 'Mock'} Exam
                   </button>
                 </div>
               </motion.div>
@@ -258,15 +257,19 @@ export default function Exams() {
         <ul className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <li className="flex items-center gap-2 text-sm">
             <span>•</span>
-            <span>Each exam follows WAEC examination standards and format</span>
+            <span>Practice exams: Untimed with explanations</span>
           </li>
           <li className="flex items-center gap-2 text-sm">
             <span>•</span>
-            <span>You cannot navigate away during timed and mock exams</span>
+            <span>Mock exams: Strict WAEC simulation with fullscreen mode</span>
           </li>
           <li className="flex items-center gap-2 text-sm">
             <span>•</span>
-            <span>Auto-submission occurs if you switch tabs or windows</span>
+            <span>You cannot navigate away during mock exams</span>
+          </li>
+          <li className="flex items-center gap-2 text-sm">
+            <span>•</span>
+            <span>3 tab switches in mock exam = auto-submit</span>
           </li>
           <li className="flex items-center gap-2 text-sm">
             <span>•</span>
@@ -274,11 +277,7 @@ export default function Exams() {
           </li>
           <li className="flex items-center gap-2 text-sm">
             <span>•</span>
-            <span>Review your answers before submitting the exam</span>
-          </li>
-          <li className="flex items-center gap-2 text-sm">
-            <span>•</span>
-            <span>Practice exams allow unlimited time and hints</span>
+            <span>For timed tests, visit the Timed Tests section</span>
           </li>
         </ul>
       </div>

@@ -1,9 +1,10 @@
 // app/dashboard/page.jsx
 'use client';
+
 import StudentProtectedRoute from '../../components/StudentProtectedRoute';
 import StudentNavbar from '../../components/dashboard-components/Navbar';
 import StudentSidebar from '../../components/dashboard-components/Sidebar';
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, Suspense, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useStudentAuth } from '../../context/StudentAuthContext';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -26,7 +27,8 @@ const dashboardLoadingInner = "text-center";
 const dashboardLoadingSpinner = "w-16 h-16 border-4 border-[#039994] border-t-transparent rounded-full animate-spin mx-auto mb-4";
 const dashboardLoadingText = "text-[14px] leading-[100%] font-[500] text-[#626060] font-playfair";
 
-function DashboardContent() {
+// Separate component that uses useSearchParams
+function DashboardContentWithParams() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [pageLoading, setPageLoading] = useState(true);
   const [activeSection, setActiveSection] = useState('home');
@@ -36,6 +38,70 @@ function DashboardContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
+  // Handle exam results from URL parameters and section navigation
+  useEffect(() => {
+    if (!searchParams) return;
+
+    // Check for section parameter to navigate to specific section
+    const sectionParam = searchParams.get('section');
+    if (sectionParam) {
+      setActiveSection(sectionParam);
+      // Clean up URL parameter without causing a re-render
+      const url = new URL(window.location.href);
+      url.searchParams.delete('section');
+      window.history.replaceState({}, '', url.pathname);
+    }
+
+    const hasResult = searchParams.get('examResult');
+    const scoreParam = searchParams.get('score');
+    const totalParam = searchParams.get('total');
+    const percentageParam = searchParams.get('percentage');
+    const subjectParam = searchParams.get('subject');
+    const reasonParam = searchParams.get('reason');
+
+    if (hasResult === 'true' && scoreParam && totalParam && percentageParam && subjectParam) {
+      const score = parseInt(scoreParam);
+      const total = parseInt(totalParam);
+      const percentage = parseFloat(percentageParam);
+      const subject = decodeURIComponent(subjectParam);
+      const reason = reasonParam ? decodeURIComponent(reasonParam) : null;
+
+      setExamResult({
+        score,
+        total,
+        percentage,
+        subject,
+        reason
+      });
+
+      setShowResultModal(true);
+
+      // Show appropriate toast message
+      if (reason) {
+        toast.error(`Exam auto-submitted: ${reason}`, { 
+          duration: 5000,
+          icon: '⚠️'
+        });
+      } else {
+        toast.success(`${subject} exam completed! Score: ${percentage}%`, { 
+          duration: 4000,
+          icon: '🎉'
+        });
+      }
+
+      // Clean up URL parameters without causing a re-render
+      const url = new URL(window.location.href);
+      url.searchParams.delete('examResult');
+      url.searchParams.delete('score');
+      url.searchParams.delete('total');
+      url.searchParams.delete('percentage');
+      url.searchParams.delete('subject');
+      url.searchParams.delete('reason');
+      window.history.replaceState({}, '', url.pathname);
+    }
+  }, [searchParams]);
+
+  // Handle authentication and loading
   useEffect(() => {
     if (authChecked && isAuthenticated) {
       if (user?.examMode) {
@@ -49,63 +115,36 @@ function DashboardContent() {
     }
   }, [authChecked, isAuthenticated, user, router]);
 
-  useEffect(() => {
-    const hasResult = searchParams.get('examResult');
-    if (hasResult === 'true') {
-      const score = parseInt(searchParams.get('score') || '0');
-      const total = parseInt(searchParams.get('total') || '0');
-      const percentage = parseFloat(searchParams.get('percentage') || '0');
-      const subject = searchParams.get('subject') || 'Subject';
-      const reason = searchParams.get('reason');
-
-      setExamResult({
-        score,
-        total,
-        percentage,
-        subject,
-        reason
-      });
-
-      setShowResultModal(true);
-
-      if (reason) {
-        toast.error(`Exam auto-submitted: ${reason}`, { duration: 5000 });
-      } else {
-        toast.success('Exam completed successfully!', { duration: 3000 });
-      }
-
-      const url = new URL(window.location.href);
-      url.searchParams.delete('examResult');
-      url.searchParams.delete('score');
-      url.searchParams.delete('total');
-      url.searchParams.delete('percentage');
-      url.searchParams.delete('subject');
-      url.searchParams.delete('reason');
-      window.history.replaceState({}, '', url.pathname);
-    }
-  }, [searchParams]);
-
-  const handleCloseResult = () => {
+  const handleCloseResult = useCallback(() => {
     setShowResultModal(false);
     setExamResult(null);
-  };
+  }, []);
 
-  const handleNavigation = (section) => {
+  const handleNavigation = useCallback((section) => {
     setActiveSection(section);
     setSidebarOpen(false);
-  };
+  }, []);
 
   const renderSection = () => {
     switch (activeSection) {
-      case 'home': return <DashboardHome setActiveSection={handleNavigation} />;
-      case 'exams': return <Exams setActiveSection={handleNavigation} />;
-      case 'timed-tests': return <TimedTests setActiveSection={handleNavigation} />;
-      case 'performance': return <Performance setActiveSection={handleNavigation} />;
-      case 'achievements': return <Achievements setActiveSection={handleNavigation} />;
-      case 'past-questions': return <PastQuestions setActiveSection={handleNavigation} />;
-      case 'settings': return <Settings setActiveSection={handleNavigation} />;
-      case 'help': return <Help setActiveSection={handleNavigation} />;
-      default: return <DashboardHome setActiveSection={handleNavigation} />;
+      case 'home': 
+        return <DashboardHome setActiveSection={handleNavigation} />;
+      case 'exams': 
+        return <Exams setActiveSection={handleNavigation} />;
+      case 'timed-tests': 
+        return <TimedTests setActiveSection={handleNavigation} />;
+      case 'performance': 
+        return <Performance setActiveSection={handleNavigation} />;
+      case 'achievements': 
+        return <Achievements setActiveSection={handleNavigation} />;
+      case 'past-questions': 
+        return <PastQuestions setActiveSection={handleNavigation} />;
+      case 'settings': 
+        return <Settings setActiveSection={handleNavigation} />;
+      case 'help': 
+        return <Help setActiveSection={handleNavigation} />;
+      default: 
+        return <DashboardHome setActiveSection={handleNavigation} />;
     }
   };
 
@@ -116,6 +155,11 @@ function DashboardContent() {
     if (percentage >= 40) return { grade: 'D', color: 'text-[#EF4444]', bg: 'bg-[#FEE2E2]' };
     return { grade: 'F', color: 'text-[#DC2626]', bg: 'bg-[#FEE2E2]' };
   };
+
+  const handleViewPerformance = useCallback(() => {
+    handleCloseResult();
+    setActiveSection('performance');
+  }, [handleCloseResult]);
 
   if (pageLoading) {
     return (
@@ -188,15 +232,12 @@ function DashboardContent() {
                 <p className="text-[14px] leading-[140%] font-[400] text-[#626060] font-playfair">
                   {examResult.subject}
                 </p>
-              </div>
-
-              {examResult.reason && (
-                <div className="mb-6 p-4 bg-[#FEF2F2] border border-[#DC2626] rounded-lg">
-                  <p className="text-[12px] leading-[140%] font-[500] text-[#DC2626] font-playfair">
-                    Reason: {examResult.reason}
+                {examResult.reason && (
+                  <p className="text-[12px] leading-[140%] font-[500] text-[#DC2626] mt-2 font-playfair">
+                    {examResult.reason}
                   </p>
-                </div>
-              )}
+                )}
+              </div>
 
               <div className="mb-8">
                 <div className={`inline-flex items-center justify-center w-24 h-24 rounded-full ${getGrade(examResult.percentage).bg} mb-4`}>
@@ -219,18 +260,23 @@ function DashboardContent() {
                       {examResult.percentage}%
                     </span>
                   </div>
+
+                  {examResult.reason && (
+                    <div className="p-3 bg-red-50 rounded-lg">
+                      <p className="text-[12px] leading-[140%] font-[500] text-[#DC2626] font-playfair">
+                        ⚠️ This exam was auto-submitted due to policy violation
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
 
               <div className="space-y-3">
                 <button
-                  onClick={() => {
-                    handleCloseResult();
-                    setActiveSection('performance');
-                  }}
+                  onClick={handleViewPerformance}
                   className="w-full py-3 bg-[#039994] text-white rounded-lg font-playfair text-[14px] leading-[100%] font-[600] hover:bg-[#028a85] transition-colors"
                 >
-                  View Performance
+                  View Performance Analytics
                 </button>
                 <button
                   onClick={handleCloseResult}
@@ -247,6 +293,7 @@ function DashboardContent() {
   );
 }
 
+// Main export with Suspense wrapper
 export default function DashboardPage() {
   return (
     <StudentProtectedRoute>
@@ -258,7 +305,7 @@ export default function DashboardPage() {
           </div>
         </div>
       }>
-        <DashboardContent />
+        <DashboardContentWithParams />
       </Suspense>
     </StudentProtectedRoute>
   );

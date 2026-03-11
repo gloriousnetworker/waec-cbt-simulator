@@ -15,11 +15,16 @@ function PracticeReviewContent() {
     if (storedResults) {
       setResults(JSON.parse(storedResults));
     } else {
-      router.push('/dashboard/performance');
+      router.push('/dashboard');
     }
   }, []);
 
   if (!results) return null;
+
+  const handleBackToDashboard = () => {
+    // Navigate back to dashboard with a query parameter to show performance section
+    router.push('/dashboard?section=performance');
+  };
 
   return (
     <div className="min-h-screen bg-[#F9FAFB] py-12 px-4">
@@ -103,7 +108,7 @@ function PracticeReviewContent() {
             )}
 
             <button
-              onClick={() => router.push('/dashboard/performance')}
+              onClick={handleBackToDashboard}
               className="w-full py-3 bg-[#039994] text-white rounded-lg hover:bg-[#028a85] transition-colors font-playfair text-sm font-[600]"
             >
               Back to Performance

@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useStudentAuth } from '../../context/StudentAuthContext';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
@@ -14,6 +14,9 @@ export default function Performance() {
   const [practiceStats, setPracticeStats] = useState(null);
   const [performanceData, setPerformanceData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [practiceToDelete, setPracticeToDelete] = useState(null);
   const { fetchWithAuth, isOffline, getOfflineData } = useStudentAuth();
   const router = useRouter();
 
@@ -43,34 +46,54 @@ export default function Performance() {
   const fetchPerformanceData = async () => {
     setLoading(true);
     try {
+      // First get local storage history for immediate display
+      const localHistory = JSON.parse(localStorage.getItem('practice_history') || '[]');
+      
       if (!isOffline) {
-        const [historyRes, practiceRes, statsRes, performanceRes] = await Promise.all([
-          fetchWithAuth('/history'),
+        // Fetch from API
+        const [practiceRes, statsRes] = await Promise.all([
           fetchWithAuth('/practice/history?limit=100'),
-          fetchWithAuth('/practice/stats'),
-          fetchWithAuth('/performance/summary')
+          fetchWithAuth('/practice/stats')
         ]);
 
-        if (historyRes?.ok) {
-          const historyData = await historyRes.json();
-          const formatted = (historyData.exams || []).map(exam => ({
-            id: exam.id,
-            subject: exam.subjects?.[0]?.subjectName || 'Unknown',
-            subjectId: exam.subjects?.[0]?.subjectId,
-            score: exam.percentage || 0,
-            totalMarks: exam.totalMarks || 0,
-            percentage: exam.percentage || 0,
-            date: exam.endTime || exam.createdAt,
-            duration: exam.duration,
-            status: exam.status,
-            type: 'exam'
-          }));
-          setExamHistory(formatted);
-        }
+        let apiPractices = [];
+        let apiStats = null;
 
         if (practiceRes?.ok) {
           const practiceData = await practiceRes.json();
-          setPracticeHistory(practiceData.practices || []);
+          apiPractices = practiceData.practices || [];
+          
+          // Format API practices to match our local format
+          const formattedApiPractices = apiPractices.map(p => ({
+            id: p.id,
+            subjectId: p.subjectId,
+            subjectName: p.subjectName,
+            totalQuestions: p.totalQuestions,
+            correct: p.correct,
+            wrong: p.wrong,
+            unanswered: p.unanswered,
+            percentage: p.percentage,
+            date: p.date?._seconds ? new Date(p.date._seconds * 1000).toISOString() : p.date,
+            duration: p.duration,
+            difficulty: p.difficulty,
+            isTimedTest: p.isTimedTest,
+            isMockExam: p.isMockExam || false,
+            studentClass: p.studentClass,
+            source: 'api'
+          }));
+          
+          // Merge with local history, avoiding duplicates
+          const mergedPractices = [...formattedApiPractices];
+          localHistory.forEach(local => {
+            if (!mergedPractices.some(api => api.id === local.id)) {
+              mergedPractices.push(local);
+            }
+          });
+          
+          setPracticeHistory(mergedPractices);
+        } else {
+          // If API fails, use local history
+          setPracticeHistory(localHistory);
         }
 
         if (statsRes?.ok) {
@@ -78,22 +101,74 @@ export default function Performance() {
           setPracticeStats(statsData.stats);
         }
 
-        if (performanceRes?.ok) {
-          const perfData = await performanceRes.json();
-          setPerformanceData(perfData.performance);
-        }
+        // Get exam history from localStorage (if any)
+        const localExams = JSON.parse(localStorage.getItem('exam_history') || '[]');
+        setExamHistory(localExams);
       } else {
+        // Offline mode - use cached data
         const cachedExams = getOfflineData('examHistory');
         if (cachedExams) setExamHistory(cachedExams);
         
         const cachedPractices = getOfflineData('practiceHistory');
-        if (cachedPractices) setPracticeHistory(cachedPractices);
+        if (cachedPractices) {
+          setPracticeHistory(cachedPractices);
+        } else {
+          setPracticeHistory(localHistory);
+        }
       }
     } catch (error) {
       console.error('Error fetching performance data:', error);
       toast.error('Failed to load performance data');
+      
+      // Fallback to local storage
+      const localHistory = JSON.parse(localStorage.getItem('practice_history') || '[]');
+      setPracticeHistory(localHistory);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeletePractice = async () => {
+    if (!practiceToDelete) return;
+    
+    setDeletingId(practiceToDelete.id);
+    const toastId = toast.loading('Deleting practice record...');
+
+    try {
+      if (!isOffline && practiceToDelete.source === 'api') {
+        const response = await fetchWithAuth(`/practice/${practiceToDelete.id}`, {
+          method: 'DELETE'
+        });
+
+        if (response?.ok) {
+          // Remove from state
+          setPracticeHistory(prev => prev.filter(p => p.id !== practiceToDelete.id));
+          
+          // Remove from localStorage
+          const localHistory = JSON.parse(localStorage.getItem('practice_history') || '[]');
+          const updatedLocal = localHistory.filter(p => p.id !== practiceToDelete.id);
+          localStorage.setItem('practice_history', JSON.stringify(updatedLocal));
+          
+          toast.success('Practice record deleted', { id: toastId });
+        } else {
+          toast.error('Failed to delete practice record', { id: toastId });
+        }
+      } else {
+        // Offline mode - just remove from localStorage
+        const localHistory = JSON.parse(localStorage.getItem('practice_history') || '[]');
+        const updatedLocal = localHistory.filter(p => p.id !== practiceToDelete.id);
+        localStorage.setItem('practice_history', JSON.stringify(updatedLocal));
+        
+        setPracticeHistory(prev => prev.filter(p => p.id !== practiceToDelete.id));
+        toast.success('Practice record deleted', { id: toastId });
+      }
+    } catch (error) {
+      console.error('Error deleting practice:', error);
+      toast.error('Failed to delete practice record', { id: toastId });
+    } finally {
+      setDeletingId(null);
+      setShowDeleteModal(false);
+      setPracticeToDelete(null);
     }
   };
 
@@ -124,7 +199,7 @@ export default function Performance() {
     ];
     
     return allResults.filter(result => {
-      const resultDate = result.date?._seconds ? new Date(result.date._seconds * 1000) : new Date(result.date);
+      const resultDate = result.date ? new Date(result.date) : new Date();
       const diffTime = Math.abs(now - resultDate);
       const diffDays = diffTime / (1000 * 60 * 60 * 24);
       
@@ -132,8 +207,8 @@ export default function Performance() {
       if (timeRange === 'quarter') return diffDays <= 90;
       return true;
     }).sort((a, b) => {
-      const dateA = a.date?._seconds || new Date(a.date).getTime() / 1000;
-      const dateB = b.date?._seconds || new Date(b.date).getTime() / 1000;
+      const dateA = a.date ? new Date(a.date).getTime() : 0;
+      const dateB = b.date ? new Date(b.date).getTime() : 0;
       return dateB - dateA;
     });
   };
@@ -195,12 +270,30 @@ export default function Performance() {
     ? Math.round(filteredResults.reduce((sum, r) => sum + (r.percentage || r.score || 0), 0) / filteredResults.length) 
     : 0;
 
+  const getBestScore = () => {
+    if (filteredResults.length === 0) return 0;
+    return Math.max(...filteredResults.map(r => r.percentage || r.score || 0));
+  };
+
   const getRankMessage = () => {
     if (averageScore >= 80) return 'Top 10%';
     if (averageScore >= 70) return 'Top 20%';
     if (averageScore >= 60) return 'Top 30%';
     if (averageScore >= 50) return 'Top 40%';
     return 'Keep improving';
+  };
+
+  const formatDate = (dateString) => {
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+      });
+    } catch {
+      return 'Invalid date';
+    }
   };
 
   if (loading) {
@@ -262,7 +355,7 @@ export default function Performance() {
         </div>
 
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <div className="text-3xl font-bold text-[#1E1E1E] mb-2 font-playfair">{practiceStats?.bestScore || 0}%</div>
+          <div className="text-3xl font-bold text-[#1E1E1E] mb-2 font-playfair">{getBestScore()}%</div>
           <div className="text-[#626060] text-sm mb-4 font-playfair">Best Score</div>
           <div className="flex items-center text-blue-600">
             <span className="text-lg mr-1">🏆</span>
@@ -329,27 +422,23 @@ export default function Performance() {
 
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
           <h2 className="text-xl font-bold text-[#1E1E1E] mb-6 font-playfair">Recent Activity</h2>
-          <div className="space-y-4">
+          <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
             {filteredResults.slice(0, 8).map((result, index) => {
-              const date = result.date?._seconds 
-                ? new Date(result.date._seconds * 1000) 
-                : new Date(result.date);
-              const formattedDate = date.toLocaleDateString('en-US', {
-                month: 'short',
-                day: 'numeric'
-              });
-              
+              const formattedDate = formatDate(result.date);
               const subject = result.subject || result.subjectName;
               const score = result.percentage || result.score || 0;
               
               return (
-                <div key={index} className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg">
+                <div key={result.id || index} className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg">
                   <div className="flex items-center">
-                    <span className="text-2xl mr-3">{subjectIcons[subject] || (result.type === 'practice' ? '📝' : '📘')}</span>
+                    <span className="text-2xl mr-3">
+                      {subjectIcons[subject] || (result.type === 'practice' ? '📝' : '📘')}
+                    </span>
                     <div>
                       <div className="font-medium text-[#1E1E1E] font-playfair">{subject}</div>
                       <div className="text-xs text-[#626060] font-playfair">
                         {formattedDate} • {result.type === 'practice' ? 'Practice' : 'Exam'}
+                        {result.isMockExam && ' • Mock Exam'}
                       </div>
                     </div>
                   </div>
@@ -362,12 +451,23 @@ export default function Performance() {
                       {score}%
                     </div>
                     {result.type === 'practice' && (
-                      <button
-                        onClick={() => handleReviewPractice(result)}
-                        className="text-xs text-[#039994] hover:underline font-playfair"
-                      >
-                        Review
-                      </button>
+                      <>
+                        <button
+                          onClick={() => handleReviewPractice(result)}
+                          className="text-xs text-[#039994] hover:underline font-playfair"
+                        >
+                          Review
+                        </button>
+                        <button
+                          onClick={() => {
+                            setPracticeToDelete(result);
+                            setShowDeleteModal(true);
+                          }}
+                          className="text-xs text-red-500 hover:underline font-playfair"
+                        >
+                          Delete
+                        </button>
+                      </>
                     )}
                   </div>
                 </div>
@@ -385,37 +485,112 @@ export default function Performance() {
       {practiceHistory.length > 0 && (
         <div className="bg-gradient-to-r from-[#FEF3C7] to-[#FDE68A] rounded-xl p-6 border border-yellow-300">
           <h2 className="text-lg font-bold text-yellow-800 mb-4 font-playfair flex items-center gap-2">
-            <span>📝</span> Recent Practice Sessions
+            <span>📝</span> Practice History
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {practiceHistory.slice(0, 3).map((practice, idx) => (
-              <div key={idx} className="bg-white rounded-lg p-4 flex items-center justify-between">
-                <div>
-                  <p className="font-medium text-[#1E1E1E] font-playfair">{practice.subjectName}</p>
-                  <p className="text-xs text-[#626060] font-playfair">
-                    {new Date(practice.date._seconds * 1000).toLocaleDateString()}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <span className={`font-bold ${
-                    practice.percentage >= 70 ? 'text-green-600' : 
-                    practice.percentage >= 50 ? 'text-yellow-600' : 
-                    'text-red-600'
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {practiceHistory.slice(0, 6).map((practice, idx) => (
+              <div key={practice.id || idx} className="bg-white rounded-lg p-4">
+                <div className="flex justify-between items-start mb-2">
+                  <div>
+                    <p className="font-medium text-[#1E1E1E] font-playfair">{practice.subjectName}</p>
+                    <p className="text-xs text-[#626060] font-playfair">
+                      {formatDate(practice.date)}
+                    </p>
+                  </div>
+                  <span className={`px-2 py-1 rounded text-xs font-bold ${
+                    practice.percentage >= 70 ? 'bg-green-100 text-green-700' : 
+                    practice.percentage >= 50 ? 'bg-yellow-100 text-yellow-700' : 
+                    'bg-red-100 text-red-700'
                   }`}>
                     {practice.percentage}%
                   </span>
+                </div>
+                <div className="grid grid-cols-3 gap-2 text-center text-xs mb-3">
+                  <div>
+                    <span className="block font-bold text-green-600">{practice.correct || 0}</span>
+                    <span className="text-[#626060]">Correct</span>
+                  </div>
+                  <div>
+                    <span className="block font-bold text-red-600">{practice.wrong || 0}</span>
+                    <span className="text-[#626060]">Wrong</span>
+                  </div>
+                  <div>
+                    <span className="block font-bold text-gray-600">{practice.unanswered || 0}</span>
+                    <span className="text-[#626060]">Unanswered</span>
+                  </div>
+                </div>
+                <div className="flex gap-2">
                   <button
                     onClick={() => handleReviewPractice(practice)}
-                    className="block text-xs text-[#039994] hover:underline mt-1"
+                    className="flex-1 py-2 bg-[#039994] text-white rounded text-xs font-bold hover:bg-[#028a85] transition"
                   >
                     Review
+                  </button>
+                  <button
+                    onClick={() => {
+                      setPracticeToDelete(practice);
+                      setShowDeleteModal(true);
+                    }}
+                    className="px-3 py-2 bg-red-100 text-red-600 rounded text-xs font-bold hover:bg-red-200 transition"
+                  >
+                    🗑️
                   </button>
                 </div>
               </div>
             ))}
           </div>
+          {practiceHistory.length > 6 && (
+            <button className="mt-4 text-sm text-[#039994] hover:underline font-playfair">
+              View All {practiceHistory.length} Practices →
+            </button>
+          )}
         </div>
       )}
+
+      <AnimatePresence>
+        {showDeleteModal && practiceToDelete && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+            onClick={() => setShowDeleteModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.9 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-xl p-8 max-w-md mx-4"
+            >
+              <div className="text-5xl mb-4 text-center">🗑️</div>
+              <h3 className="text-2xl font-bold text-[#1E1E1E] mb-3 text-center font-playfair">
+                Delete Practice Record
+              </h3>
+              <p className="text-lg text-[#626060] mb-6 text-center font-playfair">
+                Are you sure you want to delete this {practiceToDelete.subjectName} practice record from {formatDate(practiceToDelete.date)}?
+                <br /><br />
+                <span className="text-sm text-red-500">This action cannot be undone.</span>
+              </p>
+              <div className="flex gap-4">
+                <button
+                  onClick={() => setShowDeleteModal(false)}
+                  className="flex-1 py-4 bg-white text-[#039994] border-2 border-[#039994] rounded-xl font-playfair text-lg font-bold hover:bg-[#F0F9F8]"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDeletePractice}
+                  disabled={deletingId === practiceToDelete.id}
+                  className="flex-1 py-4 bg-red-600 text-white rounded-xl font-playfair text-lg font-bold hover:bg-red-700 disabled:opacity-50"
+                >
+                  {deletingId === practiceToDelete.id ? 'Deleting...' : 'Delete'}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

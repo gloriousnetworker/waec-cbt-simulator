@@ -45,7 +45,6 @@ function PracticeSetupContent() {
       router.push('/dashboard');
     }
 
-    // Clean up timed test config after reading
     return () => {
       localStorage.removeItem('timed_test_config');
     };

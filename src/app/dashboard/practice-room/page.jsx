@@ -116,49 +116,35 @@ function PracticeRoomContent() {
     }
   };
 
-  const submitPracticeToServer = async (resultData) => {
+  const savePracticeToServer = async (resultData) => {
     try {
-      // Create a practice exam record that matches the history endpoint format
-      const practiceRecord = {
-        id: session.id,
-        examSetupId: 'practice',
-        subject: session.subjectName,
-        subjects: [{
+      const response = await fetchWithAuth('/practice/save', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
           subjectId: session.subjectId,
           subjectName: session.subjectName,
-          questionCount: resultData.totalQuestions,
-          totalMarks: resultData.totalQuestions * 2
-        }],
-        score: resultData.correct * 2,
-        totalMarks: resultData.totalQuestions * 2,
-        percentage: resultData.percentage,
-        date: new Date(),
-        duration: session.timeLimit ? session.timeLimit / 60 : 0,
-        questionCount: resultData.totalQuestions,
-        status: 'completed',
-        isPractice: true
-      };
-
-      // Store in localStorage practice history
-      const history = JSON.parse(localStorage.getItem('practice_history') || '[]');
-      history.unshift({
-        id: session.id,
-        date: new Date().toISOString(),
-        subject: session.subjectName,
-        subjectId: session.subjectId,
-        totalQuestions: resultData.totalQuestions,
-        correct: resultData.correct,
-        wrong: resultData.wrong,
-        unanswered: resultData.unanswered,
-        percentage: resultData.percentage,
-        timedOut: resultData.timedOut,
-        duration: session.timeLimit ? session.timeLimit / 60 : 0
+          totalQuestions: resultData.totalQuestions,
+          correct: resultData.correct,
+          wrong: resultData.wrong,
+          unanswered: resultData.unanswered,
+          percentage: resultData.percentage,
+          duration: session.timeLimit ? Math.floor(session.timeLimit / 60) : 0,
+          difficulty: session.difficulty || 'all',
+          isTimedTest: session.isTimedTest || false
+        })
       });
-      localStorage.setItem('practice_history', JSON.stringify(history.slice(0, 50)));
 
-      return practiceRecord;
+      if (response && response.ok) {
+        const data = await response.json();
+        console.log('Practice result saved to database:', data);
+      } else {
+        console.error('Failed to save practice result to database');
+      }
     } catch (error) {
-      console.error('Error saving practice record:', error);
+      console.error('Error saving practice result:', error);
     }
   };
 
@@ -218,13 +204,28 @@ function PracticeRoomContent() {
     };
 
     setSubmitting(true);
-    await submitPracticeToServer(resultData);
+    await savePracticeToServer(resultData);
+    
+    const history = JSON.parse(localStorage.getItem('practice_history') || '[]');
+    history.unshift({
+      id: session.id,
+      date: new Date().toISOString(),
+      subject: session.subjectName,
+      subjectId: session.subjectId,
+      totalQuestions: resultData.totalQuestions,
+      correct: resultData.correct,
+      wrong: resultData.wrong,
+      unanswered: resultData.unanswered,
+      percentage: resultData.percentage,
+      timedOut: resultData.timedOut,
+      duration: session.timeLimit ? Math.floor(session.timeLimit / 60) : 0
+    });
+    localStorage.setItem('practice_history', JSON.stringify(history.slice(0, 50)));
+    
     setSubmitting(false);
-
     setResults(resultData);
     setShowResults(true);
 
-    // Clear the current session
     localStorage.removeItem('practice_session');
   };
 
