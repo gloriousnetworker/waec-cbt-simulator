@@ -12,6 +12,7 @@ export default function Exams() {
   const [subjects, setSubjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [performance, setPerformance] = useState({});
+  const [practiceStats, setPracticeStats] = useState({});
   const router = useRouter();
   const { fetchWithAuth, isOffline, getOfflineData } = useStudentAuth();
 
@@ -67,27 +68,32 @@ export default function Exams() {
     setLoading(true);
     try {
       if (!isOffline) {
-        const subjectsResponse = await fetchWithAuth('/subjects');
-        if (subjectsResponse && subjectsResponse.ok) {
-          const subjectsData = await subjectsResponse.json();
+        const [subjectsRes, performanceRes, practiceStatsRes] = await Promise.all([
+          fetchWithAuth('/subjects'),
+          fetchWithAuth('/performance/summary'),
+          fetchWithAuth('/practice/stats')
+        ]);
+
+        if (subjectsRes?.ok) {
+          const subjectsData = await subjectsRes.json();
           setSubjects(subjectsData.subjects || []);
         }
 
-        const performanceResponse = await fetchWithAuth('/performance/summary');
-        if (performanceResponse && performanceResponse.ok) {
-          const performanceData = await performanceResponse.json();
+        if (performanceRes?.ok) {
+          const performanceData = await performanceRes.json();
           setPerformance(performanceData.performance || {});
+        }
+
+        if (practiceStatsRes?.ok) {
+          const statsData = await practiceStatsRes.json();
+          setPracticeStats(statsData.stats || {});
         }
       } else {
         const cachedSubjects = getOfflineData('studentSubjects');
-        if (cachedSubjects) {
-          setSubjects(cachedSubjects);
-        }
+        if (cachedSubjects) setSubjects(cachedSubjects);
         
         const cachedPerformance = getOfflineData('performance');
-        if (cachedPerformance) {
-          setPerformance(cachedPerformance);
-        }
+        if (cachedPerformance) setPerformance(cachedPerformance);
       }
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -98,6 +104,12 @@ export default function Exams() {
   };
 
   const handleStartExam = async (subject) => {
+    if (activeTab === 'practice') {
+      localStorage.setItem('practice_subject', JSON.stringify({ id: subject.id, name: subject.name }));
+      router.push('/dashboard/practice-setup');
+      return;
+    }
+
     const toastId = toast.loading('Starting exam...');
     
     try {
@@ -106,12 +118,12 @@ export default function Exams() {
         body: JSON.stringify({ subjectId: subject.id })
       });
 
-      if (response && response.ok) {
+      if (response?.ok) {
         const data = await response.json();
         toast.success('Exam started!', { id: toastId });
         
-        const examType = activeTab === 'practice' ? 'practice' : activeTab === 'timed' ? 'timed' : 'mock';
-        router.push(`/exam-room?subjectId=${subject.id}&examId=${data.exam.id}&subject=${encodeURIComponent(subject.name)}&type=${examType}`);
+        const examType = activeTab === 'timed' ? 'timed' : 'mock';
+        router.push(`/dashboard/exam-room?examId=${data.exam.id}&subject=${encodeURIComponent(subject.name)}&type=${examType}`);
       } else {
         const error = await response.json();
         toast.error(error.message || 'Failed to start exam', { id: toastId });
@@ -123,19 +135,22 @@ export default function Exams() {
   };
 
   const getSubjectStats = (subjectName) => {
-    const subjectPerf = performance.subjects?.[subjectName];
-    if (subjectPerf) {
-      const avgPercentage = subjectPerf.attempts > 0 
-        ? Math.round((subjectPerf.totalPercentage || subjectPerf.totalScore) / subjectPerf.attempts) 
-        : 0;
-      return {
-        bestScore: avgPercentage,
-        attempts: subjectPerf.attempts || 0
-      };
-    }
+    const examPerf = performance.subjects?.[subjectName];
+    const practicePerf = practiceStats.bySubject?.[subjectName];
+    
+    const examAttempts = examPerf?.attempts || 0;
+    const practiceAttempts = practicePerf?.attempts || 0;
+    const totalAttempts = examAttempts + practiceAttempts;
+    
+    const bestExamScore = examPerf?.bestScore || 0;
+    const bestPracticeScore = practicePerf?.bestScore || 0;
+    const bestScore = Math.max(bestExamScore, bestPracticeScore);
+
     return {
-      bestScore: 0,
-      attempts: 0
+      bestScore,
+      attempts: totalAttempts,
+      examAttempts,
+      practiceAttempts
     };
   };
 
@@ -213,13 +228,15 @@ export default function Exams() {
                     </div>
                     <div className="flex justify-between text-[13px]">
                       <span className="text-[#626060] font-playfair">Best Score:</span>
-                      <span className={`font-[600] ${stats.bestScore >= 70 ? 'text-[#10B981]' : 'text-[#F59E0B]'} font-playfair`}>
+                      <span className={`font-[600] ${stats.bestScore >= 70 ? 'text-[#10B981]' : stats.bestScore >= 50 ? 'text-[#F59E0B]' : 'text-[#EF4444]'} font-playfair`}>
                         {stats.bestScore}%
                       </span>
                     </div>
                     <div className="flex justify-between text-[13px]">
                       <span className="text-[#626060] font-playfair">Attempts:</span>
-                      <span className="font-[600] text-[#1E1E1E] font-playfair">{stats.attempts}</span>
+                      <span className="font-[600] text-[#1E1E1E] font-playfair">
+                        {stats.attempts} ({stats.examAttempts} exam, {stats.practiceAttempts} practice)
+                      </span>
                     </div>
                   </div>
 

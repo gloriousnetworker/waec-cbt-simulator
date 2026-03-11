@@ -1,13 +1,13 @@
 // components/dashboard-content/Home.jsx
 'use client';
 
-import { useStudentAuth } from '../../context/StudentAuthContext';
-import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { useStudentAuth } from '../../context/StudentAuthContext';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 
-export default function DashboardHome({ setActiveSection, onStartExam }) {
+export default function DashboardHome({ setActiveSection }) {
   const { user, fetchWithAuth, isOffline, getOfflineData } = useStudentAuth();
   const router = useRouter();
   const [stats, setStats] = useState({
@@ -21,6 +21,8 @@ export default function DashboardHome({ setActiveSection, onStartExam }) {
   });
   const [recentActivities, setRecentActivities] = useState([]);
   const [subjects, setSubjects] = useState([]);
+  const [weakAreas, setWeakAreas] = useState([]);
+  const [practiceStats, setPracticeStats] = useState(null);
   const [loading, setLoading] = useState(true);
 
   const subjectIcons = {
@@ -50,65 +52,103 @@ export default function DashboardHome({ setActiveSection, onStartExam }) {
     setLoading(true);
     try {
       if (!isOffline) {
-        const subjectsResponse = await fetchWithAuth('/subjects');
-        if (subjectsResponse && subjectsResponse.ok) {
-          const subjectsData = await subjectsResponse.json();
+        const [subjectsRes, historyRes, practiceStatsRes, performanceRes] = await Promise.all([
+          fetchWithAuth('/subjects'),
+          fetchWithAuth('/history'),
+          fetchWithAuth('/practice/stats'),
+          fetchWithAuth('/performance/summary')
+        ]);
+
+        if (subjectsRes?.ok) {
+          const subjectsData = await subjectsRes.json();
           setSubjects(subjectsData.subjects || []);
         }
 
-        const performanceResponse = await fetchWithAuth('/performance/summary');
-        if (performanceResponse && performanceResponse.ok) {
-          const performanceData = await performanceResponse.json();
+        if (historyRes?.ok) {
+          const historyData = await historyRes.json();
+          const exams = historyData.exams || [];
           
-          if (performanceData.performance) {
-            const perf = performanceData.performance;
-            const avgPercentage = perf.averagePercentage || perf.averageScore || 0;
-            
-            let rank = 'Top 100%';
-            if (avgPercentage >= 80) rank = 'Top 10%';
-            else if (avgPercentage >= 70) rank = 'Top 20%';
-            else if (avgPercentage >= 60) rank = 'Top 30%';
-            else if (avgPercentage >= 50) rank = 'Top 40%';
+          const completedExams = exams.filter(e => e.status === 'completed');
+          const totalScore = completedExams.reduce((sum, e) => sum + (e.percentage || 0), 0);
+          const avgPercentage = completedExams.length > 0 ? Math.round(totalScore / completedExams.length) : 0;
+          
+          let rank = 'Top 100%';
+          if (avgPercentage >= 80) rank = 'Top 10%';
+          else if (avgPercentage >= 70) rank = 'Top 20%';
+          else if (avgPercentage >= 60) rank = 'Top 30%';
+          else if (avgPercentage >= 50) rank = 'Top 40%';
 
-            setStats({
-              totalExams: perf.totalExams || 0,
-              completed: perf.totalExams || 0,
-              averageScore: Math.round(perf.averageScore || 0),
-              averagePercentage: Math.round(avgPercentage),
-              timeSpent: `${Math.floor((perf.totalExams * 2) / 60)}h ${(perf.totalExams * 2) % 60}m`,
-              streak: Math.min(perf.totalExams, 7),
-              rank: rank
+          setStats(prev => ({
+            ...prev,
+            totalExams: exams.length,
+            completed: completedExams.length,
+            averageScore: avgPercentage,
+            averagePercentage: avgPercentage,
+            timeSpent: `${Math.floor((completedExams.length * 2) / 60)}h ${(completedExams.length * 2) % 60}m`,
+            streak: Math.min(completedExams.length, 7),
+            rank: rank
+          }));
+
+          const activities = exams.slice(0, 5).map(exam => {
+            const date = exam.endTime || exam.createdAt;
+            const timestamp = date._seconds ? date._seconds * 1000 : new Date(date).getTime();
+            const percentage = exam.percentage || 0;
+            const isPassed = percentage >= 50;
+            
+            return {
+              id: exam.id,
+              title: exam.title,
+              subject: exam.subjects?.[0]?.subjectName || 'Unknown',
+              subjectId: exam.subjects?.[0]?.subjectId,
+              score: percentage,
+              time: formatTimeAgo(timestamp),
+              status: isPassed ? 'passed' : 'failed',
+              examType: 'Exam'
+            };
+          });
+          setRecentActivities(activities);
+
+          if (subjectsData?.subjects) {
+            const weak = [];
+            subjectsData.subjects.forEach(subject => {
+              const subjectExams = exams.filter(e => 
+                e.subjects?.some(s => s.subjectId === subject.id) && e.percentage < 50
+              );
+              if (subjectExams.length > 0) {
+                weak.push({
+                  id: subject.id,
+                  name: subject.name,
+                  icon: subjectIcons[subject.name] || '📘',
+                  failedCount: subjectExams.length,
+                  lastScore: subjectExams[0]?.percentage || 0
+                });
+              }
             });
+            setWeakAreas(weak.slice(0, 3));
           }
         }
 
-        const resultsResponse = await fetchWithAuth('/results/all');
-        if (resultsResponse && resultsResponse.ok) {
-          const resultsData = await resultsResponse.json();
-          
-          if (resultsData.results) {
-            const activities = resultsData.results.slice(0, 4).map(result => ({
-              id: result.id,
-              subject: result.subject,
-              subjectId: result.subjectId,
-              score: result.percentage || result.score,
-              time: formatTimeAgo(result.date._seconds),
-              status: 'completed',
-              examType: result.examType
+        if (practiceStatsRes?.ok) {
+          const statsData = await practiceStatsRes.json();
+          setPracticeStats(statsData.stats);
+        }
+
+        if (performanceRes?.ok) {
+          const performanceData = await performanceRes.json();
+          if (performanceData.performance) {
+            const perf = performanceData.performance;
+            setStats(prev => ({
+              ...prev,
+              averagePercentage: Math.round(perf.averagePercentage || perf.averageScore || 0)
             }));
-            setRecentActivities(activities);
           }
         }
       } else {
         const cachedSubjects = getOfflineData('studentSubjects');
-        if (cachedSubjects) {
-          setSubjects(cachedSubjects);
-        }
+        if (cachedSubjects) setSubjects(cachedSubjects);
         
-        const cachedResults = getOfflineData('recentActivities');
-        if (cachedResults) {
-          setRecentActivities(cachedResults);
-        }
+        const cachedActivities = getOfflineData('recentActivities');
+        if (cachedActivities) setRecentActivities(cachedActivities);
       }
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
@@ -119,8 +159,7 @@ export default function DashboardHome({ setActiveSection, onStartExam }) {
   };
 
   const formatTimeAgo = (timestamp) => {
-    const seconds = Math.floor(Date.now() / 1000) - timestamp;
-    
+    const seconds = Math.floor((Date.now() - timestamp) / 1000);
     if (seconds < 60) return 'Just now';
     if (seconds < 3600) return `${Math.floor(seconds / 60)} minutes ago`;
     if (seconds < 86400) return `${Math.floor(seconds / 3600)} hours ago`;
@@ -128,43 +167,20 @@ export default function DashboardHome({ setActiveSection, onStartExam }) {
     return 'Long ago';
   };
 
+  const handlePracticeWeakArea = (subjectId, subjectName) => {
+    localStorage.setItem('practice_subject', JSON.stringify({ id: subjectId, name: subjectName }));
+    router.push('/dashboard/practice-setup');
+  };
+
+  const handleContinueExam = (examId) => {
+    router.push(`/dashboard/exam-room?examId=${examId}`);
+  };
+
   const quickActions = [
-    { 
-      title: 'Start New Examination', 
-      icon: '📝', 
-      color: 'border-[#039994] text-[#039994] hover:bg-[#E8F8F6]', 
-      action: () => setActiveSection('exams') 
-    },
-    { 
-      title: 'Timed Practice', 
-      icon: '⏱️', 
-      color: 'border-[#10B981] text-[#10B981] hover:bg-[#D1FAE5]', 
-      action: () => {
-        setActiveSection('exams');
-        setTimeout(() => {
-          const timedTab = document.querySelector('[data-tab="timed"]');
-          if (timedTab) timedTab.click();
-        }, 100);
-      } 
-    },
-    { 
-      title: 'View Performance', 
-      icon: '📊', 
-      color: 'border-[#8B5CF6] text-[#8B5CF6] hover:bg-[#EDE9FE]', 
-      action: () => setActiveSection('performance') 
-    },
-    { 
-      title: 'Mock Exam', 
-      icon: '🎯', 
-      color: 'border-[#F59E0B] text-[#F59E0B] hover:bg-[#FEF3C7]', 
-      action: () => {
-        setActiveSection('exams');
-        setTimeout(() => {
-          const mockTab = document.querySelector('[data-tab="mock"]');
-          if (mockTab) mockTab.click();
-        }, 100);
-      } 
-    },
+    { title: 'Start Practice', icon: '📝', color: 'border-[#039994] text-[#039994] hover:bg-[#E8F8F6]', action: () => setActiveSection('exams') },
+    { title: 'Timed Test', icon: '⏱️', color: 'border-[#10B981] text-[#10B981] hover:bg-[#D1FAE5]', action: () => setActiveSection('timed-tests') },
+    { title: 'View Performance', icon: '📊', color: 'border-[#8B5CF6] text-[#8B5CF6] hover:bg-[#EDE9FE]', action: () => setActiveSection('performance') },
+    { title: 'Achievements', icon: '🏆', color: 'border-[#F59E0B] text-[#F59E0B] hover:bg-[#FEF3C7]', action: () => setActiveSection('achievements') },
   ];
 
   const popularSubjects = subjects.slice(0, 6).map(subject => ({
@@ -173,19 +189,6 @@ export default function DashboardHome({ setActiveSection, onStartExam }) {
     icon: subjectIcons[subject.name] || '📘',
     questionCount: subject.questionCount || 50
   }));
-
-  const handleQuickStart = (subject) => {
-    const duration = subject.examType === 'WAEC' ? 120 : 60;
-    router.push(`/exam-room?subjectId=${subject.id}&subject=${encodeURIComponent(subject.name)}&type=practice&duration=${duration}&questionCount=${subject.questionCount || 50}`);
-  };
-
-  const handleContinueActivity = (activity) => {
-    const subject = subjects.find(s => s.id === activity.subjectId);
-    if (subject) {
-      const duration = subject.examType === 'WAEC' ? 120 : 60;
-      router.push(`/exam-room?subjectId=${subject.id}&subject=${encodeURIComponent(subject.name)}&type=practice&duration=${duration}&questionCount=${subject.questionCount || 50}`);
-    }
-  };
 
   if (loading) {
     return (
@@ -205,24 +208,22 @@ export default function DashboardHome({ setActiveSection, onStartExam }) {
           Welcome back, {user?.firstName || 'Student'}! 👋
         </h1>
         <p className="text-[#626060] mt-2 font-playfair">
-          Continue your journey to excellence. {stats.completed} exams completed.
+          You've completed {stats.completed} exams and {practiceStats?.totalPractices || 0} practice sessions. Keep up the great work!
         </p>
         {isOffline && (
           <div className="mt-4 bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded-lg flex items-center gap-2">
             <span>📴</span>
-            <span className="text-sm font-playfair">You're offline. Some features may be limited.</span>
+            <span className="text-sm font-playfair">You're offline. Using cached data.</span>
           </div>
         )}
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         {[
-          { label: 'Total Exams', value: stats.totalExams, icon: '📚' },
-          { label: 'Completed', value: stats.completed, icon: '📈' },
+          { label: 'Formal Exams', value: stats.completed, icon: '📚' },
+          { label: 'Practice Sessions', value: practiceStats?.totalPractices || 0, icon: '📝' },
           { label: 'Avg Score', value: `${stats.averagePercentage}%`, icon: '🎯' },
-          { label: 'Time Spent', value: stats.timeSpent, icon: '⏱️' },
-          { label: 'Day Streak', value: stats.streak, icon: '🔥' },
-          { label: 'Global Rank', value: stats.rank, icon: '🏆' },
+          { label: 'Best Score', value: practiceStats?.bestScore ? `${practiceStats.bestScore}%` : '0%', icon: '🏆' },
         ].map((stat, index) => (
           <motion.div
             key={stat.label}
@@ -255,18 +256,45 @@ export default function DashboardHome({ setActiveSection, onStartExam }) {
         ))}
       </div>
 
+      {weakAreas.length > 0 && (
+        <div className="mb-8 p-6 bg-gradient-to-r from-[#FEF3C7] to-[#FDE68A] rounded-xl border border-yellow-300">
+          <h2 className="text-lg font-bold text-yellow-800 mb-4 font-playfair flex items-center gap-2">
+            <span>⚠️</span> Areas That Need Improvement
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {weakAreas.map((area) => (
+              <div key={area.id} className="bg-white rounded-lg p-4 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">{area.icon}</span>
+                  <div>
+                    <p className="font-medium text-[#1E1E1E] font-playfair">{area.name}</p>
+                    <p className="text-xs text-red-600 font-playfair">Failed {area.failedCount} time(s)</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => handlePracticeWeakArea(area.id, area.name)}
+                  className="px-3 py-1 bg-yellow-500 text-white text-sm rounded-lg hover:bg-yellow-600 transition"
+                >
+                  Practice
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
-          <h2 className="text-lg font-bold text-[#1E1E1E] mb-4 font-playfair">Recent Activity</h2>
+          <h2 className="text-lg font-bold text-[#1E1E1E] mb-4 font-playfair">Recent Exam Activity</h2>
           <div className="space-y-4">
             {recentActivities.length > 0 ? (
               recentActivities.map((activity, index) => (
                 <div key={index} className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg">
                   <div className="flex items-center gap-3">
                     <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                      activity.status === 'completed' ? 'bg-green-100 text-green-600' : 'bg-blue-100 text-blue-600'
+                      activity.status === 'passed' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'
                     }`}>
-                      {activity.status === 'completed' ? '✓' : '▶️'}
+                      {activity.status === 'passed' ? '✓' : '⚠️'}
                     </div>
                     <div>
                       <p className="font-medium text-[#1E1E1E] font-playfair">{activity.subject}</p>
@@ -274,40 +302,34 @@ export default function DashboardHome({ setActiveSection, onStartExam }) {
                     </div>
                   </div>
                   <div className="text-right">
-                    {activity.score > 0 ? (
-                      <span className={`font-bold font-playfair ${
-                        activity.score >= 70 ? 'text-green-600' : 
-                        activity.score >= 50 ? 'text-yellow-600' : 
-                        'text-red-600'
-                      }`}>
-                        {activity.score}%
-                      </span>
-                    ) : (
-                      <button
-                        onClick={() => handleContinueActivity(activity)}
-                        className="text-[#039994] hover:text-[#028a85] text-sm font-playfair"
-                      >
-                        Continue →
-                      </button>
-                    )}
+                    <span className={`font-bold font-playfair ${
+                      activity.score >= 70 ? 'text-green-600' : 
+                      activity.score >= 50 ? 'text-yellow-600' : 
+                      'text-red-600'
+                    }`}>
+                      {activity.score}%
+                    </span>
                   </div>
                 </div>
               ))
             ) : (
               <div className="text-center py-8 text-[#626060] font-playfair">
-                No recent activity. Start an exam to see your progress.
+                No recent exam activity. Start an exam to see your progress.
               </div>
             )}
           </div>
         </div>
 
         <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
-          <h2 className="text-lg font-bold text-[#1E1E1E] mb-4 font-playfair">Quick Start Subjects</h2>
+          <h2 className="text-lg font-bold text-[#1E1E1E] mb-4 font-playfair">Quick Practice</h2>
           <div className="grid grid-cols-2 gap-3 mb-4">
             {popularSubjects.map((subject, index) => (
               <button
                 key={index}
-                onClick={() => handleQuickStart(subject)}
+                onClick={() => {
+                  localStorage.setItem('practice_subject', JSON.stringify(subject));
+                  router.push('/dashboard/practice-setup');
+                }}
                 className="p-3 border border-gray-200 rounded-lg hover:border-[#039994] hover:bg-[#E6FFFA] transition-all text-left"
               >
                 <div className="flex items-center gap-2">
@@ -341,7 +363,10 @@ export default function DashboardHome({ setActiveSection, onStartExam }) {
             {subjects.slice(0, 2).map((subject, index) => (
               <button
                 key={index}
-                onClick={() => handleQuickStart(subject)}
+                onClick={() => {
+                  localStorage.setItem('practice_subject', JSON.stringify({ id: subject.id, name: subject.name }));
+                  router.push('/dashboard/practice-setup');
+                }}
                 className={`px-6 py-3 rounded-lg font-playfair text-sm font-[600] transition-all ${
                   index === 0 
                     ? 'bg-white text-[#039994] hover:bg-gray-100' 
@@ -360,12 +385,12 @@ export default function DashboardHome({ setActiveSection, onStartExam }) {
             <div className="text-xs opacity-90 font-playfair">Exams Taken</div>
           </div>
           <div>
-            <div className="text-2xl font-bold font-playfair">{stats.averagePercentage}%</div>
-            <div className="text-xs opacity-90 font-playfair">Average Score</div>
+            <div className="text-2xl font-bold font-playfair">{practiceStats?.totalPractices || 0}</div>
+            <div className="text-xs opacity-90 font-playfair">Practice Sessions</div>
           </div>
           <div>
-            <div className="text-2xl font-bold font-playfair">{stats.streak} days</div>
-            <div className="text-xs opacity-90 font-playfair">Study Streak</div>
+            <div className="text-2xl font-bold font-playfair">{practiceStats?.averagePercentage || 0}%</div>
+            <div className="text-xs opacity-90 font-playfair">Practice Avg</div>
           </div>
           <div>
             <div className="text-2xl font-bold font-playfair">{stats.rank}</div>
