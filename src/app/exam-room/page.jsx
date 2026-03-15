@@ -1,4 +1,3 @@
-// app/exam-room/page.jsx
 'use client';
 import { useState, useEffect, useCallback, Suspense, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -7,69 +6,12 @@ import StudentProtectedRoute from '../../components/StudentProtectedRoute';
 import { useStudentAuth } from '../../context/StudentAuthContext';
 import toast from 'react-hot-toast';
 
-const examRoomContainer = "min-h-screen bg-[#F9FAFB]";
-const examRoomHeader = "bg-white border-b border-[#E8E8E8] sticky top-0 z-10";
-const examRoomHeaderInner = "max-w-7xl mx-auto px-4 py-3 flex justify-between items-center";
-const examRoomSubject = "text-[16px] leading-[120%] font-[600] text-[#1E1E1E] font-playfair";
-const examRoomTimer = "flex items-center gap-2";
-const examRoomTimerText = "text-[16px] leading-[100%] font-[600] font-playfair";
-const examRoomTimerNormal = "text-[#039994]";
-const examRoomTimerWarning = "text-[#F59E0B]";
-const examRoomTimerDanger = "text-[#DC2626]";
-const examRoomMain = "max-w-7xl mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-3 gap-6";
-const examRoomContent = "lg:col-span-2";
-const examRoomContentInner = "space-y-6";
-const examRoomQuestionCard = "bg-white rounded-xl p-6 border border-[#E8E8E8]";
-const examRoomQuestionHeader = "flex justify-between items-center mb-4";
-const examRoomQuestionNumber = "text-[14px] leading-[100%] font-[600] text-[#039994] font-playfair";
-const examRoomQuestionMark = "text-[14px] leading-[100%] font-[600] text-[#626060] font-playfair";
-const examRoomQuestionText = "text-[14px] leading-[150%] font-[500] text-[#1E1E1E] mb-6 font-playfair";
-const examRoomOptionsGrid = "grid grid-cols-1 md:grid-cols-2 gap-3";
-const examRoomOption = "border rounded-lg p-4 flex items-start gap-3 cursor-pointer transition-all";
-const examRoomOptionInactive = "border-[#E8E8E8] hover:border-[#039994]";
-const examRoomOptionActive = "border-[#039994] bg-[#E8F8F6]";
-const examRoomOptionLabel = "w-8 h-8 rounded-full flex items-center justify-center text-[14px] leading-[100%] font-[600] font-playfair flex-shrink-0";
-const examRoomOptionLabelInactive = "border border-[#E8E8E8] text-[#626060]";
-const examRoomOptionLabelActive = "bg-[#039994] text-white";
-const examRoomOptionText = "text-[14px] leading-[150%] font-[500] text-[#1E1E1E] font-playfair";
-const examRoomNavigation = "flex justify-between";
-const examRoomNavButton = "px-6 py-3 rounded-lg font-playfair text-[14px] leading-[100%] font-[600] transition-all";
-const examRoomNavButtonPrimary = "bg-[#039994] text-white hover:bg-[#028a85] disabled:opacity-50 disabled:cursor-not-allowed";
-const examRoomNavButtonSecondary = "bg-white text-[#039994] border border-[#039994] hover:bg-[#F0F9F8] disabled:opacity-50 disabled:cursor-not-allowed";
-const examRoomSidebar = "lg:col-span-1 bg-white rounded-xl p-6 border border-[#E8E8E8] h-fit sticky top-20";
-const examRoomSidebarTitle = "text-[16px] leading-[120%] font-[600] text-[#1E1E1E] mb-4 font-playfair";
-const examRoomProgressBar = "mb-6";
-const examRoomProgressText = "flex justify-between text-[13px] leading-[100%] font-[500] text-[#626060] mb-2 font-playfair";
-const examRoomProgressBarBg = "h-2 bg-[#F0F0F0] rounded-full overflow-hidden";
-const examRoomProgressBarFill = "h-full bg-[#039994] rounded-full transition-all";
-const examRoomQuestionGrid = "grid grid-cols-5 md:grid-cols-6 lg:grid-cols-5 gap-2 mb-6";
-const examRoomQuestionDot = "w-10 h-10 rounded-full flex items-center justify-center text-[13px] leading-[100%] font-[600] font-playfair transition-all cursor-pointer";
-const examRoomQuestionDotUnanswered = "bg-white border border-[#E8E8E8] text-[#626060] hover:border-[#039994]";
-const examRoomQuestionDotAnswered = "bg-[#E8F8F6] border border-[#039994] text-[#039994]";
-const examRoomQuestionDotCurrent = "bg-[#039994] text-white";
-const examRoomActions = "space-y-3";
-const examRoomActionButton = "w-full py-3 rounded-lg font-playfair text-[14px] leading-[100%] font-[600] transition-all";
-const examRoomSubmitButton = "bg-[#DC2626] text-white hover:bg-[#B91C1C]";
-const examWarningModal = "fixed inset-0 bg-black/50 flex items-center justify-center z-50";
-const examWarningCard = "bg-white rounded-xl p-6 max-w-md mx-4";
-const examWarningIcon = "text-5xl mb-4 text-center";
-const examWarningTitle = "text-[20px] leading-[120%] font-[700] tracking-[-0.03em] mb-2 text-center font-playfair";
-const examWarningText = "text-[14px] leading-[150%] font-[500] text-[#626060] mb-6 text-center font-playfair";
-const examWarningButton = "w-full py-3 rounded-lg font-playfair text-[14px] leading-[100%] font-[600] hover:opacity-90 transition-all";
-const modalOverlay = "fixed inset-0 bg-black/50 flex items-center justify-center z-50";
-const modalContainer = "bg-white rounded-xl p-6 max-w-md mx-4";
-const modalTitle = "text-[18px] leading-[120%] font-[600] text-[#1E1E1E] mb-2 font-playfair";
-const modalText = "text-[14px] leading-[150%] font-[500] text-[#626060] mb-6 font-playfair";
-const modalActions = "flex gap-3";
-const modalButtonSecondary = "flex-1 py-3 bg-white text-[#039994] border border-[#039994] rounded-lg font-playfair text-[14px] leading-[100%] font-[600] hover:bg-[#F0F9F8]";
-const modalButtonDanger = "flex-1 py-3 bg-[#DC2626] text-white rounded-lg font-playfair text-[14px] leading-[100%] font-[600] hover:bg-[#B91C1C]";
-
 function ExamRoomContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const examId = searchParams.get('examId');
   const examSetupId = searchParams.get('examSetupId');
-  const { user, fetchWithAuth, saveOfflineData, getOfflineData } = useStudentAuth();
+  const { user, fetchWithAuth } = useStudentAuth();
 
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState({});
@@ -83,228 +25,305 @@ function ExamRoomContent() {
   const [examSubmitted, setExamSubmitted] = useState(false);
   const [loading, setLoading] = useState(true);
   const [totalMarks, setTotalMarks] = useState(0);
-  const [startTime, setStartTime] = useState(null);
+  const [showShortcuts, setShowShortcuts] = useState(true);
+  const [timerReady, setTimerReady] = useState(false);
+
+  const endTimeMsRef = useRef(0);
   const violationTimeoutRef = useRef(null);
   const autoSaveIntervalRef = useRef(null);
   const toastShownRef = useRef(false);
+  const submitAttemptedRef = useRef(false);
+  const answerJustSelectedRef = useRef(false);
+  const navigationTimeoutRef = useRef(null);
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // THE TIMER — starts only when timerReady becomes true
+  // Uses real clock diff each tick — never drifts, survives re-renders
+  // ─────────────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!timerReady || examSubmitted || questions.length === 0) return;
+
+    const calcRemaining = () =>
+      Math.max(0, Math.floor((endTimeMsRef.current - Date.now()) / 1000));
+
+    setTimeLeft(calcRemaining());
+
+    const interval = setInterval(() => {
+      const rem = calcRemaining();
+      setTimeLeft(rem);
+      if (rem <= 0) {
+        clearInterval(interval);
+        handleAutoSubmit('Time expired');
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [timerReady, examSubmitted, questions.length]);
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // MOUNT
+  // ─────────────────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!examId || !examSetupId) {
       toast.error('Invalid exam session');
       router.push('/exam-instructions');
       return;
     }
-
-    fetchExam();
+    loadExamFromStorage();
+    fetchExamFromServer();
     enterFullscreen();
 
+    const t = setTimeout(() => setShowShortcuts(false), 10000);
     return () => {
-      if (document.fullscreenElement) {
-        document.exitFullscreen().catch(() => {});
-      }
-      if (violationTimeoutRef.current) {
-        clearTimeout(violationTimeoutRef.current);
-      }
-      if (autoSaveIntervalRef.current) {
-        clearInterval(autoSaveIntervalRef.current);
-      }
+      document.fullscreenElement && document.exitFullscreen().catch(() => {});
+      clearTimeout(violationTimeoutRef.current);
+      clearInterval(autoSaveIntervalRef.current);
+      clearTimeout(t);
+      clearTimeout(navigationTimeoutRef.current);
     };
-  }, [examId]);
+  }, [examId, examSetupId]);
 
-  const fetchExam = async () => {
-    setLoading(true);
+  // ─────────────────────────────────────────────────────────────────────────
+  // AUTO-SAVE every 30 s
+  // ─────────────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!examId || examSubmitted || questions.length === 0) return;
+    autoSaveIntervalRef.current = setInterval(saveCurrentAnswers, 30000);
+    return () => clearInterval(autoSaveIntervalRef.current);
+  }, [examId, answers, examSubmitted, questions]);
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // HELPER: activate timer from a known endTime ms value
+  // Only call this when endMs is a valid finite number
+  // ─────────────────────────────────────────────────────────────────────────
+  const activateTimer = (endMs) => {
+    if (!isFinite(endMs) || endMs <= 0) return;
+    endTimeMsRef.current = endMs;
+    setTimerReady(true);
+  };
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // HELPER: compute endMs from duration (minutes), always valid
+  // ─────────────────────────────────────────────────────────────────────────
+  const endMsFromDuration = (durationMinutes) => {
+    const mins = Number(durationMinutes);
+    if (!isFinite(mins) || mins <= 0) return null;
+    return Date.now() + mins * 60 * 1000;
+  };
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // LOAD FROM LOCALSTORAGE (fast, immediate)
+  // exam-instructions stores: { ..., duration, startTime, endTime, questions }
+  // ─────────────────────────────────────────────────────────────────────────
+  const loadExamFromStorage = () => {
     try {
-      const offlineData = getOfflineData(`exam_${examId}`);
-      
-      if (offlineData) {
-        setQuestions(offlineData.questions || []);
-        setAnswers(offlineData.answers || {});
-        setTimeLeft(offlineData.timeLeft || 0);
-        setExamTitle(offlineData.title || '');
-        setTotalMarks(offlineData.totalMarks || 0);
-        setStartTime(offlineData.startTime);
-        setLoading(false);
-        return;
+      const raw = localStorage.getItem(`active_exam_${examId}`);
+      if (!raw) return;
+      const exam = JSON.parse(raw);
+
+      if (exam.questions?.length) setQuestions(exam.questions);
+      if (exam.title) setExamTitle(exam.title);
+
+      const sa = localStorage.getItem(`exam_answers_${examId}`);
+      if (sa) setAnswers(JSON.parse(sa));
+
+      const total = (exam.questions || []).reduce((s, q) => s + (q.marks || 1), 0);
+      setTotalMarks(total);
+
+      if (exam.endTime) {
+        const endMs = new Date(exam.endTime).getTime();
+        if (isFinite(endMs) && endMs > Date.now()) {
+          activateTimer(endMs);
+          return;
+        }
+      }
+      if (exam.startTime && exam.duration) {
+        const startMs = new Date(exam.startTime).getTime();
+        if (isFinite(startMs)) {
+          const endMs = startMs + Number(exam.duration) * 60 * 1000;
+          if (isFinite(endMs) && endMs > Date.now()) {
+            activateTimer(endMs);
+            return;
+          }
+        }
+      }
+      if (exam.duration) {
+        const endMs = endMsFromDuration(exam.duration);
+        if (endMs) activateTimer(endMs);
+      }
+    } catch (e) {
+      console.error('loadExamFromStorage', e);
+    }
+  };
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // FETCH FROM SERVER (authoritative — called after storage load)
+  // The server response (from your JSON sample) contains:
+  //   exam.duration (minutes), exam.startTime, exam.endTime (may be absent)
+  // ─────────────────────────────────────────────────────────────────────────
+  const fetchExamFromServer = async () => {
+    try {
+      const res = await fetchWithAuth(`/exams/${examId}`);
+      if (!res?.ok) return;
+      const data = await res.json();
+      const exam = data.exam;
+      if (!exam) return;
+
+      setQuestions(exam.questions || []);
+      if (exam.answers) setAnswers(exam.answers);
+      setExamTitle(exam.title || '');
+
+      const total = (exam.questions || []).reduce((s, q) => s + (q.marks || 1), 0);
+      setTotalMarks(total);
+
+      let endMs = null;
+
+      if (exam.endTime) {
+        const ms = new Date(exam.endTime).getTime();
+        if (isFinite(ms) && ms > Date.now()) endMs = ms;
       }
 
-      const response = await fetchWithAuth(`/exams/${examId}`);
-      
-      if (response && response.ok) {
-        const data = await response.json();
-        setQuestions(data.exam.questions || []);
-        setAnswers(data.exam.answers || {});
-        setExamTitle(data.exam.title || '');
-        
-        const start = data.exam.startTime ? new Date(data.exam.startTime) : new Date();
-        const duration = data.exam.duration || 120;
-        const endTime = new Date(start.getTime() + duration * 60 * 1000);
-        const now = new Date();
-        const remaining = Math.max(0, Math.floor((endTime - now) / 1000));
-        
-        setTimeLeft(remaining);
-        setStartTime(start);
-        
-        const total = data.exam.questions.reduce((sum, q) => sum + (q.marks || 1), 0);
-        setTotalMarks(total);
-        
-        saveOfflineData(`exam_${examId}`, {
-          questions: data.exam.questions,
-          answers: data.exam.answers || {},
-          timeLeft: remaining,
-          title: data.exam.title,
-          totalMarks: total,
-          startTime: start
-        });
-      } else {
-        toast.error('Failed to load exam');
-        router.push('/exam-instructions');
+      if (!endMs && exam.startTime && exam.duration) {
+        const startMs = new Date(exam.startTime).getTime();
+        if (isFinite(startMs)) {
+          const ms = startMs + Number(exam.duration) * 60 * 1000;
+          if (isFinite(ms) && ms > Date.now()) endMs = ms;
+        }
       }
-    } catch (error) {
-      toast.error('Failed to load exam');
-      router.push('/exam-instructions');
+
+      if (!endMs && exam.duration) {
+        const ms = endMsFromDuration(exam.duration);
+        if (ms) endMs = ms;
+      }
+
+      if (!endMs && endTimeMsRef.current > Date.now()) {
+        endMs = endTimeMsRef.current;
+      }
+
+      if (endMs) {
+        activateTimer(endMs);
+
+        const endTimeIso = new Date(endMs).toISOString();
+        const stored = localStorage.getItem(`active_exam_${examId}`);
+        const existing = stored ? JSON.parse(stored) : {};
+        localStorage.setItem(`active_exam_${examId}`, JSON.stringify({
+          ...existing,
+          questions: exam.questions,
+          title: exam.title,
+          duration: exam.duration,
+          startTime: exam.startTime || new Date().toISOString(),
+          endTime: endTimeIso,
+          totalMarks: total,
+        }));
+      }
+
+      if (exam.answers) {
+        localStorage.setItem(`exam_answers_${examId}`, JSON.stringify(exam.answers));
+      }
+    } catch (e) {
+      console.error('fetchExamFromServer', e);
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    if (!examId || examSubmitted) return;
-
-    autoSaveIntervalRef.current = setInterval(() => {
-      saveCurrentAnswers();
-    }, 30000);
-
-    return () => clearInterval(autoSaveIntervalRef.current);
-  }, [examId, answers, examSubmitted]);
-
+  // ─────────────────────────────────────────────────────────────────────────
+  // SAVE ANSWERS
+  // ─────────────────────────────────────────────────────────────────────────
   const saveCurrentAnswers = async () => {
-    if (!examId || Object.keys(answers).length === 0 || examSubmitted) return;
-
-    try {
-      const answerEntries = Object.entries(answers);
-      for (const [questionId, index] of answerEntries) {
-        const optionLetter = String.fromCharCode(65 + index);
-        const optionText = questions.find(q => q.id === questionId)?.options[index] || optionLetter;
-        
-        await fetchWithAuth(`/exams/${examId}/save-answer`, {
+    if (!examId || !Object.keys(answers).length || examSubmitted) return;
+    localStorage.setItem(`exam_answers_${examId}`, JSON.stringify(answers));
+    for (const [questionId, index] of Object.entries(answers)) {
+      const q = questions.find(q => q.id === questionId);
+      if (q) {
+        fetchWithAuth(`/exams/${examId}/save-answer`, {
           method: 'POST',
-          body: JSON.stringify({ questionId, answer: optionText })
+          body: JSON.stringify({ questionId, answer: q.options[index] }),
         }).catch(() => {});
       }
-
-      saveOfflineData(`exam_${examId}`, {
-        questions,
-        answers,
-        timeLeft,
-        title: examTitle,
-        totalMarks,
-        startTime
-      });
-    } catch (error) {}
-  };
-
-  const enterFullscreen = () => {
-    const elem = document.documentElement;
-    if (elem.requestFullscreen) {
-      elem.requestFullscreen().catch(() => {});
     }
   };
 
-  useEffect(() => {
-    if (timeLeft <= 0 || examSubmitted) return;
+  const enterFullscreen = () => document.documentElement.requestFullscreen?.().catch(() => {});
 
-    const timer = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev <= 1) {
-          handleAutoSubmit('Time expired');
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [timeLeft, examSubmitted]);
-
+  // ─────────────────────────────────────────────────────────────────────────
+  // ANTI-CHEAT
+  // ─────────────────────────────────────────────────────────────────────────
   const recordTabSwitch = async () => {
     if (!examId || examSubmitted) return;
-
     try {
-      const response = await fetchWithAuth(`/exams/${examId}/tab-switch`, {
-        method: 'POST'
-      });
-      
-      if (response && response.ok) {
-        const data = await response.json();
-        if (data.autoSubmitted) {
-          handleAutoSubmit('Auto-submitted due to multiple tab switches');
-        }
+      const res = await fetchWithAuth(`/exams/${examId}/tab-switch`, { method: 'POST' });
+      if (res?.ok) {
+        const d = await res.json();
+        if (d.autoSubmitted) handleAutoSubmit('Auto-submitted due to multiple tab switches');
       }
-    } catch (error) {}
+    } catch (_) {}
   };
 
   const handleViolation = useCallback((type) => {
     if (examSubmitted) return;
-
-    if (violationTimeoutRef.current) {
-      clearTimeout(violationTimeoutRef.current);
-    }
-
-    setWarningCount((prev) => {
-      const newCount = prev + 1;
+    clearTimeout(violationTimeoutRef.current);
+    setWarningCount(prev => {
+      const n = prev + 1;
       setLastViolationType(type);
       setShowWarning(true);
       recordTabSwitch();
-
-      if (newCount >= 3) {
-        violationTimeoutRef.current = setTimeout(() => {
-          handleAutoSubmit(`Malpractice detected: ${type}`);
-        }, 100);
+      if (n >= 3) {
+        violationTimeoutRef.current = setTimeout(() => handleAutoSubmit(`Malpractice: ${type}`), 100);
       }
-
-      return newCount;
+      return n;
     });
   }, [examSubmitted]);
 
   const handleVisibilityChange = useCallback(() => {
-    if (document.hidden && !examSubmitted) {
-      handleViolation('Tab switched');
-    }
+    if (document.hidden && !examSubmitted) handleViolation('Tab switched');
   }, [examSubmitted, handleViolation]);
 
   const handleBlur = useCallback(() => {
-    if (!examSubmitted && !document.hidden) {
-      handleViolation('Window lost focus');
-    }
+    if (!examSubmitted && !document.hidden) handleViolation('Window lost focus');
   }, [examSubmitted, handleViolation]);
 
   const handleFullscreenChange = useCallback(() => {
     if (!document.fullscreenElement && !examSubmitted) {
-      handleViolation('Exited fullscreen mode');
-      setTimeout(() => {
-        if (!examSubmitted) {
-          enterFullscreen();
-        }
-      }, 100);
+      handleViolation('Exited fullscreen');
+      setTimeout(() => { if (!examSubmitted) enterFullscreen(); }, 100);
     }
   }, [examSubmitted, handleViolation]);
 
-  const handleContextMenu = useCallback((e) => {
-    e.preventDefault();
-  }, []);
-
+  // ─────────────────────────────────────────────────────────────────────────
+  // KEYBOARD SHORTCUTS
+  // Fix: after handleAnswerSelect auto-advances, we set answerJustSelectedRef
+  // so that ArrowRight / Next don't also fire in the same keydown cycle
+  // ─────────────────────────────────────────────────────────────────────────
   const handleKeyDown = useCallback((e) => {
     if (e.key === 'F12' || (e.ctrlKey && e.shiftKey && e.key === 'I')) {
       e.preventDefault();
+      return;
     }
-    
+
     if (!examSubmitted && questions.length > 0) {
-      const key = e.key.toUpperCase();
-      if (['A', 'B', 'C', 'D'].includes(key)) {
-        const index = key.charCodeAt(0) - 65;
-        if (index < (questions[currentQuestion]?.options.length || 0)) {
-          handleAnswerSelect(questions[currentQuestion].id, index);
+      const k = e.key.toUpperCase();
+
+      if (['A', 'B', 'C', 'D'].includes(k)) {
+        e.preventDefault();
+        const idx = k.charCodeAt(0) - 65;
+        const q = questions[currentQuestion];
+        if (q && idx < q.options.length) {
+          answerJustSelectedRef.current = true;
+          setTimeout(() => { answerJustSelectedRef.current = false; }, 500);
+          handleAnswerSelect(q.id, idx);
         }
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        if (!answerJustSelectedRef.current) {
+          setCurrentQuestion(p => Math.min(p + 1, questions.length - 1));
+        }
+      } else if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        setCurrentQuestion(p => Math.max(p - 1, 0));
+      } else if (e.key === 'Enter' && e.ctrlKey) {
+        e.preventDefault();
+        setShowSubmitModal(true);
       }
     }
   }, [examSubmitted, questions, currentQuestion]);
@@ -313,148 +332,123 @@ function ExamRoomContent() {
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('blur', handleBlur);
     document.addEventListener('fullscreenchange', handleFullscreenChange);
-    document.addEventListener('contextmenu', handleContextMenu);
+    document.addEventListener('contextmenu', e => e.preventDefault());
     document.addEventListener('keydown', handleKeyDown);
-
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('blur', handleBlur);
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
-      document.removeEventListener('contextmenu', handleContextMenu);
+      document.removeEventListener('contextmenu', e => e.preventDefault());
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [handleVisibilityChange, handleBlur, handleFullscreenChange, handleContextMenu, handleKeyDown]);
+  }, [handleVisibilityChange, handleBlur, handleFullscreenChange, handleKeyDown]);
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // SUBMIT
+  // ─────────────────────────────────────────────────────────────────────────
   const handleAutoSubmit = async (reason) => {
-    if (examSubmitted) return;
+    if (examSubmitted || submitAttemptedRef.current) return;
     await submitExam(true, reason);
   };
 
   const submitExam = async (isAuto = false, reason = '') => {
-    if (examSubmitted) return;
-    
+    if (examSubmitted || submitAttemptedRef.current) return;
+    submitAttemptedRef.current = true;
     setExamSubmitted(true);
-    
     try {
-      const response = await fetchWithAuth(`/exams/${examId}/submit`, {
-        method: 'POST'
-      });
-      
-      if (response && response.ok) {
-        const data = await response.json();
-        
-        localStorage.removeItem(`offline_exam_${examId}`);
-        
-        const examProgress = JSON.parse(localStorage.getItem('examProgress') || '{}');
-        examProgress[examSetupId] = {
-          ...examProgress[examSetupId],
-          status: 'completed',
-          score: data.exam.score,
-          percentage: data.exam.percentage
-        };
-        localStorage.setItem('examProgress', JSON.stringify(examProgress));
-        
+      await saveCurrentAnswers();
+      const res = await fetchWithAuth(`/exams/${examId}/submit`, { method: 'POST' });
+      if (res?.ok) {
+        const data = await res.json();
+        localStorage.removeItem(`active_exam_${examId}`);
+        localStorage.removeItem(`exam_answers_${examId}`);
+        const prog = JSON.parse(localStorage.getItem('examProgress') || '{}');
+        if (prog[examSetupId]) {
+          prog[examSetupId] = { ...prog[examSetupId], status: 'completed', score: data.exam?.score, percentage: data.exam?.percentage };
+          localStorage.setItem('examProgress', JSON.stringify(prog));
+        }
         if (!toastShownRef.current) {
           toastShownRef.current = true;
-          if (isAuto) {
-            toast.error(reason, { duration: 4000 });
-          } else {
-            toast.success('Exam submitted successfully!');
-          }
+          isAuto ? toast.error(reason, { duration: 4000 }) : toast.success('Exam submitted successfully!');
         }
-        
-        setTimeout(() => {
-          router.push('/exam-instructions');
-        }, 2000);
+        setTimeout(() => router.push('/exam-instructions'), 2000);
       } else {
-        toast.error('Failed to submit exam');
+        const err = await res?.json().catch(() => ({}));
+        toast.error(err?.message || 'Failed to submit exam');
+        submitAttemptedRef.current = false;
+        setExamSubmitted(false);
       }
-    } catch (error) {
+    } catch (_) {
       toast.error('Failed to submit exam');
+      submitAttemptedRef.current = false;
+      setExamSubmitted(false);
     }
   };
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // FIXED ANSWER SELECT
+  // Auto-advance to next question after 320 ms (gives visual feedback time)
+  // Now properly increments by 1 instead of skipping questions
+  // ─────────────────────────────────────────────────────────────────────────
   const handleAnswerSelect = (questionId, optionIndex) => {
-    setAnswers((prev) => {
-      const newAnswers = {
-        ...prev,
-        [questionId]: optionIndex
-      };
-      
-      if (examId) {
-        const optionText = questions.find(q => q.id === questionId)?.options[optionIndex] || String.fromCharCode(65 + optionIndex);
+    // Clear any pending navigation timeouts
+    if (navigationTimeoutRef.current) {
+      clearTimeout(navigationTimeoutRef.current);
+    }
+
+    setAnswers(prev => {
+      const next = { ...prev, [questionId]: optionIndex };
+      localStorage.setItem(`exam_answers_${examId}`, JSON.stringify(next));
+      const q = questions.find(q => q.id === questionId);
+      if (q) {
         fetchWithAuth(`/exams/${examId}/save-answer`, {
           method: 'POST',
-          body: JSON.stringify({ questionId, answer: optionText })
+          body: JSON.stringify({ questionId, answer: q.options[optionIndex] }),
         }).catch(() => {});
       }
-      
-      saveOfflineData(`exam_${examId}`, {
-        questions,
-        answers: newAnswers,
-        timeLeft,
-        title: examTitle,
-        totalMarks,
-        startTime
-      });
-      
-      return newAnswers;
+      return next;
     });
-  };
 
-  const handleNext = () => {
+    // Auto-advance to the very next question only
     if (currentQuestion < questions.length - 1) {
-      setCurrentQuestion(currentQuestion + 1);
+      navigationTimeoutRef.current = setTimeout(() => {
+        setCurrentQuestion(prev => {
+          // Ensure we only go to the immediate next question
+          const nextQuestion = prev + 1;
+          return Math.min(nextQuestion, questions.length - 1);
+        });
+        navigationTimeoutRef.current = null;
+      }, 320);
     }
   };
 
-  const handlePrevious = () => {
-    if (currentQuestion > 0) {
-      setCurrentQuestion(currentQuestion - 1);
-    }
+  // ─────────────────────────────────────────────────────────────────────────
+  // FORMAT HELPERS
+  // ─────────────────────────────────────────────────────────────────────────
+  const formatTime = (secs) => {
+    if (!timerReady || !isFinite(secs) || secs < 0) return '--:--:--';
+    const h = Math.floor(secs / 3600);
+    const m = Math.floor((secs % 3600) / 60);
+    const s = secs % 60;
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
   };
 
-  const handleQuestionJump = (index) => {
-    setCurrentQuestion(index);
-  };
-
-  const handleSubmit = () => {
-    setShowSubmitModal(true);
-  };
-
-  const confirmSubmit = () => {
-    submitExam(false);
-  };
-
-  const formatTime = (seconds) => {
-    if (isNaN(seconds) || seconds < 0) return "00:00:00";
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
-    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  const getTimerColor = () => {
-    if (timeLeft > 1800) return examRoomTimerNormal;
-    if (timeLeft > 600) return examRoomTimerWarning;
-    return examRoomTimerDanger;
-  };
-
-  const getWarningColor = () => {
-    if (warningCount === 1) return { bg: 'bg-[#FEF3C7]', text: 'text-[#F59E0B]', icon: '⚠️' };
-    if (warningCount === 2) return { bg: 'bg-[#FED7AA]', text: 'text-[#EA580C]', icon: '🚨' };
-    return { bg: 'bg-[#FEE2E2]', text: 'text-[#DC2626]', icon: '🛑' };
-  };
+  const timerUrgency = !timerReady ? 'safe' : timeLeft > 1800 ? 'safe' : timeLeft > 600 ? 'warn' : 'danger';
 
   const answeredCount = Object.keys(answers).length;
+  const unanswered = questions.length - answeredCount;
   const progress = questions.length > 0 ? (answeredCount / questions.length) * 100 : 0;
 
   if (loading) {
     return (
-      <div className="fixed inset-0 flex items-center justify-center bg-white">
+      <div className="fixed inset-0 flex items-center justify-center bg-[#f0fffe]">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-[#039994] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-[14px] leading-[100%] font-[500] text-[#626060] font-playfair">Loading exam...</p>
+          <div className="relative w-20 h-20 mx-auto mb-5">
+            <div className="absolute inset-0 rounded-full border-4 border-[#039994]/20"/>
+            <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-[#039994] animate-spin"/>
+          </div>
+          <p className="text-[#039994] font-bold text-xl font-playfair">Loading your exam…</p>
+          <p className="text-gray-400 text-sm mt-1 font-playfair">Please wait, do not close this tab</p>
         </div>
       </div>
     );
@@ -462,20 +456,14 @@ function ExamRoomContent() {
 
   if (questions.length === 0) {
     return (
-      <div className="fixed inset-0 flex items-center justify-center bg-white">
-        <div className="text-center max-w-md mx-4">
-          <div className="text-5xl mb-4">📚</div>
-          <h2 className="text-[20px] leading-[120%] font-[700] tracking-[-0.03em] text-[#1E1E1E] mb-2 font-playfair">
-            No Questions Available
-          </h2>
-          <p className="text-[14px] leading-[150%] font-[400] text-[#626060] mb-6 font-playfair">
-            No questions available for this exam.
-          </p>
-          <button
-            onClick={() => router.push('/exam-instructions')}
-            className="px-6 py-3 bg-[#039994] text-white rounded-lg font-playfair text-[14px] leading-[100%] font-[600] hover:bg-[#028a85] transition-colors"
-          >
-            Back to Instructions
+      <div className="fixed inset-0 flex items-center justify-center bg-[#f0fffe]">
+        <div className="text-center max-w-sm mx-4">
+          <div className="text-6xl mb-4">📚</div>
+          <h2 className="text-2xl font-bold text-gray-800 mb-2 font-playfair">No Questions Found</h2>
+          <p className="text-gray-500 mb-6 font-playfair">No questions are available for this exam.</p>
+          <button onClick={() => router.push('/exam-instructions')}
+            className="px-8 py-3 bg-[#039994] text-white rounded-xl font-bold font-playfair hover:bg-[#028a85] transition-all hover:scale-105">
+            Back to Dashboard
           </button>
         </div>
       </div>
@@ -483,190 +471,299 @@ function ExamRoomContent() {
   }
 
   const currentQ = questions[currentQuestion];
-  const warningStyle = getWarningColor();
+  const LETTERS = ['A', 'B', 'C', 'D', 'E'];
+
+  const timerBorderClass = timerUrgency === 'safe' ? 'border-[#039994]'   : timerUrgency === 'warn' ? 'border-amber-500'  : 'border-red-500';
+  const timerTextClass   = timerUrgency === 'safe' ? 'text-[#039994]'     : timerUrgency === 'warn' ? 'text-amber-600'    : 'text-red-600';
+  const timerBgClass     = timerUrgency === 'safe' ? 'bg-[#039994]/5'     : timerUrgency === 'warn' ? 'bg-amber-50'       : 'bg-red-50';
 
   return (
-    <div className={examRoomContainer}>
-      <div className={examRoomHeader}>
-        <div className={examRoomHeaderInner}>
-          <div>
-            <h1 className={examRoomSubject}>
-              {examTitle}
-            </h1>
-            <p className="text-[11px] leading-[100%] font-[400] text-[#626060] font-playfair mt-1">
-              Student: {user?.firstName} {user?.lastName} • {user?.loginId} • {user?.class}
-            </p>
-            <p className="text-[11px] leading-[100%] font-[400] text-[#626060] font-playfair mt-1">
-              Strict Mode • {warningCount} warnings
-              {warningCount > 0 && (
-                <span className={`ml-2 ${warningStyle.text} font-[600]`}>
-                  • Warning {warningCount}/3
-                </span>
-              )}
-            </p>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className={examRoomTimer}>
-              <span className="text-[13px] leading-[100%] font-[500] text-[#626060] font-playfair">Time Left:</span>
-              <span className={`${examRoomTimerText} ${getTimerColor()}`}>
+    <div className="min-h-screen bg-gray-50 select-none">
+
+      <header className="bg-white border-b-2 border-gray-100 sticky top-0 z-30 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+          <div className="flex items-center justify-between h-16 gap-3">
+
+            <div className="flex items-center gap-3 min-w-0 flex-1">
+              <div className="w-9 h-9 rounded-xl bg-[#039994] flex items-center justify-center flex-shrink-0 shadow-sm shadow-[#039994]/30">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
+                  <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                </svg>
+              </div>
+              <div className="min-w-0">
+                <p className="font-bold text-gray-800 font-playfair text-sm sm:text-base leading-tight truncate">{examTitle}</p>
+                <p className="text-gray-400 text-xs font-playfair truncate">{user?.firstName} {user?.lastName} · {user?.loginId}</p>
+              </div>
+            </div>
+
+            <div className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl border-2 ${timerBorderClass} ${timerBgClass} shadow-sm flex-shrink-0`}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+                stroke={timerUrgency === 'safe' ? '#039994' : timerUrgency === 'warn' ? '#f59e0b' : '#ef4444'} strokeWidth="2">
+                <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+              </svg>
+              <span className={`font-mono font-black text-2xl sm:text-3xl tracking-widest tabular-nums ${timerTextClass}`}>
                 {formatTime(timeLeft)}
               </span>
+              {timerUrgency === 'danger' && (
+                <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-ping flex-shrink-0"/>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2 flex-shrink-0">
+              {warningCount > 0 && (
+                <div className="hidden sm:flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-amber-50 border border-amber-200">
+                  <span className="text-amber-600 text-xs font-bold font-playfair">⚠️ {warningCount}/3</span>
+                </div>
+              )}
+              <button onClick={() => setShowSubmitModal(true)}
+                className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-xl font-bold font-playfair text-sm transition-all hover:scale-105 active:scale-95 shadow-sm shadow-red-200">
+                Submit
+              </button>
             </div>
           </div>
-        </div>
-      </div>
 
-      <div className={examRoomMain}>
-        <div className={examRoomContent}>
-          <div className={examRoomContentInner}>
-            <div className={examRoomQuestionCard}>
-              <div className={examRoomQuestionHeader}>
-                <span className={examRoomQuestionNumber}>
-                  Question {currentQuestion + 1} of {questions.length}
+          <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+            <motion.div className="h-full rounded-full bg-gradient-to-r from-[#039994] to-emerald-400"
+              animate={{ width: `${progress}%` }} transition={{ duration: 0.4 }}/>
+          </div>
+        </div>
+      </header>
+
+      <AnimatePresence>
+        {showShortcuts && (
+          <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
+            className="fixed top-20 left-1/2 -translate-x-1/2 z-40 bg-[#039994] text-white px-5 py-2.5 rounded-full shadow-lg text-sm font-playfair font-semibold flex items-center gap-3 whitespace-nowrap">
+            <span>⌨️ A–D to answer</span>
+            <span className="opacity-40">·</span>
+            <span>← → to navigate</span>
+            <span className="opacity-40">·</span>
+            <span>Ctrl+Enter to submit</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 grid grid-cols-1 lg:grid-cols-[1fr_284px] gap-6">
+
+        <div className="space-y-4">
+
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="bg-[#039994] text-white px-3 py-1 rounded-full text-sm font-bold font-playfair shadow-sm shadow-[#039994]/25">
+                Q{currentQuestion + 1} of {questions.length}
+              </span>
+              {currentQ.subjectName && (
+                <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-0.5 rounded-full text-xs font-semibold font-playfair">
+                  {currentQ.subjectName}
                 </span>
-                <span className={examRoomQuestionMark}>
-                  {currentQ.marks || 1} {currentQ.marks === 1 ? 'mark' : 'marks'}
-                </span>
+              )}
+            </div>
+            <span className="bg-white border border-gray-200 text-gray-600 px-3 py-1 rounded-full text-xs font-bold font-playfair shadow-sm">
+              {currentQ.marks || 1} mark{(currentQ.marks || 1) !== 1 ? 's' : ''}
+            </span>
+          </div>
+
+          <AnimatePresence mode="wait">
+            <motion.div key={currentQuestion}
+              initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50 }}
+              transition={{ duration: 0.18, ease: 'easeOut' }}
+              className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+
+              <div className="px-6 sm:px-8 py-6 bg-gradient-to-br from-[#f0fffe] to-emerald-50/40 border-b border-gray-100">
+                <p className="text-gray-900 text-lg sm:text-xl font-playfair font-semibold leading-relaxed">
+                  {currentQ.question}
+                </p>
               </div>
 
-              <p className={examRoomQuestionText}>{currentQ.question}</p>
-
-              <div className={examRoomOptionsGrid}>
+              <div className="p-4 sm:p-6 space-y-3">
                 {currentQ.options.map((option, index) => {
-                  const letter = String.fromCharCode(65 + index);
+                  const letter = LETTERS[index];
+                  const isSelected = answers[currentQ.id] === index;
                   return (
-                    <div
-                      key={index}
+                    <motion.button key={index}
+                      whileHover={{ scale: 1.007 }} whileTap={{ scale: 0.996 }}
                       onClick={() => handleAnswerSelect(currentQ.id, index)}
-                      className={`${examRoomOption} ${
-                        answers[currentQ.id] === index
-                          ? examRoomOptionActive
-                          : examRoomOptionInactive
-                      }`}
-                    >
-                      <div className={`${examRoomOptionLabel} ${
-                        answers[currentQ.id] === index
-                          ? examRoomOptionLabelActive
-                          : examRoomOptionLabelInactive
+                      className={`w-full flex items-center gap-4 p-4 rounded-xl border-2 text-left transition-all duration-150 cursor-pointer ${
+                        isSelected
+                          ? 'border-[#039994] bg-[#039994]/5 shadow-md shadow-[#039994]/10'
+                          : 'border-gray-200 bg-white hover:border-[#039994]/40 hover:bg-gray-50/80'
+                      }`}>
+                      <div className={`w-11 h-11 rounded-full flex items-center justify-center text-base font-extrabold font-playfair flex-shrink-0 transition-all duration-150 ${
+                        isSelected ? 'bg-[#039994] text-white shadow-md shadow-[#039994]/30' : 'bg-gray-100 text-gray-500'
                       }`}>
                         {letter}
                       </div>
-                      <span className={examRoomOptionText}>{option}</span>
-                    </div>
+                      <span className={`flex-1 text-base sm:text-lg font-playfair font-medium leading-snug transition-colors ${
+                        isSelected ? 'text-[#028a85] font-semibold' : 'text-gray-700'
+                      }`}>
+                        {option}
+                      </span>
+                      {isSelected && (
+                        <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="flex-shrink-0">
+                          <div className="w-7 h-7 rounded-full bg-[#039994] flex items-center justify-center shadow-sm">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3.5">
+                              <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                          </div>
+                        </motion.div>
+                      )}
+                    </motion.button>
                   );
                 })}
               </div>
-              
-              <div className="mt-4 text-[11px] text-[#626060] font-playfair border-t pt-4">
-                <span className="font-[600]">Keyboard Shortcuts:</span> Press A, B, C, D keys to select answers
-              </div>
-            </div>
 
-            <div className={examRoomNavigation}>
-              <button
-                onClick={handlePrevious}
-                disabled={currentQuestion === 0}
-                className={`${examRoomNavButton} ${examRoomNavButtonSecondary} ${
-                  currentQuestion === 0 ? 'opacity-50 cursor-not-allowed' : ''
-                }`}
-              >
-                ← Previous
-              </button>
-              <button
-                onClick={handleNext}
-                disabled={currentQuestion === questions.length - 1}
-                className={`${examRoomNavButton} ${examRoomNavButtonPrimary} ${
-                  currentQuestion === questions.length - 1 ? 'opacity-50 cursor-not-allowed' : ''
-                }`}
-              >
-                Next →
-              </button>
-            </div>
+              <div className="px-6 py-3 bg-gray-50 border-t border-gray-100">
+                <p className="text-gray-400 text-xs font-playfair">
+                  Tip: Press{' '}
+                  {['A','B','C','D'].map(k => (
+                    <kbd key={k} className="mx-0.5 px-1 py-0.5 bg-white border border-gray-200 rounded text-gray-600 font-mono text-xs">{k}</kbd>
+                  ))}{' '}
+                  on your keyboard to quickly select an answer
+                </p>
+              </div>
+            </motion.div>
+          </AnimatePresence>
+
+          <div className="flex justify-between gap-3">
+            <button onClick={() => setCurrentQuestion(p => Math.max(p - 1, 0))}
+              disabled={currentQuestion === 0}
+              className="flex items-center gap-2 px-6 py-3 rounded-xl bg-white border-2 border-gray-200 text-gray-600 font-bold font-playfair text-sm hover:border-[#039994] hover:text-[#039994] hover:bg-[#039994]/4 transition-all hover:scale-105 active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:border-gray-200 disabled:hover:text-gray-600 disabled:hover:bg-white shadow-sm">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <polyline points="15 18 9 12 15 6"/>
+              </svg>
+              Previous
+            </button>
+            <button onClick={() => setCurrentQuestion(p => Math.min(p + 1, questions.length - 1))}
+              disabled={currentQuestion === questions.length - 1}
+              className="flex items-center gap-2 px-6 py-3 rounded-xl bg-[#039994] text-white font-bold font-playfair text-sm hover:bg-[#028a85] transition-all hover:scale-105 active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:bg-[#039994] shadow-sm shadow-[#039994]/30">
+              Next
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <polyline points="9 18 15 12 9 6"/>
+              </svg>
+            </button>
           </div>
         </div>
 
-        <div className={examRoomSidebar}>
-          <h3 className={examRoomSidebarTitle}>Exam Progress</h3>
-          
-          <div className={examRoomProgressBar}>
-            <div className={examRoomProgressText}>
-              <span>Answered</span>
-              <span>{answeredCount} / {questions.length}</span>
+        <div className="space-y-4">
+
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+            <h3 className="font-bold text-gray-700 font-playfair text-sm mb-4 flex items-center gap-2">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#039994" strokeWidth="2.5">
+                <path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
+              </svg>
+              Your Progress
+            </h3>
+            <div className="grid grid-cols-3 gap-2 mb-4">
+              {[
+                { label: 'Answered', value: answeredCount, color: '#039994', bg: '#f0fffe' },
+                { label: 'Skipped',  value: unanswered,   color: '#f59e0b', bg: '#fffbeb' },
+                { label: 'Total',    value: questions.length, color: '#6b7280', bg: '#f9fafb' },
+              ].map(({ label, value, color, bg }) => (
+                <div key={label} className="rounded-xl p-2.5 text-center border border-gray-100" style={{ background: bg }}>
+                  <div className="text-xl font-extrabold font-playfair" style={{ color }}>{value}</div>
+                  <div className="text-xs text-gray-400 font-playfair mt-0.5 leading-tight">{label}</div>
+                </div>
+              ))}
             </div>
-            <div className={examRoomProgressBarBg}>
-              <div 
-                className={examRoomProgressBarFill}
-                style={{ width: `${progress}%` }}
-              />
+            <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
+              <motion.div className="h-full rounded-full bg-gradient-to-r from-[#039994] to-emerald-400"
+                animate={{ width: `${progress}%` }} transition={{ duration: 0.4 }}/>
+            </div>
+            <p className="text-center text-[#039994] font-extrabold text-xl font-playfair mt-2">{Math.round(progress)}%</p>
+          </div>
+
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+            <h3 className="font-bold text-gray-700 font-playfair text-sm mb-3">Navigate Questions</h3>
+            <div className="grid grid-cols-5 gap-1.5">
+              {questions.map((q, i) => {
+                const isCurrent = i === currentQuestion;
+                const isDone = answers[q.id] !== undefined;
+                return (
+                  <button key={q.id} onClick={() => setCurrentQuestion(i)}
+                    title={`Question ${i + 1}${isDone ? ' (answered)' : ''}`}
+                    className={`aspect-square rounded-lg text-xs font-bold font-playfair transition-all hover:scale-110 active:scale-95 ${
+                      isCurrent
+                        ? 'bg-[#039994] text-white shadow-md shadow-[#039994]/30'
+                        : isDone
+                        ? 'bg-emerald-50 border-2 border-[#039994] text-[#039994]'
+                        : 'bg-gray-50 border border-gray-200 text-gray-500 hover:border-[#039994]/40 hover:bg-emerald-50/50'
+                    }`}>
+                    {i + 1}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="flex items-center gap-3 mt-3 pt-3 border-t border-gray-100 flex-wrap">
+              {[
+                { cls: 'bg-[#039994]', label: 'Current' },
+                { cls: 'bg-emerald-50 border-2 border-[#039994]', label: 'Answered' },
+                { cls: 'bg-gray-50 border border-gray-200', label: 'Skipped' },
+              ].map(({ cls, label }) => (
+                <div key={label} className="flex items-center gap-1">
+                  <div className={`w-3.5 h-3.5 rounded-sm ${cls}`}/>
+                  <span className="text-gray-400 text-xs font-playfair">{label}</span>
+                </div>
+              ))}
             </div>
           </div>
 
-          <h4 className="text-[14px] leading-[120%] font-[600] text-[#1E1E1E] mb-3 font-playfair">Questions</h4>
-          <div className={examRoomQuestionGrid}>
-            {questions.map((q, index) => (
-              <button
-                key={q.id}
-                onClick={() => handleQuestionJump(index)}
-                className={`${examRoomQuestionDot} ${
-                  index === currentQuestion
-                    ? examRoomQuestionDotCurrent
-                    : answers[q.id] !== undefined
-                    ? examRoomQuestionDotAnswered
-                    : examRoomQuestionDotUnanswered
-                }`}
-              >
-                {index + 1}
-              </button>
-            ))}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+            <h3 className="font-bold text-gray-700 font-playfair text-sm mb-3">Exam Info</h3>
+            <div className="space-y-2.5">
+              {[
+                { icon: '🏆', label: 'Total Marks', value: totalMarks },
+                { icon: '❓', label: 'Questions',   value: questions.length },
+                { icon: '⚠️', label: 'Warnings',    value: `${warningCount} / 3`, warn: warningCount > 0 },
+                { icon: '🎓', label: 'Student',      value: user?.class || '' },
+              ].map(({ icon, label, value, warn }) => (
+                <div key={label} className="flex items-center justify-between">
+                  <span className="text-gray-500 text-xs font-playfair">{icon} {label}</span>
+                  <span className={`text-xs font-bold font-playfair ${warn ? 'text-amber-500' : 'text-gray-700'}`}>{value}</span>
+                </div>
+              ))}
+            </div>
           </div>
 
-          <div className={examRoomActions}>
-            <button
-              onClick={handleSubmit}
-              className={`${examRoomActionButton} ${examRoomSubmitButton}`}
-            >
-              Submit Exam
-            </button>
-          </div>
+          <button onClick={() => setShowSubmitModal(true)}
+            className="w-full py-4 bg-red-500 hover:bg-red-600 text-white rounded-2xl font-extrabold font-playfair text-base shadow-lg shadow-red-200 hover:shadow-red-300 transition-all hover:scale-105 active:scale-95">
+            🚀 Submit Exam
+          </button>
         </div>
       </div>
 
       <AnimatePresence>
         {showWarning && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className={examWarningModal}
-          >
-            <motion.div
-              initial={{ scale: 0.9, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.9, y: 20 }}
-              className={examWarningCard}
-            >
-              <div className={examWarningIcon}>{warningStyle.icon}</div>
-              <h3 className={`${examWarningTitle} ${warningStyle.text}`}>
-                Warning {warningCount} of 3
-              </h3>
-              <p className={examWarningText}>
-                Violation detected: <strong>{lastViolationType}</strong>
-              </p>
-
-              <div className={`p-4 ${warningStyle.bg} rounded-lg mb-6`}>
-                <p className={`text-[13px] leading-[140%] font-[600] ${warningStyle.text} font-playfair text-center`}>
-                  {warningCount === 1 && 'First warning! Stay on this page.'}
-                  {warningCount === 2 && 'Second warning! One more violation will auto-submit your exam!'}
-                  {warningCount >= 3 && 'Third warning! Your exam is being submitted...'}
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center px-4"
+            style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(6px)' }}>
+            <motion.div initial={{ scale: 0.8, y: 30 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.8, y: 30 }}
+              className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden border-4"
+              style={{ borderColor: warningCount >= 3 ? '#ef4444' : warningCount >= 2 ? '#f97316' : '#f59e0b' }}>
+              <div className="p-8 text-center">
+                <div className="text-6xl mb-4">
+                  {warningCount >= 3 ? '🛑' : warningCount >= 2 ? '🚨' : '⚠️'}
+                </div>
+                <h3 className="text-2xl font-extrabold font-playfair mb-1"
+                  style={{ color: warningCount >= 3 ? '#ef4444' : warningCount >= 2 ? '#f97316' : '#f59e0b' }}>
+                  Warning {warningCount} of 3
+                </h3>
+                <p className="text-gray-500 text-sm font-playfair mb-5">
+                  <strong className="text-gray-700">Violation detected:</strong> {lastViolationType}
                 </p>
+                <div className={`p-4 rounded-xl mb-5 text-sm font-semibold font-playfair ${
+                  warningCount >= 3 ? 'bg-red-50 text-red-700 border border-red-200'
+                  : warningCount >= 2 ? 'bg-orange-50 text-orange-700 border border-orange-200'
+                  : 'bg-amber-50 text-amber-700 border border-amber-200'
+                }`}>
+                  {warningCount === 1 && '⚠️ First warning! Please stay on this exam page and do not switch tabs.'}
+                  {warningCount === 2 && '🚨 Second warning! One more violation will automatically submit your exam!'}
+                  {warningCount >= 3 && '🛑 Third warning! Your exam is being auto-submitted now.'}
+                </div>
+                <button onClick={() => setShowWarning(false)}
+                  className="w-full py-3.5 rounded-xl font-extrabold font-playfair text-white text-base transition-all hover:scale-105 active:scale-95 shadow-lg"
+                  style={{ background: warningCount >= 3 ? '#ef4444' : '#039994' }}>
+                  I Understand
+                </button>
               </div>
-
-              <button
-                onClick={() => setShowWarning(false)}
-                className={`${examWarningButton} bg-[#039994] text-white`}
-              >
-                I Understand
-              </button>
             </motion.div>
           </motion.div>
         )}
@@ -674,37 +771,40 @@ function ExamRoomContent() {
 
       <AnimatePresence>
         {showSubmitModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className={modalOverlay}
-          >
-            <motion.div
-              initial={{ scale: 0.9 }}
-              animate={{ scale: 1 }}
-              exit={{ scale: 0.9 }}
-              className={modalContainer}
-            >
-              <h3 className={modalTitle}>Submit Exam?</h3>
-              <p className={modalText}>
-                You have answered {answeredCount} out of {questions.length} questions. 
-                {answeredCount < questions.length && ` ${questions.length - answeredCount} questions remain unanswered.`}
-                <br /><br />
-                Are you sure you want to submit?
-              </p>
-              <div className={modalActions}>
-                <button
-                  onClick={() => setShowSubmitModal(false)}
-                  className={modalButtonSecondary}
-                >
-                  Cancel
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center px-4"
+            style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(6px)' }}>
+            <motion.div initial={{ scale: 0.8 }} animate={{ scale: 1 }} exit={{ scale: 0.8 }}
+              className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden border border-gray-100">
+              <div className="p-6 text-center border-b border-gray-100">
+                <div className="text-5xl mb-3">📋</div>
+                <h3 className="text-xl font-extrabold font-playfair text-gray-800 mb-1">Submit Exam?</h3>
+                <p className="text-gray-500 text-sm font-playfair">
+                  {unanswered === 0
+                    ? '✅ You have answered all questions!'
+                    : `You still have ${unanswered} unanswered question${unanswered !== 1 ? 's' : ''}. Are you sure?`}
+                </p>
+              </div>
+              <div className="grid grid-cols-3 divide-x divide-gray-100 border-b border-gray-100">
+                {[
+                  { label: 'Answered', val: answeredCount,       color: '#039994' },
+                  { label: 'Skipped',  val: unanswered,          color: '#f59e0b' },
+                  { label: 'Total',    val: questions.length,    color: '#6b7280' },
+                ].map(({ label, val, color }) => (
+                  <div key={label} className="py-4 text-center">
+                    <div className="text-2xl font-extrabold font-playfair" style={{ color }}>{val}</div>
+                    <div className="text-gray-400 text-xs font-playfair mt-0.5">{label}</div>
+                  </div>
+                ))}
+              </div>
+              <div className="p-5 flex gap-3">
+                <button onClick={() => setShowSubmitModal(false)}
+                  className="flex-1 py-3.5 rounded-xl border-2 border-gray-200 text-gray-600 font-bold font-playfair text-sm hover:border-[#039994] hover:text-[#039994] transition-all hover:scale-105 active:scale-95">
+                  Keep Going
                 </button>
-                <button
-                  onClick={confirmSubmit}
-                  className={modalButtonDanger}
-                >
-                  Submit
+                <button onClick={() => { setShowSubmitModal(false); submitExam(false); }}
+                  className="flex-1 py-3.5 rounded-xl bg-red-500 hover:bg-red-600 text-white font-extrabold font-playfair text-sm shadow-lg shadow-red-200 transition-all hover:scale-105 active:scale-95">
+                  Submit Now
                 </button>
               </div>
             </motion.div>
@@ -719,10 +819,13 @@ export default function ExamRoomPage() {
   return (
     <StudentProtectedRoute>
       <Suspense fallback={
-        <div className="fixed inset-0 flex items-center justify-center bg-white">
+        <div className="fixed inset-0 flex items-center justify-center bg-[#f0fffe]">
           <div className="text-center">
-            <div className="w-16 h-16 border-4 border-[#039994] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-            <p className="text-[14px] leading-[100%] font-[500] text-[#626060] font-playfair">Loading exam...</p>
+            <div className="relative w-20 h-20 mx-auto mb-5">
+              <div className="absolute inset-0 rounded-full border-4 border-[#039994]/20"/>
+              <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-[#039994] animate-spin"/>
+            </div>
+            <p className="text-[#039994] font-bold text-xl font-playfair">Loading exam…</p>
           </div>
         </div>
       }>
