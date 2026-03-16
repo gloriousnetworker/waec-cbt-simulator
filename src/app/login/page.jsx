@@ -217,6 +217,8 @@ export default function StudentLoginPage() {
                   placeholder="Enter your password"
                   disabled={loading}
                   autoComplete="current-password"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   className="w-full bg-transparent border-b pb-3 pr-10 text-white text-sm font-medium outline-none transition-all min-h-[44px] placeholder:text-white/25 focus:placeholder:text-white/40"
                   style={{ borderBottomColor: 'rgba(255,255,255,0.25)' }}
                   onFocus={e => { e.target.style.borderBottomColor = 'rgba(255,255,255,0.8)' }}

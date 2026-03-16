@@ -658,6 +658,68 @@ Or keep the same brand colours (recommended for brand consistency) and just upda
 
 ---
 
+## 16. PWA & Mobile Auth Pattern
+
+### Problem
+Cross-origin cookies are blocked by iOS Safari ITP and Android PWA standalone mode.
+`credentials: 'include'` works on desktop browsers but not in PWA installs on mobile.
+
+### Root Causes Fixed
+1. **Double `meCheck` after login** — after a successful `/api/student/login`, a second `/api/auth/me` call was made immediately. On mobile PWA the auth cookie from the first request is not yet propagated to the second, causing "Authentication verification failed."
+2. **No localStorage fallback** — on cold start, `checkAuth()` failing on mobile cleared `user → null` and forced a redirect to `/login`.
+3. **No Bearer token header** — requests only relied on cookies; no Authorization header fallback.
+
+### Fix Applied (`src/context/StudentAuthContext.jsx`)
+
+#### localStorage Keys
+| Key | Purpose | TTL |
+|-----|---------|-----|
+| `cbt_user_cache` | Serialised `{ user, ts }` object | 24 hours |
+| `cbt_auth_token` | JWT Bearer token (if returned by backend) | No expiry |
+
+#### Cold-Start Auth Flow
+```
+1. loadCachedUser() → setUser(cached) immediately (UI shows dashboard, not login flash)
+2. checkAuth() runs in background with Bearer header
+3a. Server OK → update cache, keep user
+3b. Network/CORS error (fetch throws) → keep cached user, don't log out
+3c. Explicit 401 → clear cache + user, redirect to login
+```
+
+#### Login Flow (Simplified)
+```
+1. POST /api/student/login → data.user
+2. setUser(data.user)
+3. saveCachedUser(data.user)  ← cache for future cold starts
+4. If data.token → localStorage.setItem('cbt_auth_token', token)
+5. Navigate immediately — no second /api/auth/me call
+```
+
+#### Bearer Token Header (fetchWithAuth)
+```js
+const token = localStorage.getItem('cbt_auth_token');
+headers: {
+  'Content-Type': 'application/json',
+  ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+  ...options.headers,
+}
+```
+
+### Mobile Input Fix (`src/app/login/page.jsx`)
+Password field uses `inputMode="numeric" pattern="[0-9]*"` to trigger numeric keypad on mobile — matching NIN field behaviour. Password masking is preserved via `type="password"`.
+
+```jsx
+<input
+  type={showPassword ? 'text' : 'password'}
+  inputMode="numeric"
+  pattern="[0-9]*"
+  autoComplete="current-password"
+  ...
+/>
+```
+
+---
+
 *This document is the complete design context for Einstein's CBT App.
 Use it as the single source of truth when building the Admin Panel.*
 

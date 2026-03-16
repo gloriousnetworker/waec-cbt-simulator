@@ -7,6 +7,32 @@ import toast from 'react-hot-toast';
 const StudentAuthContext = createContext();
 const BASE_URL = 'https://cbt-simulator-backend.vercel.app';
 
+// localStorage keys
+const CACHE_KEY = 'cbt_user_cache';
+const TOKEN_KEY = 'cbt_auth_token';
+const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
+
+function loadCachedUser() {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+    const { user, ts } = JSON.parse(raw);
+    if (Date.now() - ts > CACHE_TTL) { localStorage.removeItem(CACHE_KEY); return null; }
+    return user;
+  } catch { return null; }
+}
+
+function saveCachedUser(user) {
+  try { localStorage.setItem(CACHE_KEY, JSON.stringify({ user, ts: Date.now() })); } catch {}
+}
+
+function clearAuthCache() {
+  try {
+    localStorage.removeItem(CACHE_KEY);
+    localStorage.removeItem(TOKEN_KEY);
+  } catch {}
+}
+
 export function StudentAuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -30,34 +56,45 @@ export function StudentAuthProvider({ children }) {
 
   const checkAuth = useCallback(async () => {
     try {
+      const token = (() => { try { return localStorage.getItem(TOKEN_KEY); } catch { return null; } })();
       const response = await fetch(`${BASE_URL}/api/auth/me`, {
         method: 'GET',
         credentials: 'include',
-        cache: 'no-store'
+        cache: 'no-store',
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
       });
 
       if (response.ok) {
         const data = await response.json();
-        // The response has a 'user' object that contains the student data
         setUser(data.user);
+        saveCachedUser(data.user);
         return true;
       } else {
+        // Explicit auth failure — clear everything
         setUser(null);
+        clearAuthCache();
         return false;
       }
     } catch (error) {
+      // Network / CORS error — keep cached user so PWA stays logged in
       console.error('Auth check error:', error);
-      setUser(null);
+      const cached = loadCachedUser();
+      if (!cached) setUser(null);
       return false;
     }
   }, []);
 
   useEffect(() => {
     const initAuth = async () => {
+      // Show cached user immediately so the UI doesn't flash to login
+      const cached = loadCachedUser();
+      if (cached) setUser(cached);
+
+      // Background server verification
       await checkAuth();
       setAuthChecked(true);
     };
-    
+
     initAuth();
   }, [checkAuth]);
 
@@ -79,36 +116,29 @@ export function StudentAuthProvider({ children }) {
 
       if (response.ok && data.user) {
         setUser(data.user);
-        
-        // Verify auth by checking /api/auth/me immediately
-        const meCheck = await fetch(`${BASE_URL}/api/auth/me`, {
-          credentials: 'include'
-        });
-        
-        if (meCheck.ok) {
-          const meData = await meCheck.json();
-          setUser(meData.user);
-          
-          if (data.examMode) {
-            if (window.location.hostname !== 'localhost') {
-              window.location.href = '/exam-instructions';
-            } else {
-              router.push('/exam-instructions');
-            }
+        saveCachedUser(data.user);
+
+        // Store token if backend returns one (used as Bearer fallback for PWA)
+        if (data.token || data.accessToken) {
+          try { localStorage.setItem(TOKEN_KEY, data.token || data.accessToken); } catch {}
+        }
+
+        if (data.examMode) {
+          if (window.location.hostname !== 'localhost') {
+            window.location.href = '/exam-instructions';
           } else {
-            if (window.location.hostname !== 'localhost') {
-              window.location.href = '/dashboard';
-            } else {
-              router.push('/dashboard');
-            }
+            router.push('/exam-instructions');
           }
         } else {
-          console.error('Auth check failed after login');
-          toast.error('Authentication verification failed. Please try again.');
+          if (window.location.hostname !== 'localhost') {
+            window.location.href = '/dashboard';
+          } else {
+            router.push('/dashboard');
+          }
         }
-        
-        return { 
-          success: true, 
+
+        return {
+          success: true,
           user: data.user,
           examMode: data.examMode,
           currentExam: data.currentExam
@@ -140,8 +170,9 @@ export function StudentAuthProvider({ children }) {
       console.error('Logout error:', error);
     } finally {
       setUser(null);
+      clearAuthCache();
       toast.success('Logged out successfully');
-      localStorage.removeItem('examProgress');
+      try { localStorage.removeItem('examProgress'); } catch {}
       router.push('/login');
     }
   }, [router]);
@@ -156,11 +187,13 @@ export function StudentAuthProvider({ children }) {
 
     const executeFetch = async () => {
       try {
+        const token = (() => { try { return localStorage.getItem(TOKEN_KEY); } catch { return null; } })();
         const response = await fetch(url, {
           ...options,
           credentials: 'include',
           headers: {
             'Content-Type': 'application/json',
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
             ...(options.headers || {}),
           },
         });
