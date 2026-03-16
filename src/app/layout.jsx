@@ -8,115 +8,148 @@ import { useEffect, useState } from 'react'
 
 const toastOptions = {
   style: {
-    background: '#fff',
-    color: '#1E1E1E',
+    background: '#FFFFFF',
+    color: '#0D1117',
     fontSize: '14px',
-    padding: '14px 20px',
-    borderRadius: '8px',
+    padding: '14px 18px',
+    borderRadius: '10px',
     fontWeight: '500',
-    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-    border: '1px solid #E8E8E8',
-    maxWidth: '400px',
-    fontFamily: '"Playfair Display", serif',
+    boxShadow: '0 4px 20px rgba(0,0,0,0.12)',
+    border: '1px solid #E8ECEF',
+    maxWidth: '380px',
+    fontFamily: 'Inter, system-ui, sans-serif',
   },
   success: {
     style: {
-      background: '#E8F8F6',
-      color: '#039994',
-      borderLeft: '4px solid #039994',
-      border: '1px solid #C7EDE9',
+      background: '#F0FDF4',
+      color: '#166534',
+      borderLeft: '4px solid #10B981',
+      border: '1px solid #BBF7D0',
     },
     iconTheme: {
-      primary: '#039994',
-      secondary: '#E8F8F6',
+      primary: '#10B981',
+      secondary: '#F0FDF4',
     },
   },
   error: {
     style: {
       background: '#FEF2F2',
-      color: '#DC2626',
-      borderLeft: '4px solid #DC2626',
-      border: '1px solid #FEE2E2',
+      color: '#991B1B',
+      borderLeft: '4px solid #EF4444',
+      border: '1px solid #FECACA',
     },
     iconTheme: {
-      primary: '#DC2626',
+      primary: '#EF4444',
       secondary: '#FEF2F2',
     },
   },
   loading: {
     style: {
-      background: '#F9FAFB',
-      color: '#626060',
-      borderLeft: '4px solid #9CA3AF',
-      border: '1px solid #E5E7EB',
+      background: '#EFF6FF',
+      color: '#1E40AF',
+      borderLeft: '4px solid #1565C0',
+      border: '1px solid #BFDBFE',
+    },
+    iconTheme: {
+      primary: '#1565C0',
+      secondary: '#EFF6FF',
     },
   },
-  duration: 3000,
+  duration: 3500,
 }
 
 export default function RootLayout({ children }) {
-  const [deferredPrompt, setDeferredPrompt] = useState(null)
+  const [, setDeferredPrompt] = useState(null)
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      window.addEventListener('beforeinstallprompt', (e) => {
-        e.preventDefault()
-        setDeferredPrompt(e)
-      })
+    if (typeof window === 'undefined') return
 
-      window.addEventListener('appinstalled', () => {
-        setDeferredPrompt(null)
-      })
+    const handleInstallPrompt = (e) => {
+      e.preventDefault()
+      setDeferredPrompt(e)
+    }
 
-      const handleOffline = () => {
-        console.log('App is offline')
-      }
-      
-      const handleOnline = () => {
-        console.log('App is online')
-      }
+    const handleAppInstalled = () => {
+      setDeferredPrompt(null)
+    }
 
-      window.addEventListener('offline', handleOffline)
-      window.addEventListener('online', handleOnline)
+    window.addEventListener('beforeinstallprompt', handleInstallPrompt)
+    window.addEventListener('appinstalled', handleAppInstalled)
 
-      return () => {
-        window.removeEventListener('offline', handleOffline)
-        window.removeEventListener('online', handleOnline)
-      }
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleInstallPrompt)
+      window.removeEventListener('appinstalled', handleAppInstalled)
     }
   }, [])
 
   return (
-    <html lang="en">
+    <html lang="en" className="scroll-smooth">
       <head>
         <meta charSet="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-        <meta name="theme-color" content="#039994" />
-        <meta name="description" content="Nigerian Students WAEC CBT Exam Simulation App - Practice exams offline" />
+
+        {/* Viewport — viewport-fit=cover critical for iOS notch support */}
+        <meta
+          name="viewport"
+          content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
+        />
+
+        {/* === PWA Core === */}
         <link rel="manifest" href="/manifest.json" />
-        <link rel="icon" href="/favicon.ico" />
-        <link rel="apple-touch-icon" href="/icons/icon-180x180.png" />
-        <link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-152x152.png" />
-        <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-180x180.png" />
+        <meta name="theme-color" content="#1565C0" />
+        <meta name="application-name" content="Einstein's CBT App" />
+        <meta
+          name="description"
+          content="Einstein's CBT App — WAEC Exam Practice powered by Mega Tech Solutions. Practice past questions offline on any device."
+        />
+
+        {/* === iOS PWA (Safari Home Screen) === */}
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        <meta name="apple-mobile-web-app-title" content="WAEC CBT" />
-        <meta name="format-detection" content="telephone=no" />
+        <meta name="apple-mobile-web-app-title" content="Einstein CBT" />
+        <link rel="apple-touch-icon" href="/icons/icon-180x180.png" />
+        <link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-152x152.png" />
+        <link rel="apple-touch-icon" sizes="167x167" href="/icons/icon-180x180.png" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-180x180.png" />
+
+        {/* iOS Splash Screens (portrait) */}
+        <link
+          rel="apple-touch-startup-image"
+          media="screen and (device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3)"
+          href="/icons/icon-512x512.png"
+        />
+
+        {/* === Android / Chrome === */}
         <meta name="mobile-web-app-capable" content="yes" />
-        <meta name="application-name" content="WAEC CBT" />
-        <meta name="msapplication-TileColor" content="#039994" />
+        <meta name="msapplication-TileColor" content="#1565C0" />
+        <meta name="msapplication-TileImage" content="/icons/icon-144x144.png" />
         <meta name="msapplication-tap-highlight" content="no" />
-        <title>WAEC CBT Simulator</title>
-        <script src="/sw-register.js" defer></script>
+
+        {/* === Favicon === */}
+        <link rel="icon" href="/favicon.ico" sizes="any" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-96x96.png" />
+
+        {/* === Misc === */}
+        <meta name="format-detection" content="telephone=no" />
+        <meta name="color-scheme" content="light" />
+
+        {/* === Open Graph (for sharing) === */}
+        <meta property="og:title" content="Einstein's CBT App" />
+        <meta property="og:description" content="WAEC Exam Practice — Powered by Mega Tech Solutions" />
+        <meta property="og:type" content="website" />
+        <meta property="og:image" content="/icons/icon-512x512.png" />
+
+        <title>Einstein&apos;s CBT App — Powered by Mega Tech Solutions</title>
+
+        {/* Service Worker Registration */}
+        <script src="/sw-register.js" defer />
       </head>
-      <body className="bg-white min-h-screen font-playfair antialiased">
+
+      <body className="bg-surface-muted min-h-screen font-inter antialiased">
         <StudentAuthProvider>
-          <Toaster 
-            position="top-center" 
+          <Toaster
+            position="top-center"
             toastOptions={toastOptions}
-            containerStyle={{
-              top: 20,
-            }}
+            containerStyle={{ top: 20 }}
           />
           {children}
         </StudentAuthProvider>

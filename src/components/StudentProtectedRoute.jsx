@@ -19,7 +19,7 @@ export default function StudentProtectedRoute({ children }) {
 
   if (!authChecked) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#039994]/10 to-[#02857f]/10">
+      <div className="min-h-screen flex items-center justify-center bg-surface-muted">
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -28,9 +28,9 @@ export default function StudentProtectedRoute({ children }) {
           <motion.div
             animate={{ rotate: 360 }}
             transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-            className="w-16 h-16 border-4 border-[#039994] border-t-transparent rounded-full mx-auto mb-4"
+            className="w-16 h-16 border-4 border-brand-primary-lt border-t-brand-primary rounded-full mx-auto mb-4"
           />
-          <p className="text-gray-600">Checking authentication...</p>
+          <p className="text-content-secondary">Checking authentication...</p>
         </motion.div>
       </div>
     );

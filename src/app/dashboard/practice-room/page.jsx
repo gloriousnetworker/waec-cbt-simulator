@@ -1,12 +1,13 @@
 // app/dashboard/practice-room/page.jsx
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import StudentProtectedRoute from '../../../components/StudentProtectedRoute';
 import { useStudentAuth } from '../../../context/StudentAuthContext';
 import toast from 'react-hot-toast';
+import { BookOpen } from 'lucide-react';
 
 function PracticeRoomContent() {
   const router = useRouter();
@@ -21,6 +22,7 @@ function PracticeRoomContent() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const autoSaveInterval = useRef(null);
+  const autoAdvanceTimer = useRef(null);
 
   useEffect(() => {
     const storedSession = localStorage.getItem('practice_session');
@@ -37,9 +39,8 @@ function PracticeRoomContent() {
     }
 
     return () => {
-      if (autoSaveInterval.current) {
-        clearInterval(autoSaveInterval.current);
-      }
+      if (autoSaveInterval.current) clearInterval(autoSaveInterval.current);
+      if (autoAdvanceTimer.current) clearTimeout(autoAdvanceTimer.current);
     };
   }, []);
 
@@ -90,7 +91,7 @@ function PracticeRoomContent() {
   const handleAnswerSelect = (questionId, optionIndex, optionText) => {
     const question = session.questions.find(q => q.id === questionId);
     const isCorrect = optionText === question.correctAnswer;
-    
+
     setAnswers(prev => ({
       ...prev,
       [questionId]: {
@@ -100,9 +101,22 @@ function PracticeRoomContent() {
         correctAnswer: question.correctAnswer
       }
     }));
+
+    // Auto-advance to next question after brief visual feedback (skip if already showing explanation)
+    if (!showExplanation) {
+      if (autoAdvanceTimer.current) clearTimeout(autoAdvanceTimer.current);
+      autoAdvanceTimer.current = setTimeout(() => {
+        setCurrentQuestion(prev => {
+          if (prev < session.questions.length - 1) return prev + 1;
+          return prev;
+        });
+        autoAdvanceTimer.current = null;
+      }, 320);
+    }
   };
 
   const handleNext = () => {
+    if (autoAdvanceTimer.current) { clearTimeout(autoAdvanceTimer.current); autoAdvanceTimer.current = null; }
     if (currentQuestion < session.questions.length - 1) {
       setCurrentQuestion(currentQuestion + 1);
       setShowExplanation(false);
@@ -110,11 +124,47 @@ function PracticeRoomContent() {
   };
 
   const handlePrevious = () => {
+    if (autoAdvanceTimer.current) { clearTimeout(autoAdvanceTimer.current); autoAdvanceTimer.current = null; }
     if (currentQuestion > 0) {
       setCurrentQuestion(currentQuestion - 1);
       setShowExplanation(false);
     }
   };
+
+  // ── Keyboard shortcuts ──────────────────────────────────────────────────
+  const handleKeyDown = useCallback((e) => {
+    if (!session || showResults) return;
+
+    const currentQ = session.questions[currentQuestion];
+    if (!currentQ) return;
+
+    const key = e.key.toUpperCase();
+
+    // A/B/C/D — select answer
+    if (['A', 'B', 'C', 'D'].includes(key) && !showExplanation) {
+      e.preventDefault();
+      const idx = key.charCodeAt(0) - 65;
+      if (idx < currentQ.options.length) {
+        handleAnswerSelect(currentQ.id, idx, currentQ.options[idx]);
+      }
+      return;
+    }
+
+    // ArrowRight / ArrowLeft — navigate
+    if (e.key === 'ArrowRight') { e.preventDefault(); handleNext(); return; }
+    if (e.key === 'ArrowLeft')  { e.preventDefault(); handlePrevious(); return; }
+
+    // Enter — next question (if answered) or show explanation
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleNext();
+    }
+  }, [session, currentQuestion, showExplanation, showResults, handleNext, handlePrevious]);
+
+  useEffect(() => {
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [handleKeyDown]);
 
   const savePracticeToServer = async (resultData) => {
     try {
@@ -252,7 +302,7 @@ function PracticeRoomContent() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="w-16 h-16 border-4 border-[#039994] border-t-transparent rounded-full animate-spin"></div>
+        <div className="w-12 h-12 border-4 border-brand-primary-lt border-t-brand-primary rounded-full animate-spin"></div>
       </div>
     );
   }
@@ -261,17 +311,17 @@ function PracticeRoomContent() {
 
   if (showResults && results) {
     return (
-      <div className="min-h-screen bg-[#F9FAFB] py-12 px-4">
+      <div className="min-h-screen bg-surface-muted py-8 px-4 pb-safe">
         <div className="max-w-3xl mx-auto">
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-xl shadow-lg overflow-hidden"
+            className="bg-white rounded-2xl shadow-card-md overflow-hidden border border-border"
           >
             <div className={`p-8 text-white ${
-              results.percentage >= 70 ? 'bg-gradient-to-r from-green-500 to-green-600' :
-              results.percentage >= 50 ? 'bg-gradient-to-r from-yellow-500 to-yellow-600' :
-              'bg-gradient-to-r from-red-500 to-red-600'
+              results.percentage >= 70 ? 'bg-gradient-to-r from-success to-success-dark' :
+              results.percentage >= 50 ? 'bg-gradient-to-r from-warning to-warning-dark' :
+              'bg-gradient-to-r from-danger to-danger-dark'
             }`}>
               <h1 className="text-2xl font-bold font-playfair mb-2">Practice Results</h1>
               <p className="text-sm opacity-90 font-playfair">{session.subjectName}</p>
@@ -280,59 +330,59 @@ function PracticeRoomContent() {
             <div className="p-8">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-[#1E1E1E] font-playfair">{results.totalQuestions}</div>
-                  <div className="text-xs text-[#626060] font-playfair">Total Qs</div>
+                  <div className="text-3xl font-bold text-content-primary font-playfair">{results.totalQuestions}</div>
+                  <div className="text-xs text-content-secondary font-playfair">Total Qs</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-green-600 font-playfair">{results.correct}</div>
-                  <div className="text-xs text-[#626060] font-playfair">Correct</div>
+                  <div className="text-3xl font-bold text-success font-playfair">{results.correct}</div>
+                  <div className="text-xs text-content-secondary font-playfair">Correct</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-red-600 font-playfair">{results.wrong}</div>
-                  <div className="text-xs text-[#626060] font-playfair">Wrong</div>
+                  <div className="text-3xl font-bold text-danger font-playfair">{results.wrong}</div>
+                  <div className="text-xs text-content-secondary font-playfair">Wrong</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-[#039994] font-playfair">{results.percentage}%</div>
-                  <div className="text-xs text-[#626060] font-playfair">Score</div>
+                  <div className="text-3xl font-bold text-brand-primary font-playfair">{results.percentage}%</div>
+                  <div className="text-xs text-content-secondary font-playfair">Score</div>
                 </div>
               </div>
 
               <div className="mb-8">
-                <h2 className="text-lg font-bold text-[#1E1E1E] mb-4 font-playfair">Question Review</h2>
+                <h2 className="text-lg font-bold text-content-primary mb-4 font-playfair">Question Review</h2>
                 <div className="space-y-4 max-h-96 overflow-y-auto">
                   {results.questions.map((q, idx) => (
                     <div key={idx} className={`p-4 rounded-lg border ${
-                      q.status === 'correct' ? 'border-green-200 bg-green-50' :
-                      q.status === 'wrong' ? 'border-red-200 bg-red-50' :
-                      'border-gray-200 bg-gray-50'
+                      q.status === 'correct' ? 'border-success-light bg-success-light/50' :
+                      q.status === 'wrong' ? 'border-danger-light bg-danger-light/50' :
+                      'border-border bg-surface-muted'
                     }`}>
                       <div className="flex items-start gap-3">
-                        <span className="text-lg font-bold text-[#1E1E1E]">{idx + 1}.</span>
+                        <span className="text-lg font-bold text-content-primary">{idx + 1}.</span>
                         <div className="flex-1">
-                          <p className="text-sm font-medium text-[#1E1E1E] mb-2 font-playfair">{q.question}</p>
+                          <p className="text-sm font-medium text-content-primary mb-2 font-playfair">{q.question}</p>
                           {q.selected && (
                             <p className={`text-xs mb-1 font-playfair ${
-                              q.status === 'correct' ? 'text-green-600' : 'text-red-600'
+                              q.status === 'correct' ? 'text-success' : 'text-danger'
                             }`}>
                               Your answer: {q.selected}
                             </p>
                           )}
                           {q.status === 'wrong' && (
-                            <p className="text-xs text-green-600 font-playfair">
+                            <p className="text-xs text-success font-playfair">
                               Correct answer: {q.correctAnswer}
                             </p>
                           )}
                           {q.explanation && q.explanation !== 'No explanation provided' && (
-                            <div className="mt-2 p-3 bg-white rounded-lg border border-gray-200">
-                              <p className="text-xs text-[#626060] font-playfair">
+                            <div className="mt-2 p-3 bg-white rounded-lg border border-border">
+                              <p className="text-xs text-content-secondary font-playfair">
                                 <span className="font-bold">Explanation:</span> {q.explanation}
                               </p>
                             </div>
                           )}
                         </div>
                         <span className={`text-lg ${
-                          q.status === 'correct' ? 'text-green-600' :
-                          q.status === 'wrong' ? 'text-red-600' :
+                          q.status === 'correct' ? 'text-success' :
+                          q.status === 'wrong' ? 'text-danger' :
                           'text-gray-400'
                         }`}>
                           {q.status === 'correct' ? '✓' : q.status === 'wrong' ? '✗' : '○'}
@@ -347,14 +397,14 @@ function PracticeRoomContent() {
                 <button
                   onClick={handleRestart}
                   disabled={submitting}
-                  className="flex-1 py-3 bg-[#039994] text-white rounded-lg hover:bg-[#028a85] transition-colors font-playfair text-sm font-[600] disabled:opacity-50"
+                  className="flex-1 py-3 bg-brand-primary text-white rounded-lg hover:bg-brand-primary-dk transition-colors font-playfair text-sm font-semibold disabled:opacity-50"
                 >
                   Practice Again
                 </button>
                 <button
                   onClick={handleBack}
                   disabled={submitting}
-                  className="flex-1 py-3 bg-white text-[#039994] border border-[#039994] rounded-lg hover:bg-[#F0F9F8] transition-colors font-playfair text-sm font-[600] disabled:opacity-50"
+                  className="flex-1 py-3 bg-white text-brand-primary border border-brand-primary rounded-lg hover:bg-brand-primary-lt transition-colors font-playfair text-sm font-semibold disabled:opacity-50"
                 >
                   Back to Dashboard
                 </button>
@@ -366,27 +416,50 @@ function PracticeRoomContent() {
     );
   }
 
+  // Guard: subject has no questions in the database
+  if (!session.questions || session.questions.length === 0) {
+    return (
+      <div className="min-h-screen bg-surface-muted flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-card-md p-8 max-w-sm w-full text-center">
+          <div className="w-16 h-16 bg-warning-light rounded-full flex items-center justify-center mx-auto mb-4">
+            <BookOpen size={28} className="text-warning-dark" />
+          </div>
+          <h2 className="text-xl font-bold text-content-primary font-playfair mb-2">No Questions Yet</h2>
+          <p className="text-sm text-content-secondary mb-6">
+            There are no practice questions available for <span className="font-semibold text-content-primary">{session.subjectName}</span> at this time. Please try a different subject.
+          </p>
+          <button
+            onClick={() => router.push('/dashboard')}
+            className="w-full py-3 bg-brand-primary text-white rounded-xl font-semibold text-sm hover:bg-brand-primary-dk transition-colors"
+          >
+            Back to Dashboard
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   const currentQ = session.questions[currentQuestion];
   const answeredCount = Object.keys(answers).length;
   const progress = (answeredCount / session.questions.length) * 100;
-  const isAnswered = answers[currentQ.id];
+  const isAnswered = answers[currentQ?.id];
 
   return (
-    <div className="min-h-screen bg-[#F9FAFB]">
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
+    <div className="min-h-screen bg-surface-muted">
+      <div className="bg-white border-b border-border sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
           <div>
-            <h1 className="text-lg font-bold text-[#1E1E1E] font-playfair">{session.subjectName} - Practice</h1>
-            <p className="text-xs text-[#626060] font-playfair">
+            <h1 className="text-lg font-bold text-content-primary font-playfair">{session.subjectName} - Practice</h1>
+            <p className="text-xs text-content-secondary font-playfair">
               Question {currentQuestion + 1} of {session.questions.length}
             </p>
           </div>
           <div className="flex items-center gap-4">
             {session.timeLimit > 0 && (
               <div className="flex items-center gap-2">
-                <span className="text-sm text-[#626060] font-playfair">Time:</span>
+                <span className="text-sm text-content-secondary font-playfair">Time:</span>
                 <span className={`text-lg font-bold font-playfair ${
-                  timeLeft < 300 ? 'text-red-600' : 'text-[#039994]'
+                  timeLeft < 300 ? 'text-danger' : 'text-brand-primary'
                 }`}>
                   {formatTime(timeLeft)}
                 </span>
@@ -394,7 +467,7 @@ function PracticeRoomContent() {
             )}
             <div className="w-32 h-2 bg-gray-200 rounded-full overflow-hidden">
               <div
-                className="h-full bg-[#039994] transition-all"
+                className="h-full bg-brand-primary transition-all"
                 style={{ width: `${progress}%` }}
               />
             </div>
@@ -407,15 +480,15 @@ function PracticeRoomContent() {
           key={currentQuestion}
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
-          className="bg-white rounded-xl shadow-lg p-8"
+          className="bg-white rounded-xl shadow-card-md p-8"
         >
           <div className="mb-6">
-            <span className="inline-block px-3 py-1 bg-[#E6FFFA] text-[#039994] rounded-full text-xs font-medium font-playfair mb-4">
+            <span className="inline-block px-3 py-1 bg-brand-primary-lt text-brand-primary rounded-full text-xs font-medium font-playfair mb-4">
               Question {currentQuestion + 1} of {session.questions.length}
             </span>
-            <p className="text-lg font-medium text-[#1E1E1E] font-playfair">{currentQ.question}</p>
+            <p className="text-lg font-medium text-content-primary font-playfair">{currentQ.question}</p>
             {currentQ.topic && (
-              <p className="text-xs text-[#626060] mt-2 font-playfair">Topic: {currentQ.topic}</p>
+              <p className="text-xs text-content-secondary mt-2 font-playfair">Topic: {currentQ.topic}</p>
             )}
           </div>
 
@@ -424,7 +497,7 @@ function PracticeRoomContent() {
               const letter = String.fromCharCode(65 + index);
               const isSelected = answers[currentQ.id]?.selected === option;
               
-              let borderColor = 'border-gray-200';
+              let borderColor = 'border-border';
               if (isAnswered && showExplanation) {
                 if (option === currentQ.correctAnswer) {
                   borderColor = 'border-green-500 bg-green-50';
@@ -440,25 +513,25 @@ function PracticeRoomContent() {
                   disabled={isAnswered && showExplanation}
                   className={`w-full p-4 rounded-lg border-2 text-left transition-all ${
                     isSelected && !showExplanation
-                      ? 'border-[#039994] bg-[#E6FFFA]'
-                      : borderColor || 'border-gray-200 hover:border-[#039994] hover:bg-gray-50'
+                      ? 'border-brand-primary bg-brand-primary-lt'
+                      : borderColor || 'border-border hover:border-brand-primary hover:bg-surface-muted'
                   } ${isAnswered && showExplanation ? 'cursor-default' : ''}`}
                 >
                   <div className="flex items-center gap-3">
                     <span className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
                       isSelected && !showExplanation
-                        ? 'bg-[#039994] text-white'
+                        ? 'bg-brand-primary text-white'
                         : isAnswered && showExplanation && option === currentQ.correctAnswer
-                        ? 'bg-green-500 text-white'
+                        ? 'bg-success text-white'
                         : isAnswered && showExplanation && isSelected && option !== currentQ.correctAnswer
-                        ? 'bg-red-500 text-white'
-                        : 'bg-gray-100 text-[#626060]'
+                        ? 'bg-danger text-white'
+                        : 'bg-surface-subtle text-content-secondary'
                     }`}>
                       {letter}
                     </span>
-                    <span className="flex-1 text-[#1E1E1E] font-playfair">{option}</span>
+                    <span className="flex-1 text-content-primary font-playfair">{option}</span>
                     {isAnswered && showExplanation && option === currentQ.correctAnswer && (
-                      <span className="text-green-600 text-sm font-bold">✓ Correct</span>
+                      <span className="text-success text-sm font-bold">✓ Correct</span>
                     )}
                   </div>
                 </button>
@@ -469,7 +542,7 @@ function PracticeRoomContent() {
           {isAnswered && !showExplanation && (
             <button
               onClick={() => setShowExplanation(true)}
-              className="mb-4 px-4 py-2 bg-[#039994] text-white rounded-lg hover:bg-[#028a85] transition-colors text-sm font-playfair"
+              className="mb-4 px-4 py-2 bg-brand-primary text-white rounded-lg hover:bg-brand-primary-dk transition-colors text-sm font-playfair"
             >
               Check Answer
             </button>
@@ -481,23 +554,23 @@ function PracticeRoomContent() {
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
-                className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200"
+                className="mb-6 p-4 bg-brand-primary-lt rounded-lg border border-brand-primary/20"
               >
-                <p className="text-sm text-blue-800 font-playfair">
+                <p className="text-sm text-brand-primary-dk font-playfair">
                   <span className="font-bold">Explanation:</span> {currentQ.explanation}
                 </p>
               </motion.div>
             )}
           </AnimatePresence>
 
-          <div className="flex justify-between pt-6 border-t border-gray-200">
+          <div className="flex justify-between pt-6 border-t border-border">
             <button
               onClick={handlePrevious}
               disabled={currentQuestion === 0}
-              className={`px-6 py-2 rounded-lg font-playfair text-sm font-[600] transition ${
+              className={`px-6 py-2 rounded-lg font-playfair text-sm font-semibold transition ${
                 currentQuestion === 0
-                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                  : 'bg-white text-[#039994] border border-[#039994] hover:bg-[#F0F9F8]'
+                  ? 'bg-surface-subtle text-gray-400 cursor-not-allowed'
+                  : 'bg-white text-brand-primary border border-brand-primary hover:bg-brand-primary-lt'
               }`}
             >
               ← Previous
@@ -507,14 +580,14 @@ function PracticeRoomContent() {
               <button
                 onClick={handleSubmit}
                 disabled={submitting}
-                className="px-6 py-2 bg-[#039994] text-white rounded-lg hover:bg-[#028a85] transition font-playfair text-sm font-[600] disabled:opacity-50"
+                className="px-6 py-2 bg-brand-primary text-white rounded-lg hover:bg-brand-primary-dk transition font-playfair text-sm font-semibold disabled:opacity-50"
               >
                 {submitting ? 'Submitting...' : 'Submit Practice'}
               </button>
             ) : (
               <button
                 onClick={handleNext}
-                className="px-6 py-2 bg-[#039994] text-white rounded-lg hover:bg-[#028a85] transition font-playfair text-sm font-[600]"
+                className="px-6 py-2 bg-brand-primary text-white rounded-lg hover:bg-brand-primary-dk transition font-playfair text-sm font-semibold"
               >
                 Next →
               </button>
@@ -531,10 +604,10 @@ function PracticeRoomContent() {
                 onClick={() => setCurrentQuestion(idx)}
                 className={`w-10 h-10 rounded-lg text-sm font-medium transition ${
                   idx === currentQuestion
-                    ? 'bg-[#039994] text-white'
+                    ? 'bg-brand-primary text-white'
                     : isAnswered
-                    ? 'bg-[#E6FFFA] text-[#039994] border border-[#039994]'
-                    : 'bg-white border border-gray-200 text-[#626060] hover:border-[#039994]'
+                    ? 'bg-brand-primary-lt text-brand-primary border border-brand-primary'
+                    : 'bg-white border border-border text-content-secondary hover:border-brand-primary'
                 }`}
               >
                 {idx + 1}

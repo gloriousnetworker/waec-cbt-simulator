@@ -6,6 +6,30 @@ import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { useStudentAuth } from '../../context/StudentAuthContext';
 import toast from 'react-hot-toast';
+import { Timer, BookOpen, Shield, AlertCircle } from 'lucide-react';
+
+const subjectIcons = {
+  Mathematics: '🧮', English: '📖', Physics: '⚛️', Chemistry: '🧪',
+  Biology: '🧬', Economics: '📈', Geography: '🗺️', Government: '🏛️',
+  'Christian Religious Knowledge': '✝️', 'Islamic Religious Knowledge': '☪️',
+  'Literature in English': '📚', Commerce: '💼', 'Financial Accounting': '💰',
+  'Agricultural Science': '🌾', 'Civic Education': '🏛️', 'Data Processing': '💻',
+};
+
+const subjectColors = {
+  Mathematics: 'bg-info', English: 'bg-success', Physics: 'bg-purple-500',
+  Chemistry: 'bg-danger', Biology: 'bg-success-dark', Economics: 'bg-warning',
+  Geography: 'bg-brand-cyan', Government: 'bg-indigo-500',
+  'Christian Religious Knowledge': 'bg-purple-400', 'Islamic Religious Knowledge': 'bg-emerald-500',
+  'Literature in English': 'bg-pink-500', Commerce: 'bg-orange-500',
+  'Financial Accounting': 'bg-success', 'Agricultural Science': 'bg-lime-500',
+  'Civic Education': 'bg-sky-500', 'Data Processing': 'bg-indigo-500',
+};
+
+const examTypes = [
+  { id: 'practice', name: 'Practice Exam',     desc: 'Untimed · Explanations included', icon: BookOpen },
+  { id: 'mock',     name: 'Mock Exam',          desc: 'Strict WAEC simulation',           icon: Shield },
+];
 
 export default function Exams({ setActiveSection }) {
   const [activeTab, setActiveTab] = useState('practice');
@@ -16,86 +40,25 @@ export default function Exams({ setActiveSection }) {
   const router = useRouter();
   const { fetchWithAuth, isOffline, getOfflineData } = useStudentAuth();
 
-  const examTypes = [
-    { id: 'practice', name: 'Practice Exam', desc: 'Untimed practice with detailed explanations' },
-    { id: 'mock', name: 'Mock Exam', desc: 'Full WAEC simulation with strict rules' },
-  ];
+  useEffect(() => { fetchData(); }, []);
 
-  const subjectIcons = {
-    Mathematics: '🧮',
-    English: '📖',
-    Physics: '⚛️',
-    Chemistry: '🧪',
-    Biology: '🧬',
-    Economics: '📈',
-    Geography: '🗺️',
-    Government: '🏛️',
-    'Christian Religious Knowledge': '✝️',
-    'Islamic Religious Knowledge': '☪️',
-    'Literature in English': '📚',
-    Commerce: '💼',
-    'Financial Accounting': '💰',
-    'Agricultural Science': '🌾',
-    'Civic Education': '🏛️',
-    'Data Processing': '💻'
-  };
-
-  const subjectColors = {
-    Mathematics: 'bg-[#3B82F6]',
-    English: 'bg-[#10B981]',
-    Physics: 'bg-[#8B5CF6]',
-    Chemistry: 'bg-[#EF4444]',
-    Biology: 'bg-[#059669]',
-    Economics: 'bg-[#F59E0B]',
-    Geography: 'bg-[#14B8A6]',
-    Government: 'bg-[#6366F1]',
-    'Christian Religious Knowledge': 'bg-[#8B5CF6]',
-    'Islamic Religious Knowledge': 'bg-[#059669]',
-    'Literature in English': 'bg-[#EC4899]',
-    Commerce: 'bg-[#F97316]',
-    'Financial Accounting': 'bg-[#10B981]',
-    'Agricultural Science': 'bg-[#84CC16]',
-    'Civic Education': 'bg-[#0EA5E9]',
-    'Data Processing': 'bg-[#6366F1]'
-  };
-
-  useEffect(() => {
-    fetchSubjectsAndPerformance();
-  }, []);
-
-  const fetchSubjectsAndPerformance = async () => {
+  const fetchData = async () => {
     setLoading(true);
     try {
       if (!isOffline) {
-        const [subjectsRes, performanceRes, practiceStatsRes] = await Promise.all([
+        const [subjectsRes, perfRes, statsRes] = await Promise.all([
           fetchWithAuth('/subjects'),
           fetchWithAuth('/performance/summary'),
-          fetchWithAuth('/practice/stats')
+          fetchWithAuth('/practice/stats'),
         ]);
-
-        if (subjectsRes?.ok) {
-          const subjectsData = await subjectsRes.json();
-          setSubjects(subjectsData.subjects || []);
-        }
-
-        if (performanceRes?.ok) {
-          const performanceData = await performanceRes.json();
-          setPerformance(performanceData.performance || {});
-        }
-
-        if (practiceStatsRes?.ok) {
-          const statsData = await practiceStatsRes.json();
-          setPracticeStats(statsData.stats || {});
-        }
+        if (subjectsRes?.ok) { const d = await subjectsRes.json(); setSubjects(d.subjects || []); }
+        if (perfRes?.ok)     { const d = await perfRes.json(); setPerformance(d.performance || {}); }
+        if (statsRes?.ok)    { const d = await statsRes.json(); setPracticeStats(d.stats || {}); }
       } else {
-        const cachedSubjects = getOfflineData('studentSubjects');
-        if (cachedSubjects) setSubjects(cachedSubjects);
-        
-        const cachedPerformance = getOfflineData('performance');
-        if (cachedPerformance) setPerformance(cachedPerformance);
+        const cs = getOfflineData('studentSubjects');
+        if (cs) setSubjects(cs);
       }
-    } catch (error) {
-      console.error('Error fetching data:', error);
+    } catch (err) {
       toast.error('Failed to load subjects');
     } finally {
       setLoading(false);
@@ -106,141 +69,117 @@ export default function Exams({ setActiveSection }) {
     if (activeTab === 'practice') {
       localStorage.setItem('practice_subject', JSON.stringify({ id: subject.id, name: subject.name }));
       router.push('/dashboard/practice-setup');
-    } else if (activeTab === 'mock') {
-      localStorage.setItem('practice_subject', JSON.stringify({ 
-        id: subject.id, 
-        name: subject.name,
-        isMockExam: true,
-        duration: 60,
-        questionCount: 30
-      }));
+    } else {
+      localStorage.setItem('practice_subject', JSON.stringify({ id: subject.id, name: subject.name, isMockExam: true, duration: 60, questionCount: 30 }));
       localStorage.setItem('mock_exam_active', 'true');
       router.push('/dashboard/exam-mock-instructions');
     }
   };
 
-  const handleTimedTestClick = () => {
-    setActiveSection('timed-tests');
-  };
-
-  const getSubjectStats = (subjectName) => {
-    const examPerf = performance.subjects?.[subjectName];
-    const practicePerf = practiceStats.bySubject?.[subjectName];
-    
-    const examAttempts = examPerf?.attempts || 0;
-    const practiceAttempts = practicePerf?.attempts || 0;
-    const totalAttempts = examAttempts + practiceAttempts;
-    
-    const bestExamScore = examPerf?.bestScore || 0;
-    const bestPracticeScore = practicePerf?.bestScore || 0;
-    const bestScore = Math.max(bestExamScore, bestPracticeScore);
-
+  const getSubjectStats = (name) => {
+    const ep = performance.subjects?.[name];
+    const pp = practiceStats.bySubject?.[name];
     return {
-      bestScore,
-      attempts: totalAttempts,
-      examAttempts,
-      practiceAttempts
+      bestScore: Math.max(ep?.bestScore || 0, pp?.bestScore || 0),
+      attempts:  (ep?.attempts || 0) + (pp?.attempts || 0),
     };
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-[#039994] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-[14px] leading-[100%] font-[500] text-[#626060] font-playfair">Loading subjects...</p>
+          <div className="w-12 h-12 border-4 border-brand-primary-lt border-t-brand-primary rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-sm font-medium text-content-secondary">Loading subjects...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6">
-      <div className="mb-8">
-        <h1 className="text-2xl md:text-3xl font-bold text-[#1E1E1E] font-playfair">Practice & Mock Exams</h1>
-        <p className="text-[#626060] mt-2 font-playfair">Select a subject and exam type to begin</p>
+    <div className="max-w-7xl mx-auto">
+      {/* ── Header ── */}
+      <div className="mb-6">
+        <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-content-primary font-playfair">
+          Practice &amp; Mock Exams
+        </h1>
+        <p className="text-sm text-content-secondary mt-1.5">Select a subject and exam type to begin</p>
       </div>
 
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-        <div className="flex gap-4">
-          {examTypes.map((type) => (
+      {/* ── Tab + Timed Tests CTA ── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <div className="flex gap-2">
+          {examTypes.map(({ id, name, icon: Icon }) => (
             <button
-              key={type.id}
-              data-tab={type.id}
-              onClick={() => setActiveTab(type.id)}
-              className={`px-6 py-3 rounded-xl border-2 transition-all ${
-                activeTab === type.id
-                  ? 'border-[#039994] bg-[#E6FFFA] text-[#039994]'
-                  : 'border-gray-200 hover:border-[#039994] bg-white text-[#1E1E1E]'
+              key={id}
+              onClick={() => setActiveTab(id)}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border-2 text-sm font-semibold transition-all min-h-[44px] ${
+                activeTab === id
+                  ? 'border-brand-primary bg-brand-primary-lt text-brand-primary'
+                  : 'border-border bg-white text-content-secondary hover:border-brand-primary'
               }`}
             >
-              <span className="font-[600] text-[14px] font-playfair">{type.name}</span>
+              <Icon size={15} strokeWidth={2} />
+              {name}
             </button>
           ))}
         </div>
         <button
-          onClick={handleTimedTestClick}
-          className="px-6 py-3 bg-gradient-to-r from-[#10B981] to-[#059669] text-white rounded-xl font-playfair text-[14px] font-[600] hover:shadow-lg transition-all flex items-center gap-2"
+          onClick={() => setActiveSection('timed-tests')}
+          className="btn-primary text-sm flex-shrink-0"
         >
-          <span>⏱️</span>
-          Go to Timed Tests
+          <Timer size={15} strokeWidth={2.5} />
+          Timed Tests
         </button>
       </div>
 
+      {/* ── Subject Grid ── */}
       {subjects.length === 0 ? (
-        <div className="text-center py-12 bg-white rounded-xl border border-gray-200">
+        <div className="text-center py-16 bg-white rounded-xl border border-border">
           <div className="text-5xl mb-4">📚</div>
-          <h3 className="text-[18px] font-[600] text-[#1E1E1E] mb-2 font-playfair">No Subjects Available</h3>
-          <p className="text-[14px] text-[#626060] font-playfair">You haven't been assigned any subjects yet.</p>
+          <h3 className="text-base font-bold text-content-primary mb-2 font-playfair">No Subjects Available</h3>
+          <p className="text-sm text-content-secondary">You haven&apos;t been assigned any subjects yet.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mb-6">
           {subjects.map((subject) => {
-            const stats = getSubjectStats(subject.name);
+            const s = getSubjectStats(subject.name);
             return (
               <motion.div
                 key={subject.id}
-                whileHover={{ y: -4 }}
-                className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm"
+                whileHover={{ y: -3 }}
+                className="bg-white rounded-xl border border-border overflow-hidden shadow-card hover:border-brand-primary hover:shadow-card-md transition-all"
               >
-                <div className={`h-2 ${subjectColors[subject.name] || 'bg-[#039994]'}`}></div>
-                <div className="p-6">
+                {/* Color bar */}
+                <div className={`h-1.5 ${subjectColors[subject.name] || 'bg-brand-primary'}`} />
+                <div className="p-5">
                   <div className="flex items-start gap-3 mb-4">
-                    <span className="text-3xl">{subjectIcons[subject.name] || '📘'}</span>
-                    <div>
-                      <h3 className="text-[16px] font-[600] text-[#1E1E1E] font-playfair">{subject.name}</h3>
-                      <p className="text-[12px] text-[#626060] font-playfair">{subject.questionCount || 50} questions</p>
-                      <p className="text-[10px] text-[#626060] font-playfair">Class: {subject.class} | {subject.examType}</p>
+                    <span className="text-3xl flex-shrink-0">{subjectIcons[subject.name] || '📘'}</span>
+                    <div className="min-w-0">
+                      <h3 className="text-base font-bold text-content-primary font-playfair leading-tight">{subject.name}</h3>
+                      <p className="text-xs text-content-muted mt-0.5">{subject.questionCount || 50} questions · {subject.class}</p>
                     </div>
                   </div>
-                  
-                  <div className="space-y-2 mb-6">
-                    <div className="flex justify-between text-[13px]">
-                      <span className="text-[#626060] font-playfair">Duration:</span>
-                      <span className="font-[600] text-[#1E1E1E] font-playfair">
-                        {subject.duration ? `${Math.floor(subject.duration / 60)}h ${subject.duration % 60}m` : 'Variable'}
-                      </span>
-                    </div>
-                    <div className="flex justify-between text-[13px]">
-                      <span className="text-[#626060] font-playfair">Best Score:</span>
-                      <span className={`font-[600] ${stats.bestScore >= 70 ? 'text-[#10B981]' : stats.bestScore >= 50 ? 'text-[#F59E0B]' : 'text-[#EF4444]'} font-playfair`}>
-                        {stats.bestScore}%
-                      </span>
-                    </div>
-                    <div className="flex justify-between text-[13px]">
-                      <span className="text-[#626060] font-playfair">Attempts:</span>
-                      <span className="font-[600] text-[#1E1E1E] font-playfair">
-                        {stats.attempts} ({stats.examAttempts} exam, {stats.practiceAttempts} practice)
-                      </span>
-                    </div>
+
+                  <div className="space-y-2 mb-5">
+                    {[
+                      { label: 'Duration', val: subject.duration ? `${Math.floor(subject.duration / 60)}h ${subject.duration % 60}m` : 'Variable' },
+                      { label: 'Best Score', val: `${s.bestScore}%`, colored: true, score: s.bestScore },
+                      { label: 'Total Attempts', val: s.attempts },
+                    ].map(item => (
+                      <div key={item.label} className="flex justify-between text-sm">
+                        <span className="text-content-secondary">{item.label}</span>
+                        <span className={`font-semibold ${item.colored ? (item.score >= 70 ? 'text-success' : item.score >= 50 ? 'text-warning' : 'text-danger') : 'text-content-primary'}`}>
+                          {item.val}
+                        </span>
+                      </div>
+                    ))}
                   </div>
 
                   <button
                     onClick={() => handleStartExam(subject)}
-                    className={`w-full py-3 rounded-lg transition-colors text-[14px] font-[600] font-playfair ${
-                      activeTab === 'practice' 
-                        ? 'bg-[#039994] text-white hover:bg-[#028a85]' 
-                        : 'bg-[#DC2626] text-white hover:bg-[#B91C1C]'
+                    className={`w-full py-2.5 rounded-xl text-sm font-semibold transition-colors min-h-[44px] text-white ${
+                      activeTab === 'practice' ? 'bg-brand-primary hover:bg-brand-primary-dk' : 'bg-danger hover:bg-danger-dark'
                     }`}
                   >
                     Start {activeTab === 'practice' ? 'Practice' : 'Mock'} Exam
@@ -252,33 +191,25 @@ export default function Exams({ setActiveSection }) {
         </div>
       )}
 
-      <div className="bg-gradient-to-r from-[#039994] to-[#028a85] rounded-xl p-8 text-white">
-        <h3 className="text-xl font-bold mb-4 font-playfair">📋 Exam Instructions</h3>
-        <ul className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <li className="flex items-center gap-2 text-sm">
-            <span>•</span>
-            <span>Practice exams: Untimed with explanations</span>
-          </li>
-          <li className="flex items-center gap-2 text-sm">
-            <span>•</span>
-            <span>Mock exams: Strict WAEC simulation with fullscreen mode</span>
-          </li>
-          <li className="flex items-center gap-2 text-sm">
-            <span>•</span>
-            <span>You cannot navigate away during mock exams</span>
-          </li>
-          <li className="flex items-center gap-2 text-sm">
-            <span>•</span>
-            <span>3 tab switches in mock exam = auto-submit</span>
-          </li>
-          <li className="flex items-center gap-2 text-sm">
-            <span>•</span>
-            <span>All questions must be attempted before final submission</span>
-          </li>
-          <li className="flex items-center gap-2 text-sm">
-            <span>•</span>
-            <span>For timed tests, visit the Timed Tests section</span>
-          </li>
+      {/* ── Instructions Banner ── */}
+      <div className="bg-gradient-to-r from-brand-primary to-brand-primary-dk rounded-xl p-5 sm:p-7 text-white">
+        <h3 className="text-base font-bold mb-4 font-playfair flex items-center gap-2">
+          <AlertCircle size={16} /> Exam Instructions
+        </h3>
+        <ul className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+          {[
+            'Practice exams: Untimed with detailed explanations',
+            'Mock exams: Strict WAEC simulation with fullscreen mode',
+            'You cannot navigate away during mock exams',
+            '3 tab switches in mock exam = auto-submit',
+            'All questions should be attempted before submission',
+            'For timed tests, visit the Timed Tests section',
+          ].map((item, idx) => (
+            <li key={idx} className="flex items-start gap-2 text-sm">
+              <span className="opacity-60 mt-0.5">•</span>
+              <span className="opacity-90">{item}</span>
+            </li>
+          ))}
         </ul>
       </div>
     </div>

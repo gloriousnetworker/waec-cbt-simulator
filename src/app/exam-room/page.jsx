@@ -27,6 +27,7 @@ function ExamRoomContent() {
   const [totalMarks, setTotalMarks] = useState(0);
   const [showShortcuts, setShowShortcuts] = useState(true);
   const [timerReady, setTimerReady] = useState(false);
+  const [showFullscreenPrompt, setShowFullscreenPrompt] = useState(false);
 
   const endTimeMsRef = useRef(0);
   const violationTimeoutRef = useRef(null);
@@ -71,7 +72,7 @@ function ExamRoomContent() {
     }
     loadExamFromStorage();
     fetchExamFromServer();
-    enterFullscreen();
+    // Fullscreen requires a user gesture — show prompt instead of calling directly on mount
 
     const t = setTimeout(() => setShowShortcuts(false), 10000);
     return () => {
@@ -82,6 +83,13 @@ function ExamRoomContent() {
       clearTimeout(navigationTimeoutRef.current);
     };
   }, [examId, examSetupId]);
+
+  // Show fullscreen prompt once the exam finishes loading (needs user gesture to enter fullscreen)
+  useEffect(() => {
+    if (!loading && questions.length > 0 && !document.fullscreenElement) {
+      setShowFullscreenPrompt(true);
+    }
+  }, [loading, questions.length]);
 
   // ─────────────────────────────────────────────────────────────────────────
   // AUTO-SAVE every 30 s
@@ -286,7 +294,8 @@ function ExamRoomContent() {
   const handleFullscreenChange = useCallback(() => {
     if (!document.fullscreenElement && !examSubmitted) {
       handleViolation('Exited fullscreen');
-      setTimeout(() => { if (!examSubmitted) enterFullscreen(); }, 100);
+      // Show prompt so user must click to re-enter (direct re-request without gesture still fails)
+      setShowFullscreenPrompt(true);
     }
   }, [examSubmitted, handleViolation]);
 
@@ -441,14 +450,14 @@ function ExamRoomContent() {
 
   if (loading) {
     return (
-      <div className="fixed inset-0 flex items-center justify-center bg-[#f0fffe]">
+      <div className="fixed inset-0 flex items-center justify-center bg-brand-primary-lt">
         <div className="text-center">
           <div className="relative w-20 h-20 mx-auto mb-5">
-            <div className="absolute inset-0 rounded-full border-4 border-[#039994]/20"/>
-            <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-[#039994] animate-spin"/>
+            <div className="absolute inset-0 rounded-full border-4 border-brand-primary/20"/>
+            <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-brand-primary animate-spin"/>
           </div>
-          <p className="text-[#039994] font-bold text-xl font-playfair">Loading your exam…</p>
-          <p className="text-gray-400 text-sm mt-1 font-playfair">Please wait, do not close this tab</p>
+          <p className="text-brand-primary font-bold text-xl font-playfair">Loading your exam…</p>
+          <p className="text-content-muted text-sm mt-1 font-playfair">Please wait, do not close this tab</p>
         </div>
       </div>
     );
@@ -456,15 +465,65 @@ function ExamRoomContent() {
 
   if (questions.length === 0) {
     return (
-      <div className="fixed inset-0 flex items-center justify-center bg-[#f0fffe]">
+      <div className="fixed inset-0 flex items-center justify-center bg-brand-primary-lt">
         <div className="text-center max-w-sm mx-4">
           <div className="text-6xl mb-4">📚</div>
-          <h2 className="text-2xl font-bold text-gray-800 mb-2 font-playfair">No Questions Found</h2>
-          <p className="text-gray-500 mb-6 font-playfair">No questions are available for this exam.</p>
+          <h2 className="text-2xl font-bold text-content-primary mb-2 font-playfair">No Questions Found</h2>
+          <p className="text-content-secondary mb-6 font-playfair">No questions are available for this exam.</p>
           <button onClick={() => router.push('/exam-instructions')}
-            className="px-8 py-3 bg-[#039994] text-white rounded-xl font-bold font-playfair hover:bg-[#028a85] transition-all hover:scale-105">
+            className="px-8 py-3 bg-brand-primary text-white rounded-xl font-bold font-playfair hover:bg-brand-primary-dk transition-all hover:scale-105">
             Back to Dashboard
           </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Fullscreen prompt — must click to enter (browser requires user gesture) ──
+  if (showFullscreenPrompt) {
+    return (
+      <div
+        className="fixed inset-0 z-[9999] flex flex-col items-center justify-center select-none"
+        style={{ background: 'linear-gradient(135deg, #1F2A49 0%, #141C33 100%)' }}
+      >
+        {/* Ghost logo */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div className="w-[480px] h-[480px] opacity-[0.04]">
+            <img src="/logo.png" alt="" className="w-full h-full object-contain" />
+          </div>
+        </div>
+
+        <div className="relative z-10 text-center px-6 max-w-sm">
+          <div className="w-20 h-20 rounded-full bg-white/10 border border-white/20 flex items-center justify-center mx-auto mb-6">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+              <path d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3"/>
+            </svg>
+          </div>
+
+          <h1 className="text-2xl font-bold text-white font-playfair mb-2">
+            {examTitle || 'WAEC Exam'}
+          </h1>
+          <p className="text-sm mb-1" style={{ color: 'rgba(255,255,255,0.65)' }}>
+            This exam runs in <span className="font-semibold text-white">fullscreen mode only.</span>
+          </p>
+          <p className="text-xs mb-8" style={{ color: 'rgba(255,255,255,0.40)' }}>
+            Exiting fullscreen during the exam will be recorded as a violation.
+          </p>
+
+          <button
+            onClick={() => {
+              enterFullscreen();
+              setShowFullscreenPrompt(false);
+            }}
+            className="w-full py-4 rounded-xl font-bold text-sm transition-all active:scale-[0.98] shadow-lg mb-3"
+            style={{ background: '#FFFFFF', color: '#1F2A49' }}
+          >
+            Enter Fullscreen &amp; Start Exam
+          </button>
+
+          <p className="text-xs" style={{ color: 'rgba(255,255,255,0.30)' }}>
+            {user?.firstName} {user?.lastName} · {questions.length} Questions
+          </p>
         </div>
       </div>
     );
@@ -473,32 +532,32 @@ function ExamRoomContent() {
   const currentQ = questions[currentQuestion];
   const LETTERS = ['A', 'B', 'C', 'D', 'E'];
 
-  const timerBorderClass = timerUrgency === 'safe' ? 'border-[#039994]'   : timerUrgency === 'warn' ? 'border-amber-500'  : 'border-red-500';
-  const timerTextClass   = timerUrgency === 'safe' ? 'text-[#039994]'     : timerUrgency === 'warn' ? 'text-amber-600'    : 'text-red-600';
-  const timerBgClass     = timerUrgency === 'safe' ? 'bg-[#039994]/5'     : timerUrgency === 'warn' ? 'bg-amber-50'       : 'bg-red-50';
+  const timerBorderClass = timerUrgency === 'safe' ? 'border-brand-primary'   : timerUrgency === 'warn' ? 'border-amber-500'  : 'border-red-500';
+  const timerTextClass   = timerUrgency === 'safe' ? 'text-brand-primary'     : timerUrgency === 'warn' ? 'text-amber-600'    : 'text-red-600';
+  const timerBgClass     = timerUrgency === 'safe' ? 'bg-brand-primary/5'     : timerUrgency === 'warn' ? 'bg-amber-50'       : 'bg-red-50';
 
   return (
-    <div className="min-h-screen bg-gray-50 select-none">
+    <div className="min-h-screen bg-surface-muted select-none">
 
-      <header className="bg-white border-b-2 border-gray-100 sticky top-0 z-30 shadow-sm">
+      <header className="bg-white border-b-2 border-border sticky top-0 z-30 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="flex items-center justify-between h-16 gap-3">
 
             <div className="flex items-center gap-3 min-w-0 flex-1">
-              <div className="w-9 h-9 rounded-xl bg-[#039994] flex items-center justify-center flex-shrink-0 shadow-sm shadow-[#039994]/30">
+              <div className="w-9 h-9 rounded-xl bg-brand-primary flex items-center justify-center flex-shrink-0 shadow-sm shadow-brand-primary/30">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
                   <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                 </svg>
               </div>
               <div className="min-w-0">
-                <p className="font-bold text-gray-800 font-playfair text-sm sm:text-base leading-tight truncate">{examTitle}</p>
-                <p className="text-gray-400 text-xs font-playfair truncate">{user?.firstName} {user?.lastName} · {user?.loginId}</p>
+                <p className="font-bold text-content-primary font-playfair text-sm sm:text-base leading-tight truncate">{examTitle}</p>
+                <p className="text-content-muted text-xs font-playfair truncate">{user?.firstName} {user?.lastName} · {user?.loginId}</p>
               </div>
             </div>
 
             <div className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl border-2 ${timerBorderClass} ${timerBgClass} shadow-sm flex-shrink-0`}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
-                stroke={timerUrgency === 'safe' ? '#039994' : timerUrgency === 'warn' ? '#f59e0b' : '#ef4444'} strokeWidth="2">
+                stroke={timerUrgency === 'safe' ? '#1565C0' : timerUrgency === 'warn' ? '#f59e0b' : '#ef4444'} strokeWidth="2">
                 <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
               </svg>
               <span className={`font-mono font-black text-2xl sm:text-3xl tracking-widest tabular-nums ${timerTextClass}`}>
@@ -522,8 +581,8 @@ function ExamRoomContent() {
             </div>
           </div>
 
-          <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-            <motion.div className="h-full rounded-full bg-gradient-to-r from-[#039994] to-emerald-400"
+          <div className="h-1.5 bg-surface-subtle rounded-full overflow-hidden">
+            <motion.div className="h-full rounded-full bg-gradient-to-r from-brand-primary to-brand-primary-dk"
               animate={{ width: `${progress}%` }} transition={{ duration: 0.4 }}/>
           </div>
         </div>
@@ -532,7 +591,7 @@ function ExamRoomContent() {
       <AnimatePresence>
         {showShortcuts && (
           <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
-            className="fixed top-20 left-1/2 -translate-x-1/2 z-40 bg-[#039994] text-white px-5 py-2.5 rounded-full shadow-lg text-sm font-playfair font-semibold flex items-center gap-3 whitespace-nowrap">
+            className="fixed top-20 left-1/2 -translate-x-1/2 z-40 bg-brand-primary text-white px-5 py-2.5 rounded-full shadow-lg text-sm font-playfair font-semibold flex items-center gap-3 whitespace-nowrap">
             <span>⌨️ A–D to answer</span>
             <span className="opacity-40">·</span>
             <span>← → to navigate</span>
@@ -548,16 +607,16 @@ function ExamRoomContent() {
 
           <div className="flex items-center justify-between flex-wrap gap-2">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="bg-[#039994] text-white px-3 py-1 rounded-full text-sm font-bold font-playfair shadow-sm shadow-[#039994]/25">
+              <span className="bg-brand-primary text-white px-3 py-1 rounded-full text-sm font-bold font-playfair shadow-sm shadow-brand-primary/25">
                 Q{currentQuestion + 1} of {questions.length}
               </span>
               {currentQ.subjectName && (
-                <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-0.5 rounded-full text-xs font-semibold font-playfair">
+                <span className="bg-brand-primary-lt text-brand-primary-dk border border-brand-primary/20 px-2.5 py-0.5 rounded-full text-xs font-semibold font-playfair">
                   {currentQ.subjectName}
                 </span>
               )}
             </div>
-            <span className="bg-white border border-gray-200 text-gray-600 px-3 py-1 rounded-full text-xs font-bold font-playfair shadow-sm">
+            <span className="bg-white border border-border text-content-secondary px-3 py-1 rounded-full text-xs font-bold font-playfair shadow-sm">
               {currentQ.marks || 1} mark{(currentQ.marks || 1) !== 1 ? 's' : ''}
             </span>
           </div>
@@ -566,10 +625,10 @@ function ExamRoomContent() {
             <motion.div key={currentQuestion}
               initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50 }}
               transition={{ duration: 0.18, ease: 'easeOut' }}
-              className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+              className="bg-white rounded-2xl shadow-sm border border-border overflow-hidden">
 
-              <div className="px-6 sm:px-8 py-6 bg-gradient-to-br from-[#f0fffe] to-emerald-50/40 border-b border-gray-100">
-                <p className="text-gray-900 text-lg sm:text-xl font-playfair font-semibold leading-relaxed">
+              <div className="px-6 sm:px-8 py-6 bg-gradient-to-br from-brand-primary-lt to-brand-primary-lt/40 border-b border-border">
+                <p className="text-content-primary text-lg sm:text-xl font-playfair font-semibold leading-relaxed">
                   {currentQ.question}
                 </p>
               </div>
@@ -584,22 +643,22 @@ function ExamRoomContent() {
                       onClick={() => handleAnswerSelect(currentQ.id, index)}
                       className={`w-full flex items-center gap-4 p-4 rounded-xl border-2 text-left transition-all duration-150 cursor-pointer ${
                         isSelected
-                          ? 'border-[#039994] bg-[#039994]/5 shadow-md shadow-[#039994]/10'
-                          : 'border-gray-200 bg-white hover:border-[#039994]/40 hover:bg-gray-50/80'
+                          ? 'border-brand-primary bg-brand-primary/5 shadow-md shadow-brand-primary/10'
+                          : 'border-border bg-white hover:border-brand-primary/40 hover:bg-surface-muted'
                       }`}>
                       <div className={`w-11 h-11 rounded-full flex items-center justify-center text-base font-extrabold font-playfair flex-shrink-0 transition-all duration-150 ${
-                        isSelected ? 'bg-[#039994] text-white shadow-md shadow-[#039994]/30' : 'bg-gray-100 text-gray-500'
+                        isSelected ? 'bg-brand-primary text-white shadow-md shadow-brand-primary/30' : 'bg-surface-subtle text-content-secondary'
                       }`}>
                         {letter}
                       </div>
                       <span className={`flex-1 text-base sm:text-lg font-playfair font-medium leading-snug transition-colors ${
-                        isSelected ? 'text-[#028a85] font-semibold' : 'text-gray-700'
+                        isSelected ? 'text-brand-primary-dk font-semibold' : 'text-content-primary'
                       }`}>
                         {option}
                       </span>
                       {isSelected && (
                         <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="flex-shrink-0">
-                          <div className="w-7 h-7 rounded-full bg-[#039994] flex items-center justify-center shadow-sm">
+                          <div className="w-7 h-7 rounded-full bg-brand-primary flex items-center justify-center shadow-sm">
                             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3.5">
                               <polyline points="20 6 9 17 4 12"/>
                             </svg>
@@ -611,11 +670,11 @@ function ExamRoomContent() {
                 })}
               </div>
 
-              <div className="px-6 py-3 bg-gray-50 border-t border-gray-100">
-                <p className="text-gray-400 text-xs font-playfair">
+              <div className="px-6 py-3 bg-surface-muted border-t border-border">
+                <p className="text-content-muted text-xs font-playfair">
                   Tip: Press{' '}
                   {['A','B','C','D'].map(k => (
-                    <kbd key={k} className="mx-0.5 px-1 py-0.5 bg-white border border-gray-200 rounded text-gray-600 font-mono text-xs">{k}</kbd>
+                    <kbd key={k} className="mx-0.5 px-1 py-0.5 bg-white border border-border rounded text-content-secondary font-mono text-xs">{k}</kbd>
                   ))}{' '}
                   on your keyboard to quickly select an answer
                 </p>
@@ -626,7 +685,7 @@ function ExamRoomContent() {
           <div className="flex justify-between gap-3">
             <button onClick={() => setCurrentQuestion(p => Math.max(p - 1, 0))}
               disabled={currentQuestion === 0}
-              className="flex items-center gap-2 px-6 py-3 rounded-xl bg-white border-2 border-gray-200 text-gray-600 font-bold font-playfair text-sm hover:border-[#039994] hover:text-[#039994] hover:bg-[#039994]/4 transition-all hover:scale-105 active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:border-gray-200 disabled:hover:text-gray-600 disabled:hover:bg-white shadow-sm">
+              className="flex items-center gap-2 px-6 py-3 rounded-xl bg-white border-2 border-border text-content-secondary font-bold font-playfair text-sm hover:border-brand-primary hover:text-brand-primary hover:bg-brand-primary/4 transition-all hover:scale-105 active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:border-border disabled:hover:text-content-secondary disabled:hover:bg-white shadow-sm">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <polyline points="15 18 9 12 15 6"/>
               </svg>
@@ -634,7 +693,7 @@ function ExamRoomContent() {
             </button>
             <button onClick={() => setCurrentQuestion(p => Math.min(p + 1, questions.length - 1))}
               disabled={currentQuestion === questions.length - 1}
-              className="flex items-center gap-2 px-6 py-3 rounded-xl bg-[#039994] text-white font-bold font-playfair text-sm hover:bg-[#028a85] transition-all hover:scale-105 active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:bg-[#039994] shadow-sm shadow-[#039994]/30">
+              className="flex items-center gap-2 px-6 py-3 rounded-xl bg-brand-primary text-white font-bold font-playfair text-sm hover:bg-brand-primary-dk transition-all hover:scale-105 active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:bg-brand-primary shadow-sm shadow-brand-primary/30">
               Next
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <polyline points="9 18 15 12 9 6"/>
@@ -645,34 +704,34 @@ function ExamRoomContent() {
 
         <div className="space-y-4">
 
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
-            <h3 className="font-bold text-gray-700 font-playfair text-sm mb-4 flex items-center gap-2">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#039994" strokeWidth="2.5">
+          <div className="bg-white rounded-2xl shadow-sm border border-border p-5">
+            <h3 className="font-bold text-content-primary font-playfair text-sm mb-4 flex items-center gap-2">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1565C0" strokeWidth="2.5">
                 <path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
               </svg>
               Your Progress
             </h3>
             <div className="grid grid-cols-3 gap-2 mb-4">
               {[
-                { label: 'Answered', value: answeredCount, color: '#039994', bg: '#f0fffe' },
+                { label: 'Answered', value: answeredCount, color: '#1565C0', bg: '#E3F2FD' },
                 { label: 'Skipped',  value: unanswered,   color: '#f59e0b', bg: '#fffbeb' },
-                { label: 'Total',    value: questions.length, color: '#6b7280', bg: '#f9fafb' },
+                { label: 'Total',    value: questions.length, color: '#626060', bg: '#F9FAFB' },
               ].map(({ label, value, color, bg }) => (
-                <div key={label} className="rounded-xl p-2.5 text-center border border-gray-100" style={{ background: bg }}>
+                <div key={label} className="rounded-xl p-2.5 text-center border border-border" style={{ background: bg }}>
                   <div className="text-xl font-extrabold font-playfair" style={{ color }}>{value}</div>
-                  <div className="text-xs text-gray-400 font-playfair mt-0.5 leading-tight">{label}</div>
+                  <div className="text-xs text-content-muted font-playfair mt-0.5 leading-tight">{label}</div>
                 </div>
               ))}
             </div>
-            <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
-              <motion.div className="h-full rounded-full bg-gradient-to-r from-[#039994] to-emerald-400"
+            <div className="h-3 bg-surface-subtle rounded-full overflow-hidden">
+              <motion.div className="h-full rounded-full bg-gradient-to-r from-brand-primary to-brand-primary-dk"
                 animate={{ width: `${progress}%` }} transition={{ duration: 0.4 }}/>
             </div>
-            <p className="text-center text-[#039994] font-extrabold text-xl font-playfair mt-2">{Math.round(progress)}%</p>
+            <p className="text-center text-brand-primary font-extrabold text-xl font-playfair mt-2">{Math.round(progress)}%</p>
           </div>
 
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
-            <h3 className="font-bold text-gray-700 font-playfair text-sm mb-3">Navigate Questions</h3>
+          <div className="bg-white rounded-2xl shadow-sm border border-border p-5">
+            <h3 className="font-bold text-content-primary font-playfair text-sm mb-3">Navigate Questions</h3>
             <div className="grid grid-cols-5 gap-1.5">
               {questions.map((q, i) => {
                 const isCurrent = i === currentQuestion;
@@ -682,32 +741,32 @@ function ExamRoomContent() {
                     title={`Question ${i + 1}${isDone ? ' (answered)' : ''}`}
                     className={`aspect-square rounded-lg text-xs font-bold font-playfair transition-all hover:scale-110 active:scale-95 ${
                       isCurrent
-                        ? 'bg-[#039994] text-white shadow-md shadow-[#039994]/30'
+                        ? 'bg-brand-primary text-white shadow-md shadow-brand-primary/30'
                         : isDone
-                        ? 'bg-emerald-50 border-2 border-[#039994] text-[#039994]'
-                        : 'bg-gray-50 border border-gray-200 text-gray-500 hover:border-[#039994]/40 hover:bg-emerald-50/50'
+                        ? 'bg-brand-primary-lt border-2 border-brand-primary text-brand-primary'
+                        : 'bg-surface-muted border border-border text-content-secondary hover:border-brand-primary/40 hover:bg-brand-primary-lt'
                     }`}>
                     {i + 1}
                   </button>
                 );
               })}
             </div>
-            <div className="flex items-center gap-3 mt-3 pt-3 border-t border-gray-100 flex-wrap">
+            <div className="flex items-center gap-3 mt-3 pt-3 border-t border-border flex-wrap">
               {[
-                { cls: 'bg-[#039994]', label: 'Current' },
-                { cls: 'bg-emerald-50 border-2 border-[#039994]', label: 'Answered' },
-                { cls: 'bg-gray-50 border border-gray-200', label: 'Skipped' },
+                { cls: 'bg-brand-primary', label: 'Current' },
+                { cls: 'bg-brand-primary-lt border-2 border-brand-primary', label: 'Answered' },
+                { cls: 'bg-surface-muted border border-border', label: 'Skipped' },
               ].map(({ cls, label }) => (
                 <div key={label} className="flex items-center gap-1">
                   <div className={`w-3.5 h-3.5 rounded-sm ${cls}`}/>
-                  <span className="text-gray-400 text-xs font-playfair">{label}</span>
+                  <span className="text-content-muted text-xs font-playfair">{label}</span>
                 </div>
               ))}
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
-            <h3 className="font-bold text-gray-700 font-playfair text-sm mb-3">Exam Info</h3>
+          <div className="bg-white rounded-2xl shadow-sm border border-border p-5">
+            <h3 className="font-bold text-content-primary font-playfair text-sm mb-3">Exam Info</h3>
             <div className="space-y-2.5">
               {[
                 { icon: '🏆', label: 'Total Marks', value: totalMarks },
@@ -716,8 +775,8 @@ function ExamRoomContent() {
                 { icon: '🎓', label: 'Student',      value: user?.class || '' },
               ].map(({ icon, label, value, warn }) => (
                 <div key={label} className="flex items-center justify-between">
-                  <span className="text-gray-500 text-xs font-playfair">{icon} {label}</span>
-                  <span className={`text-xs font-bold font-playfair ${warn ? 'text-amber-500' : 'text-gray-700'}`}>{value}</span>
+                  <span className="text-content-secondary text-xs font-playfair">{icon} {label}</span>
+                  <span className={`text-xs font-bold font-playfair ${warn ? 'text-amber-500' : 'text-content-primary'}`}>{value}</span>
                 </div>
               ))}
             </div>
@@ -746,8 +805,8 @@ function ExamRoomContent() {
                   style={{ color: warningCount >= 3 ? '#ef4444' : warningCount >= 2 ? '#f97316' : '#f59e0b' }}>
                   Warning {warningCount} of 3
                 </h3>
-                <p className="text-gray-500 text-sm font-playfair mb-5">
-                  <strong className="text-gray-700">Violation detected:</strong> {lastViolationType}
+                <p className="text-content-secondary text-sm font-playfair mb-5">
+                  <strong className="text-content-primary">Violation detected:</strong> {lastViolationType}
                 </p>
                 <div className={`p-4 rounded-xl mb-5 text-sm font-semibold font-playfair ${
                   warningCount >= 3 ? 'bg-red-50 text-red-700 border border-red-200'
@@ -760,7 +819,7 @@ function ExamRoomContent() {
                 </div>
                 <button onClick={() => setShowWarning(false)}
                   className="w-full py-3.5 rounded-xl font-extrabold font-playfair text-white text-base transition-all hover:scale-105 active:scale-95 shadow-lg"
-                  style={{ background: warningCount >= 3 ? '#ef4444' : '#039994' }}>
+                  style={{ background: warningCount >= 3 ? '#ef4444' : '#1565C0' }}>
                   I Understand
                 </button>
               </div>
@@ -775,31 +834,31 @@ function ExamRoomContent() {
             className="fixed inset-0 z-50 flex items-center justify-center px-4"
             style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(6px)' }}>
             <motion.div initial={{ scale: 0.8 }} animate={{ scale: 1 }} exit={{ scale: 0.8 }}
-              className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden border border-gray-100">
-              <div className="p-6 text-center border-b border-gray-100">
+              className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden border border-border">
+              <div className="p-6 text-center border-b border-border">
                 <div className="text-5xl mb-3">📋</div>
-                <h3 className="text-xl font-extrabold font-playfair text-gray-800 mb-1">Submit Exam?</h3>
-                <p className="text-gray-500 text-sm font-playfair">
+                <h3 className="text-xl font-extrabold font-playfair text-content-primary mb-1">Submit Exam?</h3>
+                <p className="text-content-secondary text-sm font-playfair">
                   {unanswered === 0
                     ? '✅ You have answered all questions!'
                     : `You still have ${unanswered} unanswered question${unanswered !== 1 ? 's' : ''}. Are you sure?`}
                 </p>
               </div>
-              <div className="grid grid-cols-3 divide-x divide-gray-100 border-b border-gray-100">
+              <div className="grid grid-cols-3 divide-x divide-border border-b border-border">
                 {[
-                  { label: 'Answered', val: answeredCount,       color: '#039994' },
+                  { label: 'Answered', val: answeredCount,       color: '#1565C0' },
                   { label: 'Skipped',  val: unanswered,          color: '#f59e0b' },
-                  { label: 'Total',    val: questions.length,    color: '#6b7280' },
+                  { label: 'Total',    val: questions.length,    color: '#626060' },
                 ].map(({ label, val, color }) => (
                   <div key={label} className="py-4 text-center">
                     <div className="text-2xl font-extrabold font-playfair" style={{ color }}>{val}</div>
-                    <div className="text-gray-400 text-xs font-playfair mt-0.5">{label}</div>
+                    <div className="text-content-muted text-xs font-playfair mt-0.5">{label}</div>
                   </div>
                 ))}
               </div>
               <div className="p-5 flex gap-3">
                 <button onClick={() => setShowSubmitModal(false)}
-                  className="flex-1 py-3.5 rounded-xl border-2 border-gray-200 text-gray-600 font-bold font-playfair text-sm hover:border-[#039994] hover:text-[#039994] transition-all hover:scale-105 active:scale-95">
+                  className="flex-1 py-3.5 rounded-xl border-2 border-border text-content-secondary font-bold font-playfair text-sm hover:border-brand-primary hover:text-brand-primary transition-all hover:scale-105 active:scale-95">
                   Keep Going
                 </button>
                 <button onClick={() => { setShowSubmitModal(false); submitExam(false); }}
@@ -819,13 +878,13 @@ export default function ExamRoomPage() {
   return (
     <StudentProtectedRoute>
       <Suspense fallback={
-        <div className="fixed inset-0 flex items-center justify-center bg-[#f0fffe]">
+        <div className="fixed inset-0 flex items-center justify-center bg-brand-primary-lt">
           <div className="text-center">
             <div className="relative w-20 h-20 mx-auto mb-5">
-              <div className="absolute inset-0 rounded-full border-4 border-[#039994]/20"/>
-              <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-[#039994] animate-spin"/>
+              <div className="absolute inset-0 rounded-full border-4 border-brand-primary/20"/>
+              <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-brand-primary animate-spin"/>
             </div>
-            <p className="text-[#039994] font-bold text-xl font-playfair">Loading exam…</p>
+            <p className="text-brand-primary font-bold text-xl font-playfair">Loading exam…</p>
           </div>
         </div>
       }>

@@ -6,6 +6,15 @@ import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { useStudentAuth } from '../../context/StudentAuthContext';
 import toast from 'react-hot-toast';
+import { BookOpen, BarChart3, Calendar, BookMarked } from 'lucide-react';
+
+const subjectIcons = {
+  Mathematics: '🧮', English: '📖', Physics: '⚛️', Chemistry: '🧪',
+  Biology: '🧬', Economics: '📈', Geography: '🗺️', Government: '🏛️',
+  'Christian Religious Knowledge': '✝️', 'Islamic Religious Knowledge': '☪️',
+  'Literature in English': '📚', Commerce: '💼', 'Financial Accounting': '💰',
+  'Agricultural Science': '🌾', 'Civic Education': '🏛️', 'Data Processing': '💻'
+};
 
 export default function PastQuestions() {
   const [selectedYear, setSelectedYear] = useState('all');
@@ -18,71 +27,37 @@ export default function PastQuestions() {
 
   const years = ['2024', '2023', '2022', '2021', '2020', '2019', '2018', '2017'];
 
-  const subjectIcons = {
-    Mathematics: '🧮',
-    English: '📖',
-    Physics: '⚛️',
-    Chemistry: '🧪',
-    Biology: '🧬',
-    Economics: '📈',
-    Geography: '🗺️',
-    Government: '🏛️',
-    'Christian Religious Knowledge': '✝️',
-    'Islamic Religious Knowledge': '☪️',
-    'Literature in English': '📚',
-    Commerce: '💼',
-    'Financial Accounting': '💰',
-    'Agricultural Science': '🌾',
-    'Civic Education': '🏛️',
-    'Data Processing': '💻'
-  };
-
-  useEffect(() => {
-    fetchData();
-  }, []);
+  useEffect(() => { fetchData(); }, []);
 
   const fetchData = async () => {
     setLoading(true);
     try {
       if (!isOffline) {
-        const subjectsResponse = await fetchWithAuth('/subjects');
-        let subjectsData = { subjects: [] };
-        if (subjectsResponse && subjectsResponse.ok) {
-          subjectsData = await subjectsResponse.json();
-          setSubjects(subjectsData.subjects || []);
+        const subjectsRes = await fetchWithAuth('/subjects');
+        if (subjectsRes?.ok) {
+          const data = await subjectsRes.json();
+          setSubjects(data.subjects || []);
         }
-
-        const resultsResponse = await fetchWithAuth('/results/all');
-        if (resultsResponse && resultsResponse.ok) {
-          const resultsData = await resultsResponse.json();
-          
-          const questions = [];
-          resultsData.results.forEach(result => {
-            const date = new Date(result.date._seconds * 1000);
-            const year = date.getFullYear().toString();
-            questions.push({
-              id: result.id,
-              year: year,
-              subject: result.subject,
-              subjectId: result.subjectId,
-              paper: 'Past Question',
-              type: result.examType === 'practice' ? 'Practice' : 'Exam',
-              questions: 50,
-              duration: '2h',
-              difficulty: result.percentage >= 70 ? 'Easy' : result.percentage >= 50 ? 'Medium' : 'Hard',
-              score: result.percentage || result.score
-            });
-          });
-          setPastQuestions(questions);
+        const resultsRes = await fetchWithAuth('/results/all');
+        if (resultsRes?.ok) {
+          const data = await resultsRes.json();
+          setPastQuestions((data.results || []).map(r => {
+            const date = new Date(r.date._seconds * 1000);
+            return {
+              id: r.id, year: date.getFullYear().toString(), subject: r.subject,
+              subjectId: r.subjectId, paper: 'Past Question',
+              type: r.examType === 'practice' ? 'Practice' : 'Exam',
+              questions: 50, duration: '2h',
+              difficulty: r.percentage >= 70 ? 'Easy' : r.percentage >= 50 ? 'Medium' : 'Hard',
+              score: r.percentage || r.score
+            };
+          }));
         }
       } else {
-        const cachedSubjects = getOfflineData('studentSubjects');
-        if (cachedSubjects) {
-          setSubjects(cachedSubjects);
-        }
+        const cached = getOfflineData('studentSubjects');
+        if (cached) setSubjects(cached);
       }
-    } catch (error) {
-      console.error('Error fetching data:', error);
+    } catch {
       toast.error('Failed to load past questions');
     } finally {
       setLoading(false);
@@ -94,136 +69,131 @@ export default function PastQuestions() {
     router.push(`/exam-room?subjectId=${subject.id}&subject=${encodeURIComponent(subject.name)}&type=practice&duration=${duration}&questionCount=${subject.questionCount || 50}`);
   };
 
-  const filteredQuestions = pastQuestions.filter(question => {
-    if (selectedYear !== 'all' && question.year !== selectedYear) return false;
-    if (selectedSubject !== 'all' && question.subjectId !== selectedSubject) return false;
-    return true;
-  });
+  const filteredQuestions = pastQuestions.filter(q =>
+    (selectedYear === 'all' || q.year === selectedYear) &&
+    (selectedSubject === 'all' || q.subjectId === selectedSubject)
+  );
 
   const subjectOptions = [
     { id: 'all', name: 'All Subjects', icon: '📚', count: filteredQuestions.length },
-    ...subjects.map(s => ({
-      id: s.id,
-      name: s.name,
-      icon: subjectIcons[s.name] || '📘',
-      count: pastQuestions.filter(q => q.subjectId === s.id).length
-    }))
+    ...subjects.map(s => ({ id: s.id, name: s.name, icon: subjectIcons[s.name] || '📘', count: pastQuestions.filter(q => q.subjectId === s.id).length }))
   ];
 
-  const averageScore = pastQuestions.length > 0 
-    ? Math.round(pastQuestions.reduce((sum, q) => sum + (q.score || 0), 0) / pastQuestions.length) 
-    : 0;
+  const averageScore = pastQuestions.length > 0
+    ? Math.round(pastQuestions.reduce((sum, q) => sum + (q.score || 0), 0) / pastQuestions.length) : 0;
+
+  const difficultyBadge = {
+    Easy:   'bg-success-light text-success',
+    Medium: 'bg-warning-light text-warning-dark',
+    Hard:   'bg-danger-light text-danger',
+  };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-[#039994] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-[14px] leading-[100%] font-[500] text-[#626060] font-playfair">Loading past questions...</p>
+          <div className="w-12 h-12 border-4 border-brand-primary-lt border-t-brand-primary rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-sm font-medium text-content-secondary">Loading past questions...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6">
-      <div className="mb-8">
-        <h1 className="text-2xl md:text-3xl font-bold text-[#1E1E1E] font-playfair">Past Questions</h1>
-        <p className="text-[#626060] mt-2 font-playfair">Access WAEC past questions from previous years</p>
+    <div className="max-w-7xl mx-auto">
+      {/* Header */}
+      <div className="mb-6">
+        <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-content-primary font-playfair">Past Questions</h1>
+        <p className="text-sm text-content-secondary mt-1.5">Access WAEC past questions from previous years</p>
       </div>
 
-      <div className="flex flex-col md:flex-row md:items-center justify-between mb-6">
-        <div className="flex flex-wrap gap-2 mb-4 md:mb-0">
+      {/* Year filter */}
+      <div className="flex flex-wrap gap-2 mb-5">
+        {['all', ...years].map(year => (
           <button
-            onClick={() => setSelectedYear('all')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium ${selectedYear === 'all' ? 'bg-[#039994] text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+            key={year}
+            onClick={() => setSelectedYear(year)}
+            className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all min-h-[40px] ${
+              selectedYear === year
+                ? 'bg-brand-primary text-white'
+                : 'bg-white border border-border text-content-secondary hover:border-brand-primary'
+            }`}
           >
-            All Years
-          </button>
-          {years.map((year) => (
-            <button
-              key={year}
-              onClick={() => setSelectedYear(year)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium ${selectedYear === year ? 'bg-[#039994] text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
-            >
-              {year}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-9 gap-2 mb-8">
-        {subjectOptions.map((subject) => (
-          <button
-            key={subject.id}
-            onClick={() => setSelectedSubject(subject.id)}
-            className={`flex flex-col items-center p-3 rounded-lg ${selectedSubject === subject.id ? 'bg-[#E6FFFA] border-2 border-[#039994]' : 'bg-white border border-gray-200 hover:border-[#039994]'}`}
-          >
-            <span className="text-2xl mb-2">{subject.icon}</span>
-            <span className="text-xs font-medium text-gray-700 text-center truncate w-full">{subject.name === 'All Subjects' ? 'All' : subject.name}</span>
-            {subject.count !== undefined && (
-              <span className="text-xs text-gray-500 mt-1">{subject.count} papers</span>
-            )}
+            {year === 'all' ? 'All Years' : year}
           </button>
         ))}
       </div>
 
+      {/* Subject filter */}
+      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-9 gap-2 mb-6">
+        {subjectOptions.map(subject => (
+          <button
+            key={subject.id}
+            onClick={() => setSelectedSubject(subject.id)}
+            className={`flex flex-col items-center p-3 rounded-xl border transition-all ${
+              selectedSubject === subject.id
+                ? 'bg-brand-primary-lt border-brand-primary'
+                : 'bg-white border-border hover:border-brand-primary'
+            }`}
+          >
+            <span className="text-xl mb-1">{subject.icon}</span>
+            <span className="text-xs font-medium text-content-secondary text-center truncate w-full">
+              {subject.name === 'All Subjects' ? 'All' : subject.name}
+            </span>
+            <span className="text-xs text-content-muted mt-0.5">{subject.count}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* Results */}
       {filteredQuestions.length === 0 ? (
-        <div className="text-center py-12 bg-white rounded-xl border border-gray-200">
-          <div className="text-5xl mb-4">📚</div>
-          <h3 className="text-[18px] font-[600] text-[#1E1E1E] mb-2 font-playfair">No Past Questions Found</h3>
-          <p className="text-[14px] text-[#626060] font-playfair">No past questions match your current filters.</p>
+        <div className="text-center py-16 bg-white rounded-xl border border-border">
+          <BookMarked size={48} className="text-content-muted mx-auto mb-4" />
+          <h3 className="text-base font-bold text-content-primary mb-2 font-playfair">No Past Questions Found</h3>
+          <p className="text-sm text-content-secondary">No past questions match your current filters.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {filteredQuestions.map((question) => {
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          {filteredQuestions.map(question => {
             const subject = subjects.find(s => s.id === question.subjectId) || { name: question.subject };
-            
             return (
               <motion.div
                 key={question.id}
-                whileHover={{ y: -4 }}
-                className="bg-white rounded-xl shadow-sm border border-gray-200 p-5"
+                whileHover={{ y: -3 }}
+                className="bg-white rounded-xl border border-border p-5 shadow-card hover:border-brand-primary hover:shadow-card-md transition-all"
               >
                 <div className="flex items-start justify-between mb-4">
-                  <div>
-                    <div className="flex items-center mb-2">
-                      <span className={`px-3 py-1 rounded-full text-xs font-medium mr-3 ${
-                        question.difficulty === 'Easy' ? 'bg-green-100 text-green-800' : 
-                        question.difficulty === 'Medium' ? 'bg-yellow-100 text-yellow-800' : 
-                        'bg-red-100 text-red-800'
-                      }`}>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${difficultyBadge[question.difficulty] || 'bg-surface-muted text-content-secondary'}`}>
                         {question.difficulty}
                       </span>
-                      <span className="text-sm text-gray-500">WAEC {question.year}</span>
+                      <span className="text-xs text-content-muted">WAEC {question.year}</span>
                     </div>
-                    <h3 className="text-lg font-bold text-gray-800">{question.subject}</h3>
-                    <p className="text-gray-600 text-sm">{question.type} Questions</p>
+                    <h3 className="text-base font-bold text-content-primary font-playfair">{question.subject}</h3>
+                    <p className="text-xs text-content-secondary">{question.type} Questions</p>
                   </div>
-                  <span className="text-3xl">
-                    {subjectIcons[question.subject] || '📘'}
-                  </span>
+                  <span className="text-3xl flex-shrink-0 ml-3">{subjectIcons[question.subject] || '📘'}</span>
                 </div>
 
-                <div className="grid grid-cols-3 gap-4 mb-5">
-                  <div className="text-center p-3 bg-gray-50 rounded-lg">
-                    <div className="text-lg font-bold text-gray-800">{question.questions}</div>
-                    <div className="text-xs text-gray-600">Questions</div>
-                  </div>
-                  <div className="text-center p-3 bg-gray-50 rounded-lg">
-                    <div className="text-lg font-bold text-gray-800">{question.duration}</div>
-                    <div className="text-xs text-gray-600">Duration</div>
-                  </div>
-                  <div className="text-center p-3 bg-gray-50 rounded-lg">
-                    <div className="text-lg font-bold text-gray-800">{question.score || 0}%</div>
-                    <div className="text-xs text-gray-600">Avg. Score</div>
-                  </div>
+                <div className="grid grid-cols-3 gap-3 mb-5">
+                  {[
+                    { val: question.questions, label: 'Questions' },
+                    { val: question.duration,  label: 'Duration' },
+                    { val: `${question.score || 0}%`, label: 'Avg. Score' },
+                  ].map(({ val, label }) => (
+                    <div key={label} className="text-center p-3 bg-surface-muted rounded-xl">
+                      <p className="text-base font-bold text-content-primary">{val}</p>
+                      <p className="text-xs text-content-muted">{label}</p>
+                    </div>
+                  ))}
                 </div>
 
                 <button
                   onClick={() => handlePracticeNow(subject)}
-                  className="w-full py-2.5 bg-[#039994] text-white font-medium rounded-lg hover:bg-[#028a85] transition"
+                  className="btn-primary w-full text-sm"
                 >
+                  <BookOpen size={14} />
                   Practice Now
                 </button>
               </motion.div>
@@ -232,25 +202,24 @@ export default function PastQuestions() {
         </div>
       )}
 
-      <div className="mt-8 bg-blue-50 border border-blue-200 rounded-xl p-6">
-        <h3 className="text-lg font-semibold text-blue-800 mb-3 font-playfair">📊 Past Question Statistics</h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="text-center p-4 bg-white rounded-lg border border-blue-100">
-            <div className="text-2xl font-bold text-blue-600 mb-2">{pastQuestions.length}</div>
-            <div className="text-sm text-gray-700">Total Papers</div>
-          </div>
-          <div className="text-center p-4 bg-white rounded-lg border border-blue-100">
-            <div className="text-2xl font-bold text-blue-600 mb-2">{years.length}</div>
-            <div className="text-sm text-gray-700">Years Covered</div>
-          </div>
-          <div className="text-center p-4 bg-white rounded-lg border border-blue-100">
-            <div className="text-2xl font-bold text-blue-600 mb-2">{subjects.length}</div>
-            <div className="text-sm text-gray-700">Subjects</div>
-          </div>
-          <div className="text-center p-4 bg-white rounded-lg border border-blue-100">
-            <div className="text-2xl font-bold text-blue-600 mb-2">{averageScore}%</div>
-            <div className="text-sm text-gray-700">Avg. Score</div>
-          </div>
+      {/* Stats banner */}
+      <div className="bg-brand-primary-lt border border-brand-primary/20 rounded-xl p-5">
+        <h3 className="text-base font-bold text-brand-primary-dk mb-4 font-playfair flex items-center gap-2">
+          <BarChart3 size={16} /> Past Question Statistics
+        </h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {[
+            { val: pastQuestions.length, label: 'Total Papers',   icon: BookMarked },
+            { val: years.length,         label: 'Years Covered',  icon: Calendar   },
+            { val: subjects.length,      label: 'Subjects',       icon: BookOpen   },
+            { val: `${averageScore}%`,   label: 'Avg. Score',     icon: BarChart3  },
+          ].map(({ val, label, icon: Icon }) => (
+            <div key={label} className="text-center p-4 bg-white rounded-xl border border-border">
+              <Icon size={20} className="text-brand-primary mx-auto mb-2" />
+              <p className="text-xl font-bold text-brand-primary">{val}</p>
+              <p className="text-xs text-content-secondary mt-0.5">{label}</p>
+            </div>
+          ))}
         </div>
       </div>
     </div>

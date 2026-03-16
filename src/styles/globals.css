@@ -1,115 +1,458 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:wght@400;500;600;700&display=swap');
+/* ============================================================
+   Einstein's CBT App — Global Styles
+   Design System: Deep Navy Blue (#1F2A49) + Gold | Font: Inter + Playfair
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:wght@600;700;800&family=JetBrains+Mono:wght@500;700&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================================
+   CSS Design Tokens
+   ============================================================ */
 @layer base {
   :root {
-    --background: #ffffff;
-    --foreground: #111827;
+    /* Brand — extracted from Einstein's CBT logo */
+    --color-primary:      #1F2A49; /* Deep Navy Blue */
+    --color-primary-dk:   #141C33; /* Darker Navy */
+    --color-primary-lt:   #EDF0F7; /* Light Navy Tint */
+    --color-accent:       #3A4F7A; /* Medium Navy */
+    --color-gold:         #FFB300;
+    --color-gold-lt:      #FFF8E1;
+    --color-navy:         #0D1220;
+    --color-cyan:         #00B4D8;
+
+    /* Surfaces */
+    --color-bg:           #F5F7FB;
+    --color-surface:      #FFFFFF;
+    --color-surface-muted:#EDF0F7;
+
+    /* Borders */
+    --color-border:       #E8ECEF;
+    --color-border-strong:#CBD5E1;
+
+    /* Text */
+    --color-text-primary:   #0D1117;
+    --color-text-secondary: #525F7F;
+    --color-text-muted:     #8898AA;
+    --color-text-inverse:   #FFFFFF;
+
+    /* Status */
+    --color-success:  #10B981;
+    --color-warning:  #F59E0B;
+    --color-danger:   #EF4444;
+    --color-info:     #3B82F6;
+
+    /* Radius */
+    --radius-sm:  6px;
+    --radius-md:  10px;
+    --radius-lg:  12px;
+    --radius-xl:  16px;
+
+    /* Shadows */
+    --shadow-card: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-card-md: 0 4px 12px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.04);
+    --shadow-brand: 0 4px 14px rgba(31,42,73,0.25);
+
+    /* Typography */
+    --font-display: 'Playfair Display', Georgia, serif;
+    --font-body:    'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-mono:    'JetBrains Mono', 'Roboto Mono', Menlo, monospace;
   }
 
+  /* Dark mode tokens (ready for future use) */
   .dark {
-    --background: #0f172a;
-    --foreground: #f8fafc;
+    --color-bg:           #0D1117;
+    --color-surface:      #161B22;
+    --color-surface-muted:#1C2333;
+    --color-border:       #30363D;
+    --color-border-strong:#484F58;
+    --color-text-primary:   #E6EDF3;
+    --color-text-secondary: #8D96A0;
+    --color-text-muted:     #6E7681;
   }
 }
 
+/* ============================================================
+   Base Reset & Typography
+   ============================================================ */
 @layer base {
-  * {
-    @apply border-gray-200;
+  *, *::before, *::after {
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
   }
-  
+
+  html {
+    /* PWA: prevent text size adjustment on orientation change */
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    scroll-behavior: smooth;
+    /* iOS momentum scrolling */
+    -webkit-overflow-scrolling: touch;
+  }
+
   body {
-    @apply bg-white text-gray-900 antialiased;
-    font-feature-settings: "ss01", "ss02", "cv01", "cv02";
+    @apply antialiased;
+    font-family: var(--font-body);
+    font-size: 15px;
+    line-height: 1.5;
+    color: var(--color-text-primary);
+    background-color: var(--color-bg);
+    /* Prevent horizontal scroll on mobile */
+    overflow-x: hidden;
+    /* iOS safe area support */
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+
+  /* Headings use Playfair Display */
+  h1, h2, h3 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: 1.2;
+    color: var(--color-text-primary);
+  }
+
+  /* Sub-headings and UI use Inter */
+  h4, h5, h6 {
+    font-family: var(--font-body);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1.3;
+    color: var(--color-text-primary);
+  }
+
+  p, span, label, input, button, select, textarea {
+    font-family: var(--font-body);
+  }
+
+  /* Minimum accessible font size: 12px — no text below this */
+  small, caption, figcaption {
+    font-size: 12px;
+    line-height: 1.4;
   }
 
   ::selection {
-    @apply bg-blue-500/20 text-blue-700;
+    background: rgba(21, 101, 192, 0.15);
+    color: var(--color-primary);
   }
 
+  /* Custom Scrollbar — brand themed */
   ::-webkit-scrollbar {
-    @apply w-2;
+    width: 6px;
+    height: 6px;
   }
-
   ::-webkit-scrollbar-track {
-    @apply bg-gray-100;
+    background: var(--color-surface-muted);
   }
-
   ::-webkit-scrollbar-thumb {
-    @apply bg-gradient-to-b from-blue-500 to-green-500 rounded-full;
+    background: linear-gradient(180deg, #1565C0, #FFB300);
+    border-radius: 999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, #0D47A1, #E6A000);
+  }
+  /* Firefox */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #1565C0 var(--color-surface-muted);
   }
 
-  ::-webkit-scrollbar-thumb:hover {
-    @apply from-blue-600 to-green-600;
+  /* Focus ring — accessible */
+  :focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+  }
+
+  /* Remove iOS input zoom (must be 16px+ to prevent auto-zoom) */
+  input, select, textarea {
+    font-size: 16px;
+  }
+
+  /* But keep smaller sizes for desktop display — override back to 15px */
+  @media (min-width: 768px) {
+    input, select, textarea {
+      font-size: 15px;
+    }
   }
 }
 
+/* ============================================================
+   Component Utilities
+   ============================================================ */
 @layer components {
-  .glass-effect {
-    @apply bg-white/10 backdrop-blur-md border border-white/20;
+
+  /* === Buttons === */
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 px-6 py-3
+           bg-brand-primary text-white font-semibold text-sm rounded-lg
+           hover:bg-brand-primary-dk active:scale-[0.98]
+           focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2
+           transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed
+           min-h-[44px]; /* iOS minimum touch target */
   }
 
-  .gradient-text {
-    @apply bg-gradient-to-r from-blue-600 to-green-500 bg-clip-text text-transparent;
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 px-6 py-3
+           bg-white text-brand-primary font-semibold text-sm rounded-lg
+           border-2 border-brand-primary
+           hover:bg-brand-primary-lt active:scale-[0.98]
+           focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2
+           transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed
+           min-h-[44px];
+  }
+
+  .btn-gold {
+    @apply inline-flex items-center justify-center gap-2 px-6 py-3
+           bg-brand-gold text-brand-navy font-semibold text-sm rounded-lg
+           hover:bg-yellow-500 active:scale-[0.98]
+           focus-visible:ring-2 focus-visible:ring-brand-gold focus-visible:ring-offset-2
+           transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed
+           min-h-[44px];
+  }
+
+  .btn-danger {
+    @apply inline-flex items-center justify-center gap-2 px-6 py-3
+           bg-danger text-white font-semibold text-sm rounded-lg
+           hover:bg-danger-dark active:scale-[0.98]
+           transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed
+           min-h-[44px];
+  }
+
+  /* === Input Fields === */
+  .input-field {
+    @apply w-full px-4 py-3 bg-white border border-border rounded-lg text-sm
+           text-content-primary placeholder-content-muted
+           focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-brand-primary
+           transition-all duration-200
+           min-h-[48px]; /* comfortable touch target */
+  }
+
+  .input-underline {
+    @apply w-full px-0 py-3 bg-transparent border-b-2 border-border text-sm
+           text-content-primary placeholder-content-muted
+           focus:outline-none focus:border-brand-primary
+           transition-colors duration-200;
+    /* Keep 16px to prevent iOS auto-zoom */
+    font-size: 16px;
+  }
+
+  @media (min-width: 768px) {
+    .input-underline {
+      font-size: 14px;
+    }
+  }
+
+  /* === Cards === */
+  .card {
+    @apply bg-white rounded-xl border border-border shadow-card;
   }
 
   .card-hover {
-    @apply transition-all duration-300 hover:shadow-xl hover:-translate-y-1;
+    @apply card transition-all duration-200 hover:-translate-y-1 hover:shadow-card-md;
   }
 
-  .btn-primary {
-    @apply bg-gradient-to-r from-blue-500 to-green-500 text-white font-semibold py-2.5 px-6 rounded-lg 
-           hover:from-blue-600 hover:to-green-600 focus:outline-none focus:ring-2 focus:ring-blue-500 
-           focus:ring-offset-2 transition-all transform hover:-translate-y-0.5 active:translate-y-0 
-           disabled:opacity-50 disabled:cursor-not-allowed;
+  /* === Glass effect === */
+  .glass {
+    @apply bg-white/10 backdrop-blur-md border border-white/20;
   }
 
-  .input-field {
-    @apply w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 
-           focus:border-blue-500 transition outline-none placeholder-gray-400;
+  /* === Gradient Text === */
+  .gradient-text {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(135deg, #1565C0 0%, #00B4D8 100%);
+  }
+
+  .gradient-text-gold {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(135deg, #FFB300 0%, #FF8F00 100%);
+  }
+
+  /* === Status Badges === */
+  .badge-success {
+    @apply inline-flex items-center gap-1 px-2.5 py-1 bg-success-light text-success-dark
+           text-xs font-semibold rounded-full;
+  }
+
+  .badge-warning {
+    @apply inline-flex items-center gap-1 px-2.5 py-1 bg-warning-light text-warning-dark
+           text-xs font-semibold rounded-full;
+  }
+
+  .badge-danger {
+    @apply inline-flex items-center gap-1 px-2.5 py-1 bg-danger-light text-danger-dark
+           text-xs font-semibold rounded-full;
+  }
+
+  .badge-brand {
+    @apply inline-flex items-center gap-1 px-2.5 py-1 bg-brand-primary-lt text-brand-primary
+           text-xs font-semibold rounded-full;
+  }
+
+  .badge-gold {
+    @apply inline-flex items-center gap-1 px-2.5 py-1 bg-brand-gold-lt text-yellow-700
+           text-xs font-semibold rounded-full;
+  }
+
+  /* === Loading Spinner === */
+  .spinner {
+    @apply w-10 h-10 border-4 border-brand-primary-lt border-t-brand-primary
+           rounded-full animate-spin;
+  }
+
+  .spinner-sm {
+    @apply w-5 h-5 border-2 border-brand-primary-lt border-t-brand-primary
+           rounded-full animate-spin;
+  }
+
+  /* === Section Heading === */
+  .section-title {
+    font-family: var(--font-display);
+    @apply text-2xl font-bold text-content-primary;
+  }
+
+  .section-subtitle {
+    @apply text-sm text-content-secondary mt-1;
+  }
+
+  /* === Nav Item Base === */
+  .nav-item {
+    @apply flex items-center gap-3 w-full px-3 py-2.5 rounded-lg
+           text-sm font-medium transition-all duration-150
+           min-h-[44px] cursor-pointer select-none;
+  }
+
+  .nav-item-active {
+    @apply bg-brand-primary-lt text-brand-primary;
+  }
+
+  .nav-item-inactive {
+    @apply text-content-secondary hover:bg-surface-subtle hover:text-content-primary;
+  }
+
+  /* === Progress Bar === */
+  .progress-bar {
+    @apply w-full h-2 bg-surface-subtle rounded-full overflow-hidden;
+  }
+
+  .progress-fill {
+    @apply h-full bg-brand-primary rounded-full transition-all duration-500 ease-out;
+  }
+
+  /* === Offline Banner === */
+  .offline-banner {
+    @apply flex items-center gap-2 px-4 py-3 bg-warning-light border border-warning
+           text-warning-dark rounded-lg text-sm font-medium;
   }
 }
 
+/* ============================================================
+   Utility Classes
+   ============================================================ */
 @layer utilities {
+  /* Text wrap balance */
   .text-balance {
     text-wrap: balance;
   }
 
-  .animate-gradient {
-    background-size: 200% 200%;
-    animation: gradient 8s ease infinite;
-  }
-
-  @keyframes gradient {
-    0%, 100% {
-      background-position: 0% 50%;
-    }
-    50% {
-      background-position: 100% 50%;
-    }
-  }
-
+  /* Hide scrollbar (keep functionality) */
   .hide-scrollbar {
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
-  
   .hide-scrollbar::-webkit-scrollbar {
     display: none;
   }
-}
 
-/* Custom animations */
-.ping-animation {
-  animation: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;
-}
-
-@keyframes ping {
-  75%, 100% {
-    transform: scale(2);
-    opacity: 0;
+  /* iOS-safe bottom padding (for bottom nav / home indicator) */
+  .pb-safe {
+    padding-bottom: max(16px, env(safe-area-inset-bottom));
   }
+
+  .pt-safe {
+    padding-top: max(0px, env(safe-area-inset-top));
+  }
+
+  /* Touch-target minimum (WCAG 2.5.5) */
+  .touch-target {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  /* Animated gradient background */
+  .animate-gradient {
+    background-size: 300% 300%;
+    animation: gradientShift 8s ease infinite;
+  }
+
+  @keyframes gradientShift {
+    0%, 100% { background-position: 0% 50%; }
+    50%       { background-position: 100% 50%; }
+  }
+
+  /* Skeleton shimmer */
+  .skeleton {
+    background: linear-gradient(90deg, #F1F5F9 25%, #E2E8F0 50%, #F1F5F9 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s ease-in-out infinite;
+  }
+
+  @keyframes shimmer {
+    0%   { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+
+  /* Ping animation */
+  .ping-once {
+    animation: ping 0.6s cubic-bezier(0, 0, 0.2, 1) forwards;
+  }
+
+  @keyframes ping {
+    75%, 100% { transform: scale(2); opacity: 0; }
+  }
+}
+
+/* ============================================================
+   PWA & Mobile-Specific Overrides
+   ============================================================ */
+
+/* Standalone PWA mode — hide browser chrome artifacts */
+@media (display-mode: standalone) {
+  body {
+    /* Extra top padding for status bar in standalone mode */
+    padding-top: env(safe-area-inset-top);
+  }
+}
+
+/* iOS standalone — handle notch */
+@supports (padding-top: env(safe-area-inset-top)) {
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top);
+  }
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* Prevent bounce scroll on iOS (page-level) */
+html, body {
+  overscroll-behavior: none;
+}
+
+/* Prevent text selection during swipes */
+.no-select {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Smooth font rendering on all platforms */
+* {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }

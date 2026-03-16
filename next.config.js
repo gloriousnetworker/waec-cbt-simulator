@@ -1,3 +1,5 @@
+const path = require('path')
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
@@ -10,6 +12,8 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  // Explicitly set the project root to silence workspace root detection warning
+  outputFileTracingRoot: path.join(__dirname),
 }
 
-export default nextConfig
+module.exports = nextConfig

@@ -1,10 +1,11 @@
-// components/navbar/StudentNavbar.jsx
+// components/dashboard-components/Navbar.jsx
 'use client';
 
 import { useStudentAuth } from '../../context/StudentAuthContext';
-import { motion } from 'framer-motion';
-import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
+import { Menu, Settings, BarChart3, LogOut, ChevronDown } from 'lucide-react';
 import {
   navbarContainer,
   navbarInner,
@@ -15,17 +16,8 @@ import {
   navbarLogoImage,
   navbarLogoText,
   navbarLogoSubtext,
-  navbarNav,
-  navbarNavButton,
-  navbarNavButtonActive,
-  navbarNavButtonInactive,
   navbarRight,
-  navbarSearch,
-  navbarSearchIcon,
-  navbarSearchInput,
   navbarNotification,
-  navbarNotificationBadge,
-  navbarProfile,
   navbarProfileButton,
   navbarProfileAvatar,
   navbarProfileInfo,
@@ -44,27 +36,34 @@ import {
   modalText,
   modalActions,
   modalButtonSecondary,
-  modalButtonDanger
+  modalButtonDanger,
 } from '../../styles/styles';
 
-export default function StudentNavbar({ activeSection, setActiveSection, onMenuClick }) {
+export default function StudentNavbar({ setActiveSection, onMenuClick }) {
   const { user, logout } = useStudentAuth();
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
+  const dropdownRef = useRef(null);
 
+  // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (e) => {
-      if (!e.target.closest('.profile-container')) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
         setShowDropdown(false);
       }
     };
-    document.addEventListener('click', handleClickOutside);
-    return () => document.removeEventListener('click', handleClickOutside);
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Close dropdown on route / section change
+  useEffect(() => {
+    setShowDropdown(false);
+  }, [setActiveSection]);
 
   const getInitials = () => {
     if (!user) return 'ST';
-    return `${user.firstName?.[0] || ''}${user.lastName?.[0] || ''}`;
+    return `${user.firstName?.[0] || ''}${user.lastName?.[0] || ''}`.toUpperCase();
   };
 
   const handleLogout = () => {
@@ -72,180 +71,177 @@ export default function StudentNavbar({ activeSection, setActiveSection, onMenuC
     setShowLogoutConfirm(false);
   };
 
-  const navSections = [
-    { id: 'home', label: 'Dashboard', icon: '🏠' },
-    { id: 'exams', label: 'Exams', icon: '📝' },
-    { id: 'timed-tests', label: 'Timed', icon: '⏱️' },
-    { id: 'performance', label: 'Performance', icon: '📊' },
-    { id: 'achievements', label: 'Achievements', icon: '🏆' },
-    { id: 'past-questions', label: 'Past Q', icon: '📚' },
-    { id: 'study-groups', label: 'Groups', icon: '👥' },
-    { id: 'settings', label: 'Settings', icon: '⚙️' },
-  ];
-
-  if (user?.examMode) {
-    return null;
-  }
+  if (user?.examMode) return null;
 
   return (
     <>
-      <nav className={navbarContainer}>
+      <nav className={navbarContainer} role="navigation" aria-label="Main navigation">
         <div className={navbarInner}>
           <div className={navbarContent}>
+
+            {/* ── Left: Hamburger + Logo ── */}
             <div className={navbarLeft}>
               <button
                 onClick={onMenuClick}
                 className={navbarMenuButton}
+                aria-label="Open navigation menu"
               >
-                <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
+                <Menu size={22} strokeWidth={2} />
               </button>
-              
+
               <div className={navbarLogo}>
                 <div className={navbarLogoImage}>
-                  <Image 
-                    src="/logo.png" 
-                    alt="WAEC Logo" 
-                    width={40} 
-                    height={40}
-                    className="object-contain"
+                  <Image
+                    src="/logo.png"
+                    alt="Einstein's CBT App"
+                    width={36}
+                    height={36}
+                    className="object-contain w-full h-full"
                   />
                 </div>
                 <div>
-                  <h1 className={navbarLogoText}>WAEC CBT Simulator</h1>
+                  <h1 className={navbarLogoText}>Einstein&apos;s CBT</h1>
                   <p className={navbarLogoSubtext}>Student Portal</p>
                 </div>
               </div>
             </div>
 
-            <div className={navbarNav}>
-              {navSections.map(section => (
-                <button
-                  key={section.id}
-                  onClick={() => setActiveSection(section.id)}
-                  className={`${navbarNavButton} ${
-                    activeSection === section.id
-                      ? navbarNavButtonActive
-                      : navbarNavButtonInactive
-                  }`}
-                >
-                  <span className="mr-2">{section.icon}</span>
-                  {section.label}
-                </button>
-              ))}
-            </div>
-
+            {/* ── Right: Notifications + Profile ── */}
             <div className={navbarRight}>
-              <div className={navbarSearch}>
-                <div className={navbarSearchIcon}>
-                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                </div>
-                <input
-                  type="search"
-                  className={navbarSearchInput}
-                  placeholder="Search subjects..."
-                />
-              </div>
 
-              <button className={navbarNotification}>
-                <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                </svg>
-                <span className={navbarNotificationBadge}></span>
-              </button>
-
-              <div className="profile-container relative">
+              {/* Profile dropdown */}
+              <div className="relative" ref={dropdownRef}>
                 <button
-                  onClick={() => setShowDropdown(!showDropdown)}
+                  onClick={() => setShowDropdown((v) => !v)}
                   className={navbarProfileButton}
+                  aria-label="Open profile menu"
+                  aria-expanded={showDropdown}
+                  aria-haspopup="menu"
                 >
+                  {/* Avatar */}
                   <div className={navbarProfileAvatar}>
-                    <div className="w-9 h-9 rounded-full bg-[#039994] flex items-center justify-center text-white text-[14px] leading-[100%] font-[600]">
+                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-brand-primary to-brand-primary-dk flex items-center justify-center text-white text-sm font-bold select-none">
                       {getInitials()}
                     </div>
                   </div>
+
                   <div className={navbarProfileInfo}>
                     <p className={navbarProfileName}>
                       {user ? `${user.firstName} ${user.lastName}` : 'Student'}
                     </p>
                     <p className={navbarProfileId}>{user?.class || 'Student'}</p>
                   </div>
+
+                  <ChevronDown
+                    size={14}
+                    strokeWidth={2.5}
+                    className={`text-content-muted transition-transform duration-200 hidden lg:block ${showDropdown ? 'rotate-180' : ''}`}
+                  />
                 </button>
-                
-                {showDropdown && (
-                  <div className={navbarDropdown}>
-                    <div className={navbarDropdownHeader}>
-                      <p className={navbarDropdownHeaderName}>
-                        {user ? `${user.firstName} ${user.lastName}` : 'Student'}
-                      </p>
-                      <p className={navbarDropdownHeaderEmail}>{user?.email}</p>
-                    </div>
-                    <div className={navbarDropdownMenu}>
-                      <button 
-                        onClick={() => {
-                          setActiveSection('settings');
-                          setShowDropdown(false);
-                        }}
-                        className={navbarDropdownItem}
-                      >
-                        Profile Settings
-                      </button>
-                      <button 
-                        onClick={() => {
-                          setActiveSection('performance');
-                          setShowDropdown(false);
-                        }}
-                        className={navbarDropdownItem}
-                      >
-                        Exam History
-                      </button>
-                      <button
-                        onClick={() => {
-                          setShowLogoutConfirm(true);
-                          setShowDropdown(false);
-                        }}
-                        className={navbarDropdownItemDanger}
-                      >
-                        Logout
-                      </button>
-                    </div>
-                  </div>
-                )}
+
+                {/* Dropdown menu — pure React state, no CSS hover conflict */}
+                <AnimatePresence>
+                  {showDropdown && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -8, scale: 0.96 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -8, scale: 0.96 }}
+                      transition={{ duration: 0.15 }}
+                      className={navbarDropdown}
+                      role="menu"
+                      aria-label="Profile menu"
+                    >
+                      <div className={navbarDropdownHeader}>
+                        <p className={navbarDropdownHeaderName}>
+                          {user ? `${user.firstName} ${user.lastName}` : 'Student'}
+                        </p>
+                        <p className={navbarDropdownHeaderEmail}>{user?.email}</p>
+                      </div>
+
+                      <div className={navbarDropdownMenu}>
+                        <button
+                          role="menuitem"
+                          onClick={() => { setActiveSection('settings'); setShowDropdown(false); }}
+                          className={navbarDropdownItem}
+                        >
+                          <Settings size={14} className="mr-2 text-content-muted" />
+                          Profile Settings
+                        </button>
+                        <button
+                          role="menuitem"
+                          onClick={() => { setActiveSection('performance'); setShowDropdown(false); }}
+                          className={navbarDropdownItem}
+                        >
+                          <BarChart3 size={14} className="mr-2 text-content-muted" />
+                          Exam History
+                        </button>
+                        <div className="h-px bg-border my-1" />
+                        <button
+                          role="menuitem"
+                          onClick={() => { setShowLogoutConfirm(true); setShowDropdown(false); }}
+                          className={navbarDropdownItemDanger}
+                        >
+                          <LogOut size={14} className="mr-2" />
+                          Sign Out
+                        </button>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             </div>
           </div>
         </div>
       </nav>
 
-      {showLogoutConfirm && (
-        <div className={modalOverlay}>
+      {/* Logout Confirmation Modal */}
+      <AnimatePresence>
+        {showLogoutConfirm && (
           <motion.div
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            className={modalContainer}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className={modalOverlay}
+            onClick={() => setShowLogoutConfirm(false)}
           >
-            <h3 className={modalTitle}>Confirm Logout</h3>
-            <p className={modalText}>Are you sure you want to logout?</p>
-            <div className={modalActions}>
-              <button
-                onClick={() => setShowLogoutConfirm(false)}
-                className={modalButtonSecondary}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleLogout}
-                className={modalButtonDanger}
-              >
-                Logout
-              </button>
-            </div>
+            <motion.div
+              initial={{ scale: 0.92, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.92, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className={modalContainer}
+              onClick={(e) => e.stopPropagation()}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="logout-title"
+            >
+              <div className="w-12 h-12 bg-danger-light rounded-full flex items-center justify-center mx-auto mb-4">
+                <LogOut size={20} className="text-danger" />
+              </div>
+              <h3 id="logout-title" className={modalTitle + ' text-center'}>
+                Sign Out?
+              </h3>
+              <p className={modalText + ' text-center'}>
+                You&apos;ll be signed out of Einstein&apos;s CBT App. Any unsaved progress may be lost.
+              </p>
+              <div className={modalActions}>
+                <button
+                  onClick={() => setShowLogoutConfirm(false)}
+                  className={modalButtonSecondary}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleLogout}
+                  className={modalButtonDanger}
+                >
+                  Sign Out
+                </button>
+              </div>
+            </motion.div>
           </motion.div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
     </>
   );
 }

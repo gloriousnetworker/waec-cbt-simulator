@@ -1,13 +1,14 @@
 {
-  "name": "WAEC CBT Simulator - Exam Practice",
-  "short_name": "WAEC CBT",
-  "description": "Practice WAEC Computer Based Test (CBT) exams offline",
-  "theme_color": "#039994",
-  "background_color": "#ffffff",
+  "name": "Einstein's CBT App",
+  "short_name": "Einstein CBT",
+  "description": "WAEC CBT Exam Practice — Powered by Mega Tech Solutions",
+  "theme_color": "#1565C0",
+  "background_color": "#F8FAFB",
   "display": "standalone",
-  "orientation": "portrait",
+  "display_override": ["standalone", "minimal-ui", "browser"],
+  "orientation": "portrait-primary",
   "scope": "/",
-  "start_url": "/",
+  "start_url": "/?source=pwa",
   "id": "/",
   "categories": ["education", "productivity"],
   "lang": "en",
@@ -54,7 +55,7 @@
       "src": "/icons/icon-192x192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any"
+      "purpose": "maskable"
     },
     {
       "src": "/icons/icon-384x384.png",
@@ -66,7 +67,7 @@
       "src": "/icons/icon-512x512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any"
+      "purpose": "maskable"
     }
   ],
   "screenshots": [
@@ -74,30 +75,37 @@
       "src": "/screenshots/desktop.png",
       "sizes": "1280x720",
       "type": "image/png",
-      "platform": "wide",
-      "label": "Desktop view of WAEC CBT Simulator"
+      "form_factor": "wide",
+      "label": "Einstein's CBT App — Desktop Dashboard"
     },
     {
       "src": "/screenshots/mobile.png",
       "sizes": "750x1334",
       "type": "image/png",
-      "platform": "narrow",
-      "label": "Mobile view of WAEC CBT Simulator"
+      "form_factor": "narrow",
+      "label": "Einstein's CBT App — Mobile View"
     }
   ],
   "shortcuts": [
     {
-      "name": "Start Practice Test",
+      "name": "Start Practice",
       "short_name": "Practice",
-      "description": "Start a new practice exam",
-      "url": "/dashboard/exams",
+      "description": "Jump into a practice exam",
+      "url": "/dashboard?section=exams",
       "icons": [{ "src": "/icons/icon-96x96.png", "sizes": "96x96" }]
     },
     {
-      "name": "View Results",
-      "short_name": "Results",
-      "description": "Check your exam results",
-      "url": "/dashboard/performance",
+      "name": "My Performance",
+      "short_name": "Performance",
+      "description": "View your exam results and analytics",
+      "url": "/dashboard?section=performance",
+      "icons": [{ "src": "/icons/icon-96x96.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Timed Tests",
+      "short_name": "Timed",
+      "description": "Take a timed challenge test",
+      "url": "/dashboard?section=timed-tests",
       "icons": [{ "src": "/icons/icon-96x96.png", "sizes": "96x96" }]
     }
   ]

@@ -50,7 +50,7 @@ export default function Footer() {
               <motion.div
                 whileHover={{ rotate: 360 }}
                 transition={{ duration: 0.5 }}
-                className="w-12 h-12 bg-gradient-to-br from-blue-500 to-green-500 rounded-lg flex items-center justify-center mr-4"
+                className="w-12 h-12 bg-gradient-to-br from-brand-primary to-brand-primary-dk rounded-lg flex items-center justify-center mr-4"
               >
                 <span className="text-white font-bold text-lg">WAEC</span>
               </motion.div>
@@ -87,7 +87,7 @@ export default function Footer() {
               transition={{ delay: colIndex * 0.1 }}
               viewport={{ once: true }}
             >
-              <h3 className="text-lg font-semibold mb-4 text-blue-400">{col.title}</h3>
+              <h3 className="text-lg font-semibold mb-4 text-brand-primary-lt">{col.title}</h3>
               <ul className="space-y-3 text-gray-400">
                 {col.items.map((item) => (
                   <li key={item.name}>

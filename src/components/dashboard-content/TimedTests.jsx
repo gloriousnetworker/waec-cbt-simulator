@@ -6,121 +6,83 @@ import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { useStudentAuth } from '../../context/StudentAuthContext';
 import toast from 'react-hot-toast';
+import { Timer, Trophy, BarChart3, Zap } from 'lucide-react';
+
+const subjectIcons = {
+  Mathematics: '🧮', English: '📖', Physics: '⚛️', Chemistry: '🧪',
+  Biology: '🧬', Economics: '📈', Geography: '🗺️', Government: '🏛️',
+  'Christian Religious Knowledge': '✝️', 'Islamic Religious Knowledge': '☪️',
+  'Literature in English': '📚', Commerce: '💼', 'Financial Accounting': '💰',
+  'Agricultural Science': '🌾', 'Civic Education': '🏛️', 'Data Processing': '💻'
+};
+
+const subjectColors = {
+  Mathematics: 'bg-info', English: 'bg-success', Physics: 'bg-purple-500',
+  Chemistry: 'bg-danger', Biology: 'bg-success-dark', Economics: 'bg-warning',
+  Geography: 'bg-brand-cyan', Government: 'bg-indigo-500',
+  'Christian Religious Knowledge': 'bg-purple-400', 'Islamic Religious Knowledge': 'bg-emerald-500',
+  'Literature in English': 'bg-pink-500', Commerce: 'bg-orange-500',
+  'Financial Accounting': 'bg-success', 'Agricultural Science': 'bg-lime-500',
+  'Civic Education': 'bg-sky-500', 'Data Processing': 'bg-indigo-500'
+};
+
+const difficultyConfig = {
+  Easy:   { badge: 'bg-success-light text-success',      bar: 'bg-success' },
+  Medium: { badge: 'bg-warning-light text-warning-dark', bar: 'bg-warning' },
+  Hard:   { badge: 'bg-danger-light text-danger',        bar: 'bg-danger' },
+};
 
 export default function TimedTests() {
   const [subjects, setSubjects] = useState([]);
-  const [subjectNames, setSubjectNames] = useState([]);
   const [practiceHistory, setPracticeHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
   const { fetchWithAuth, isOffline, getOfflineData } = useStudentAuth();
 
-  const subjectIcons = {
-    Mathematics: '🧮',
-    English: '📖',
-    Physics: '⚛️',
-    Chemistry: '🧪',
-    Biology: '🧬',
-    Economics: '📈',
-    Geography: '🗺️',
-    Government: '🏛️',
-    'Christian Religious Knowledge': '✝️',
-    'Islamic Religious Knowledge': '☪️',
-    'Literature in English': '📚',
-    Commerce: '💼',
-    'Financial Accounting': '💰',
-    'Agricultural Science': '🌾',
-    'Civic Education': '🏛️',
-    'Data Processing': '💻'
-  };
-
-  const subjectColors = {
-    Mathematics: 'bg-[#3B82F6]',
-    English: 'bg-[#10B981]',
-    Physics: 'bg-[#8B5CF6]',
-    Chemistry: 'bg-[#EF4444]',
-    Biology: 'bg-[#059669]',
-    Economics: 'bg-[#F59E0B]',
-    Geography: 'bg-[#14B8A6]',
-    Government: 'bg-[#6366F1]',
-    'Christian Religious Knowledge': 'bg-[#8B5CF6]',
-    'Islamic Religious Knowledge': 'bg-[#059669]',
-    'Literature in English': 'bg-[#EC4899]',
-    Commerce: 'bg-[#F97316]',
-    'Financial Accounting': 'bg-[#10B981]',
-    'Agricultural Science': 'bg-[#84CC16]',
-    'Civic Education': 'bg-[#0EA5E9]',
-    'Data Processing': 'bg-[#6366F1]'
-  };
-
-  // Generate timed tests based on student's subjects
-  const getTimedTestsForSubject = (subject) => {
-    return [
-      {
-        id: `${subject.id}-quick`,
-        name: `Quick ${subject.name} Challenge`,
-        subjectId: subject.id,
-        subjectName: subject.name,
-        icon: subjectIcons[subject.name] || '📘',
-        color: subjectColors[subject.name] || 'bg-[#039994]',
-        duration: 5,
-        questionCount: 10,
-        difficulty: 'Easy',
-        description: `Test your basic ${subject.name} skills`
-      },
-      {
-        id: `${subject.id}-medium`,
-        name: `${subject.name} Sprint`,
-        subjectId: subject.id,
-        subjectName: subject.name,
-        icon: subjectIcons[subject.name] || '📘',
-        color: subjectColors[subject.name] || 'bg-[#039994]',
-        duration: 10,
-        questionCount: 20,
-        difficulty: 'Medium',
-        description: `Intermediate ${subject.name} problems`
-      },
-      {
-        id: `${subject.id}-hard`,
-        name: `${subject.name} Marathon`,
-        subjectId: subject.id,
-        subjectName: subject.name,
-        icon: subjectIcons[subject.name] || '📘',
-        color: subjectColors[subject.name] || 'bg-[#039994]',
-        duration: 15,
-        questionCount: 30,
-        difficulty: 'Hard',
-        description: `Advanced ${subject.name} challenge`
-      }
-    ];
-  };
+  const getTimedTestsForSubject = (subject) => [
+    {
+      id: `${subject.id}-quick`, name: `Quick ${subject.name} Challenge`, subjectId: subject.id,
+      subjectName: subject.name, icon: subjectIcons[subject.name] || '📘',
+      color: subjectColors[subject.name] || 'bg-brand-primary',
+      duration: 5, questionCount: 10, difficulty: 'Easy',
+      description: `Test your basic ${subject.name} skills`
+    },
+    {
+      id: `${subject.id}-medium`, name: `${subject.name} Sprint`, subjectId: subject.id,
+      subjectName: subject.name, icon: subjectIcons[subject.name] || '📘',
+      color: subjectColors[subject.name] || 'bg-brand-primary',
+      duration: 10, questionCount: 20, difficulty: 'Medium',
+      description: `Intermediate ${subject.name} problems`
+    },
+    {
+      id: `${subject.id}-hard`, name: `${subject.name} Marathon`, subjectId: subject.id,
+      subjectName: subject.name, icon: subjectIcons[subject.name] || '📘',
+      color: subjectColors[subject.name] || 'bg-brand-primary',
+      duration: 15, questionCount: 30, difficulty: 'Hard',
+      description: `Advanced ${subject.name} challenge`
+    },
+  ];
 
   useEffect(() => {
     fetchSubjects();
-    loadPracticeHistory();
-  }, []);
-
-  const loadPracticeHistory = () => {
     const history = JSON.parse(localStorage.getItem('practice_history') || '[]');
     setPracticeHistory(history);
-  };
+  }, []);
 
   const fetchSubjects = async () => {
     setLoading(true);
     try {
       if (!isOffline) {
-        const subjectsResponse = await fetchWithAuth('/subjects');
-        if (subjectsResponse && subjectsResponse.ok) {
-          const subjectsData = await subjectsResponse.json();
-          setSubjects(subjectsData.subjects || []);
-          setSubjectNames(subjectsData.subjectNames || []);
+        const res = await fetchWithAuth('/subjects');
+        if (res?.ok) {
+          const data = await res.json();
+          setSubjects(data.subjects || []);
         }
       } else {
-        const cachedSubjects = getOfflineData('studentSubjects');
-        if (cachedSubjects) setSubjects(cachedSubjects);
+        const cached = getOfflineData('studentSubjects');
+        if (cached) setSubjects(cached);
       }
-    } catch (error) {
-      console.error('Error fetching subjects:', error);
+    } catch {
       toast.error('Failed to load subjects');
     } finally {
       setLoading(false);
@@ -128,46 +90,33 @@ export default function TimedTests() {
   };
 
   const handleStartTimedTest = (test) => {
-    const practiceSetup = {
-      id: test.subjectId,
-      name: test.subjectName,
-      duration: test.duration,
-      questionCount: test.questionCount,
-      isTimedTest: true,
-      testName: test.name,
+    localStorage.setItem('practice_subject', JSON.stringify({
+      id: test.subjectId, name: test.subjectName, duration: test.duration,
+      questionCount: test.questionCount, isTimedTest: true, testName: test.name,
       difficulty: test.difficulty.toLowerCase()
-    };
-    localStorage.setItem('practice_subject', JSON.stringify(practiceSetup));
+    }));
     localStorage.setItem('timed_test_config', JSON.stringify({
-      duration: test.duration,
-      questionCount: test.questionCount,
-      difficulty: test.difficulty.toLowerCase()
+      duration: test.duration, questionCount: test.questionCount, difficulty: test.difficulty.toLowerCase()
     }));
     router.push('/dashboard/practice-setup');
   };
 
   const getBestScore = (subjectId) => {
-    const subjectPractices = practiceHistory.filter(p => p.subjectId === subjectId);
-    if (subjectPractices.length === 0) return null;
-    return Math.max(...subjectPractices.map(p => p.percentage));
+    const matches = practiceHistory.filter(p => p.subjectId === subjectId);
+    return matches.length === 0 ? null : Math.max(...matches.map(p => p.percentage));
   };
+  const getAttempts = (subjectId) => practiceHistory.filter(p => p.subjectId === subjectId).length;
 
-  const getRecentAttempts = (subjectId) => {
-    return practiceHistory.filter(p => p.subjectId === subjectId).length;
-  };
-
-  const difficultyColors = {
-    Easy: 'bg-green-100 text-green-800',
-    Medium: 'bg-yellow-100 text-yellow-800',
-    Hard: 'bg-red-100 text-red-800'
-  };
+  const totalSessions = practiceHistory.length;
+  const avgScore = totalSessions > 0 ? Math.round(practiceHistory.reduce((s, p) => s + p.percentage, 0) / totalSessions) : 0;
+  const bestScore = totalSessions > 0 ? Math.max(...practiceHistory.map(p => p.percentage)) : 0;
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-[#039994] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-[14px] leading-[100%] font-[500] text-[#626060] font-playfair">Loading timed tests...</p>
+          <div className="w-12 h-12 border-4 border-brand-primary-lt border-t-brand-primary rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-sm font-medium text-content-secondary">Loading timed tests...</p>
         </div>
       </div>
     );
@@ -175,114 +124,117 @@ export default function TimedTests() {
 
   if (subjects.length === 0) {
     return (
-      <div className="max-w-7xl mx-auto px-4 py-6">
-        <div className="mb-8">
-          <h1 className="text-2xl md:text-3xl font-bold text-[#1E1E1E] font-playfair">Timed Tests</h1>
-          <p className="text-[#626060] mt-2 font-playfair">Test your speed and accuracy under pressure</p>
+      <div className="max-w-7xl mx-auto">
+        <div className="mb-6">
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-content-primary font-playfair">Timed Tests</h1>
+          <p className="text-sm text-content-secondary mt-1.5">Test your speed and accuracy under pressure</p>
         </div>
-        <div className="text-center py-12 bg-white rounded-xl border border-gray-200">
-          <div className="text-5xl mb-4">⏱️</div>
-          <h3 className="text-[18px] font-[600] text-[#1E1E1E] mb-2 font-playfair">No Subjects Available</h3>
-          <p className="text-[14px] text-[#626060] font-playfair">You haven't been assigned any subjects yet.</p>
+        <div className="text-center py-16 bg-white rounded-xl border border-border">
+          <Timer size={48} className="text-content-muted mx-auto mb-4" />
+          <h3 className="text-base font-bold text-content-primary mb-2 font-playfair">No Subjects Available</h3>
+          <p className="text-sm text-content-secondary">You haven&apos;t been assigned any subjects yet.</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6">
-      <div className="mb-8">
-        <h1 className="text-2xl md:text-3xl font-bold text-[#1E1E1E] font-playfair">Timed Tests</h1>
-        <p className="text-[#626060] mt-2 font-playfair">Test your speed and accuracy under pressure</p>
+    <div className="max-w-7xl mx-auto">
+      {/* Header */}
+      <div className="mb-6">
+        <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-content-primary font-playfair">Timed Tests</h1>
+        <p className="text-sm text-content-secondary mt-1.5">Test your speed and accuracy under pressure</p>
       </div>
 
-      {subjects.map((subject) => {
-        const timedTests = getTimedTestsForSubject(subject);
-        const bestScore = getBestScore(subject.id);
-        const attempts = getRecentAttempts(subject.id);
-
+      {/* Subject test cards */}
+      {subjects.map(subject => {
+        const tests = getTimedTestsForSubject(subject);
+        const best = getBestScore(subject.id);
+        const attempts = getAttempts(subject.id);
         return (
           <div key={subject.id} className="mb-8">
             <div className="flex items-center gap-3 mb-4">
-              <span className="text-3xl">{subjectIcons[subject.name] || '📘'}</span>
-              <h2 className="text-xl font-bold text-[#1E1E1E] font-playfair">{subject.name}</h2>
+              <span className="text-2xl">{subjectIcons[subject.name] || '📘'}</span>
+              <h2 className="text-lg font-bold text-content-primary font-playfair">{subject.name}</h2>
               {attempts > 0 && (
-                <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                <span className="text-xs bg-brand-primary-lt text-brand-primary px-2.5 py-1 rounded-full font-medium">
                   {attempts} attempt{attempts !== 1 ? 's' : ''}
                 </span>
               )}
-              {bestScore !== null && (
-                <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
-                  Best: {bestScore}%
+              {best !== null && (
+                <span className="text-xs bg-success-light text-success px-2.5 py-1 rounded-full font-medium">
+                  Best: {best}%
                 </span>
               )}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {timedTests.map((test) => (
-                <motion.div
-                  key={test.id}
-                  whileHover={{ y: -4 }}
-                  className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden"
-                >
-                  <div className={`h-2 ${test.color}`}></div>
-                  <div className="p-6">
-                    <div className="flex items-start justify-between mb-4">
-                      <div>
-                        <h3 className="font-bold text-[#1E1E1E] font-playfair">{test.name}</h3>
-                        <p className="text-xs text-[#626060] font-playfair mt-1">{test.description}</p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+              {tests.map(test => {
+                const dc = difficultyConfig[test.difficulty];
+                return (
+                  <motion.div
+                    key={test.id}
+                    whileHover={{ y: -3 }}
+                    className="bg-white rounded-xl border border-border overflow-hidden shadow-card hover:border-brand-primary hover:shadow-card-md transition-all"
+                  >
+                    <div className={`h-1.5 ${test.color}`} />
+                    <div className="p-5">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="min-w-0 flex-1 pr-2">
+                          <h3 className="text-sm font-bold text-content-primary font-playfair leading-tight">{test.name}</h3>
+                          <p className="text-xs text-content-muted mt-1">{test.description}</p>
+                        </div>
+                        <span className={`px-2.5 py-1 rounded-full text-xs font-semibold flex-shrink-0 ${dc.badge}`}>
+                          {test.difficulty}
+                        </span>
                       </div>
-                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${difficultyColors[test.difficulty]}`}>
-                        {test.difficulty}
-                      </span>
-                    </div>
 
-                    <div className="grid grid-cols-2 gap-2 mb-4 text-center">
-                      <div className="bg-gray-50 p-3 rounded-lg">
-                        <div className="text-lg font-bold text-[#039994]">{test.duration}min</div>
-                        <div className="text-[10px] text-[#626060] font-playfair">Duration</div>
+                      <div className="grid grid-cols-2 gap-2 mb-4">
+                        <div className="bg-surface-muted p-3 rounded-xl text-center">
+                          <p className="text-lg font-bold font-mono text-brand-primary">{test.duration}<span className="text-xs font-sans">min</span></p>
+                          <p className="text-xs text-content-muted">Duration</p>
+                        </div>
+                        <div className="bg-surface-muted p-3 rounded-xl text-center">
+                          <p className="text-lg font-bold font-mono text-brand-primary">{test.questionCount}</p>
+                          <p className="text-xs text-content-muted">Questions</p>
+                        </div>
                       </div>
-                      <div className="bg-gray-50 p-3 rounded-lg">
-                        <div className="text-lg font-bold text-[#039994]">{test.questionCount}</div>
-                        <div className="text-[10px] text-[#626060] font-playfair">Questions</div>
-                      </div>
-                    </div>
 
-                    <button
-                      onClick={() => handleStartTimedTest(test)}
-                      className="w-full py-3 bg-[#039994] text-white font-semibold rounded-lg hover:bg-[#028a85] transition"
-                    >
-                      Start Test
-                    </button>
-                  </div>
-                </motion.div>
-              ))}
+                      <button
+                        onClick={() => handleStartTimedTest(test)}
+                        className="btn-primary w-full text-sm"
+                      >
+                        <Zap size={14} />
+                        Start Test
+                      </button>
+                    </div>
+                  </motion.div>
+                );
+              })}
             </div>
           </div>
         );
       })}
 
-      <div className="bg-gradient-to-r from-[#039994] to-[#028a85] rounded-xl p-8 text-white mt-8">
-        <h3 className="text-xl font-bold mb-4 font-playfair">⏱️ Your Practice Progress</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-white/10 rounded-lg p-4">
-            <div className="text-2xl font-bold">{practiceHistory.length}</div>
-            <div className="text-sm opacity-90">Total Practice Sessions</div>
-          </div>
-          <div className="bg-white/10 rounded-lg p-4">
-            <div className="text-2xl font-bold">
-              {practiceHistory.length > 0 
-                ? Math.round(practiceHistory.reduce((sum, p) => sum + p.percentage, 0) / practiceHistory.length)
-                : 0}%
+      {/* Progress Banner */}
+      <div className="bg-gradient-to-r from-brand-primary to-brand-primary-dk rounded-xl p-6 sm:p-8 text-white mt-4">
+        <h3 className="text-base font-bold mb-5 font-playfair flex items-center gap-2">
+          <Timer size={18} /> Your Practice Progress
+        </h3>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {[
+            { val: totalSessions, label: 'Total Sessions', icon: BarChart3 },
+            { val: `${avgScore}%`, label: 'Average Score', icon: BarChart3 },
+            { val: `${bestScore}%`, label: 'Best Score', icon: Trophy },
+          ].map(({ val, label, icon: Icon }) => (
+            <div key={label} className="bg-white/10 rounded-xl p-4 flex items-center gap-4">
+              <Icon size={28} className="opacity-80 flex-shrink-0" />
+              <div>
+                <p className="text-2xl font-bold font-playfair">{val}</p>
+                <p className="text-sm opacity-90">{label}</p>
+              </div>
             </div>
-            <div className="text-sm opacity-90">Average Score</div>
-          </div>
-          <div className="bg-white/10 rounded-lg p-4">
-            <div className="text-2xl font-bold">
-              {practiceHistory.length > 0 ? Math.max(...practiceHistory.map(p => p.percentage)) : 0}%
-            </div>
-            <div className="text-sm opacity-90">Best Score</div>
-          </div>
+          ))}
         </div>
       </div>
     </div>

@@ -6,50 +6,53 @@ import { motion } from 'framer-motion';
 import { useStudentAuth } from '../../context/StudentAuthContext';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
+import { WifiOff, FileText, Timer, BarChart3, Trophy, ChevronRight, TrendingUp, Star } from 'lucide-react';
+
+const subjectIcons = {
+  Mathematics: '🧮', English: '📖', Physics: '⚛️', Chemistry: '🧪',
+  Biology: '🧬', Economics: '📈', Geography: '🗺️', Government: '🏛️',
+  'Christian Religious Knowledge': '✝️', 'Islamic Religious Knowledge': '☪️',
+  'Literature in English': '📚', Commerce: '💼', 'Financial Accounting': '💰',
+  'Agricultural Science': '🌾', 'Civic Education': '🏛️', 'Data Processing': '💻',
+};
+
+// Stat card config — uses brand blue palette with gold for best score
+const statCards = [
+  { key: 'completed',         label: 'Formal Exams',      icon: FileText,  goal: 20,  gradientFrom: '#1565C0', gradientTo: '#1976D2' },
+  { key: 'totalPractices',    label: 'Practice Sessions', icon: TrendingUp,goal: 50,  gradientFrom: '#10B981', gradientTo: '#059669' },
+  { key: 'averagePercentage', label: 'Average Score',     icon: BarChart3, goal: 100, gradientFrom: '#1565C0', gradientTo: '#0D47A1', suffix: '%' },
+  { key: 'bestScore',         label: 'Best Score',        icon: Star,      goal: 100, gradientFrom: '#FFB300', gradientTo: '#F57C00', suffix: '%', gold: true },
+];
+
+const quickActions = [
+  { title: 'Start Practice', icon: FileText,  color: 'border-brand-primary text-brand-primary hover:bg-brand-primary-lt', id: 'exams' },
+  { title: 'Timed Test',     icon: Timer,     color: 'border-success text-success-dark hover:bg-success-light',         id: 'timed-tests' },
+  { title: 'Performance',    icon: BarChart3, color: 'border-info text-info-dark hover:bg-info-light',                  id: 'performance' },
+  { title: 'Achievements',   icon: Trophy,    color: 'border-brand-gold text-yellow-600 hover:bg-brand-gold-lt',        id: 'achievements' },
+];
+
+function formatTimeAgo(timestamp) {
+  const seconds = Math.floor((Date.now() - timestamp) / 1000);
+  if (seconds < 60) return 'Just now';
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+  if (seconds < 604800) return `${Math.floor(seconds / 86400)}d ago`;
+  return 'Long ago';
+}
 
 export default function DashboardHome({ setActiveSection }) {
   const { user, fetchWithAuth, isOffline, getOfflineData } = useStudentAuth();
   const router = useRouter();
-  const [stats, setStats] = useState({
-    totalExams: 0,
-    completed: 0,
-    averageScore: 0,
-    averagePercentage: 0,
-    timeSpent: '0h 0m',
-    streak: 0,
-    rank: 'Top 100%'
-  });
-  const [examHistory, setExamHistory] = useState([]);
-  const [practiceHistory, setPracticeHistory] = useState([]);
-  const [subjects, setSubjects] = useState([]);
-  const [weakAreas, setWeakAreas] = useState([]);
+  const [stats, setStats] = useState({ completed: 0, averagePercentage: 0, rank: 'Top 100%' });
   const [practiceStats, setPracticeStats] = useState(null);
-  const [recentActivities, setRecentActivities] = useState([]);
+  const [subjects, setSubjects] = useState([]);
+  const [practiceHistory, setPracticeHistory] = useState([]);
+  const [weakAreas, setWeakAreas] = useState([]);
   const [recommendations, setRecommendations] = useState([]);
+  const [recentActivities, setRecentActivities] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const subjectIcons = {
-    Mathematics: '🧮',
-    English: '📖',
-    Physics: '⚛️',
-    Chemistry: '🧪',
-    Biology: '🧬',
-    Economics: '📈',
-    Geography: '🗺️',
-    Government: '🏛️',
-    'Christian Religious Knowledge': '✝️',
-    'Islamic Religious Knowledge': '☪️',
-    'Literature in English': '📚',
-    Commerce: '💼',
-    'Financial Accounting': '💰',
-    'Agricultural Science': '🌾',
-    'Civic Education': '🏛️',
-    'Data Processing': '💻'
-  };
-
-  useEffect(() => {
-    fetchDashboardData();
-  }, []);
+  useEffect(() => { fetchDashboardData(); }, []);
 
   const fetchDashboardData = async () => {
     setLoading(true);
@@ -59,437 +62,267 @@ export default function DashboardHome({ setActiveSection }) {
           fetchWithAuth('/subjects'),
           fetchWithAuth('/history'),
           fetchWithAuth('/practice/history?limit=20'),
-          fetchWithAuth('/practice/stats')
+          fetchWithAuth('/practice/stats'),
         ]);
 
-        let exams = [];
-        let practices = [];
-        let subjectsList = [];
+        let exams = [], practices = [], subjectsList = [];
 
         if (subjectsRes?.ok) {
-          const subjectsData = await subjectsRes.json();
-          subjectsList = subjectsData.subjects || [];
+          const d = await subjectsRes.json();
+          subjectsList = d.subjects || [];
           setSubjects(subjectsList);
         }
-
         if (historyRes?.ok) {
-          const historyData = await historyRes.json();
-          exams = historyData.exams || [];
-          setExamHistory(exams);
-          
-          const completedExams = exams.filter(e => e.status === 'completed');
-          const totalScore = completedExams.reduce((sum, e) => sum + (e.percentage || 0), 0);
-          const avgPercentage = completedExams.length > 0 ? Math.round(totalScore / completedExams.length) : 0;
-          
+          const d = await historyRes.json();
+          exams = d.exams || [];
+          const completed = exams.filter(e => e.status === 'completed');
+          const avgPct = completed.length ? Math.round(completed.reduce((s, e) => s + (e.percentage || 0), 0) / completed.length) : 0;
           let rank = 'Top 100%';
-          if (avgPercentage >= 80) rank = 'Top 10%';
-          else if (avgPercentage >= 70) rank = 'Top 20%';
-          else if (avgPercentage >= 60) rank = 'Top 30%';
-          else if (avgPercentage >= 50) rank = 'Top 40%';
-
-          setStats(prev => ({
-            ...prev,
-            totalExams: exams.length,
-            completed: completedExams.length,
-            averageScore: avgPercentage,
-            averagePercentage: avgPercentage,
-            timeSpent: `${Math.floor((completedExams.length * 2) / 60)}h ${(completedExams.length * 2) % 60}m`,
-            streak: Math.min(completedExams.length, 7),
-            rank: rank
-          }));
-
+          if (avgPct >= 80) rank = 'Top 10%';
+          else if (avgPct >= 70) rank = 'Top 20%';
+          else if (avgPct >= 60) rank = 'Top 30%';
+          else if (avgPct >= 50) rank = 'Top 40%';
+          setStats({ completed: completed.length, averagePercentage: avgPct, rank });
           const examActivities = exams.slice(0, 3).map(exam => {
-            const date = exam.date || exam.createdAt;
-            const timestamp = date?._seconds ? date._seconds * 1000 : new Date(date).getTime();
-            const percentage = exam.percentage || 0;
-            const isPassed = percentage >= 50;
+            const ts = exam.date?._seconds ? exam.date._seconds * 1000 : new Date(exam.date || exam.createdAt).getTime();
             const subjectName = exam.subjects?.[0]?.subjectName || 'Unknown';
-            
-            return {
-              id: exam.id,
-              type: 'exam',
-              subject: subjectName,
-              subjectId: exam.subjects?.[0]?.subjectId,
-              score: percentage,
-              time: formatTimeAgo(timestamp),
-              status: isPassed ? 'passed' : 'failed',
-              icon: subjectIcons[subjectName] || '📘'
-            };
+            return { id: exam.id, type: 'exam', subject: subjectName, score: exam.percentage || 0, time: formatTimeAgo(ts), status: (exam.percentage || 0) >= 50 ? 'passed' : 'failed', icon: subjectIcons[subjectName] || '📘' };
           });
-          
-          setRecentActivities(prev => {
-            const combined = [...(prev.filter(a => a.type === 'practice')), ...examActivities];
-            return combined.sort((a, b) => {
-              const timeA = a.time.includes('Just now') ? Date.now() : 0;
-              const timeB = b.time.includes('Just now') ? Date.now() : 0;
-              return timeB - timeA;
-            }).slice(0, 5);
-          });
+          setRecentActivities(prev => [...prev.filter(a => a.type === 'practice'), ...examActivities].slice(0, 5));
         }
-
         if (practiceRes?.ok) {
-          const practiceData = await practiceRes.json();
-          practices = practiceData.practices || [];
+          const d = await practiceRes.json();
+          practices = d.practices || [];
           setPracticeHistory(practices);
-          
-          const practiceActivities = practices.slice(0, 3).map(practice => {
-            const timestamp = practice.date?._seconds ? practice.date._seconds * 1000 : new Date().getTime();
-            const isPassed = practice.percentage >= 50;
-            
-            return {
-              id: practice.id,
-              type: 'practice',
-              subject: practice.subjectName,
-              subjectId: practice.subjectId,
-              score: practice.percentage,
-              time: formatTimeAgo(timestamp),
-              status: isPassed ? 'passed' : 'failed',
-              icon: subjectIcons[practice.subjectName] || '📝'
-            };
+          const practiceActivities = practices.slice(0, 3).map(p => {
+            const ts = p.date?._seconds ? p.date._seconds * 1000 : Date.now();
+            return { id: p.id, type: 'practice', subject: p.subjectName, score: p.percentage, time: formatTimeAgo(ts), status: p.percentage >= 50 ? 'passed' : 'failed', icon: subjectIcons[p.subjectName] || '📝' };
           });
-          
-          setRecentActivities(prev => {
-            const combined = [...practiceActivities, ...(prev.filter(a => a.type === 'exam'))];
-            return combined.sort((a, b) => {
-              const timeA = a.time.includes('Just now') ? Date.now() : 0;
-              const timeB = b.time.includes('Just now') ? Date.now() : 0;
-              return timeB - timeA;
-            }).slice(0, 5);
-          });
+          setRecentActivities(prev => [...practiceActivities, ...prev.filter(a => a.type === 'exam')].slice(0, 5));
         }
-
         if (statsRes?.ok) {
-          const statsData = await statsRes.json();
-          setPracticeStats(statsData.stats);
+          const d = await statsRes.json();
+          setPracticeStats(d.stats);
         }
 
-        // Generate recommendations using the collected data
-        if (exams.length > 0 || practices.length > 0 || subjectsList.length > 0) {
-          const recommendationsList = [];
-          
-          subjectsList.forEach(subject => {
-            const subjectPractices = practices.filter(p => p.subjectId === subject.id);
-            const subjectExams = exams.filter(e => e.subjects?.[0]?.subjectId === subject.id);
-            
-            const lastPractice = subjectPractices[0];
-            const lastExam = subjectExams[0];
-            const lastScore = lastPractice?.percentage || lastExam?.percentage || 0;
-            
-            if (lastScore < 50 && subjectPractices.length > 0) {
-              recommendationsList.push({
-                id: subject.id,
-                name: subject.name,
-                icon: subjectIcons[subject.name] || '📘',
-                message: `You scored ${lastScore}% in your last ${subject.name} practice. Let's improve!`,
-                type: 'weak',
-                action: 'Practice Now'
-              });
-            } else if (subjectPractices.length === 0 && subjectExams.length === 0) {
-              recommendationsList.push({
-                id: subject.id,
-                name: subject.name,
-                icon: subjectIcons[subject.name] || '📘',
-                message: `You haven't started ${subject.name} yet. Begin your journey!`,
-                type: 'new',
-                action: 'Start Practice'
-              });
-            } else if (lastScore >= 70 && lastScore < 90) {
-              recommendationsList.push({
-                id: subject.id,
-                name: subject.name,
-                icon: subjectIcons[subject.name] || '📘',
-                message: `Great job in ${subject.name}! Can you reach 90%?`,
-                type: 'good',
-                action: 'Try Again'
-              });
-            } else if (lastScore >= 90) {
-              recommendationsList.push({
-                id: subject.id,
-                name: subject.name,
-                icon: subjectIcons[subject.name] || '📘',
-                message: `Excellent! You're mastering ${subject.name}. Try a timed test!`,
-                type: 'excellent',
-                action: 'Timed Test'
-              });
-            }
+        // Build recommendations
+        if (subjectsList.length > 0) {
+          const recs = [];
+          subjectsList.forEach(sub => {
+            const sp = practices.filter(p => p.subjectId === sub.id);
+            const se = exams.filter(e => e.subjects?.[0]?.subjectId === sub.id);
+            const last = sp[0]?.percentage ?? se[0]?.percentage ?? 0;
+            if (last < 50 && sp.length > 0) recs.push({ id: sub.id, name: sub.name, icon: subjectIcons[sub.name] || '📘', message: `Scored ${last}% last time — let's improve!`, type: 'weak', action: 'Practice Now' });
+            else if (!sp.length && !se.length) recs.push({ id: sub.id, name: sub.name, icon: subjectIcons[sub.name] || '📘', message: `You haven't started ${sub.name} yet.`, type: 'new', action: 'Start Practice' });
+            else if (last >= 70 && last < 90) recs.push({ id: sub.id, name: sub.name, icon: subjectIcons[sub.name] || '📘', message: `Great job! Can you reach 90%?`, type: 'good', action: 'Try Again' });
+            else if (last >= 90) recs.push({ id: sub.id, name: sub.name, icon: subjectIcons[sub.name] || '📘', message: `Excellent! Try a timed test.`, type: 'excellent', action: 'Timed Test' });
           });
+          setRecommendations(recs.slice(0, 3));
 
-          setRecommendations(recommendationsList.slice(0, 3));
-
-          const weak = [];
-          subjectsList.forEach(subject => {
-            const subjectPractices = practices.filter(p => 
-              p.subjectId === subject.id && p.percentage < 50
-            );
-            if (subjectPractices.length > 0) {
-              weak.push({
-                id: subject.id,
-                name: subject.name,
-                icon: subjectIcons[subject.name] || '📘',
-                failedCount: subjectPractices.length,
-                lastScore: subjectPractices[0]?.percentage || 0,
-                lastAttempt: subjectPractices[0]?.date
-              });
-            }
+          const weak = subjectsList.flatMap(sub => {
+            const failed = practices.filter(p => p.subjectId === sub.id && p.percentage < 50);
+            if (!failed.length) return [];
+            return [{ id: sub.id, name: sub.name, icon: subjectIcons[sub.name] || '📘', failedCount: failed.length, lastScore: failed[0]?.percentage || 0 }];
           });
           setWeakAreas(weak.slice(0, 3));
         }
-
       } else {
-        const cachedSubjects = getOfflineData('studentSubjects');
-        if (cachedSubjects) setSubjects(cachedSubjects);
-        
-        const cachedActivities = getOfflineData('recentActivities');
-        if (cachedActivities) setRecentActivities(cachedActivities);
+        const cs = getOfflineData('studentSubjects');
+        if (cs) setSubjects(cs);
+        const ca = getOfflineData('recentActivities');
+        if (ca) setRecentActivities(ca);
       }
-    } catch (error) {
-      console.error('Error fetching dashboard data:', error);
+    } catch (err) {
+      console.error(err);
       toast.error('Failed to load dashboard data');
     } finally {
       setLoading(false);
     }
   };
 
-  const formatTimeAgo = (timestamp) => {
-    const seconds = Math.floor((Date.now() - timestamp) / 1000);
-    if (seconds < 60) return 'Just now';
-    if (seconds < 3600) return `${Math.floor(seconds / 60)} minutes ago`;
-    if (seconds < 86400) return `${Math.floor(seconds / 3600)} hours ago`;
-    if (seconds < 604800) return `${Math.floor(seconds / 86400)} days ago`;
-    return 'Long ago';
-  };
-
-  const handlePracticeWeakArea = (subjectId, subjectName) => {
-    localStorage.setItem('practice_subject', JSON.stringify({ id: subjectId, name: subjectName }));
+  const handlePracticeWeakArea = (id, name) => {
+    localStorage.setItem('practice_subject', JSON.stringify({ id, name }));
     router.push('/dashboard/practice-setup');
   };
 
-  const handleRecommendationClick = (recommendation) => {
-    localStorage.setItem('practice_subject', JSON.stringify({ 
-      id: recommendation.id, 
-      name: recommendation.name 
-    }));
-    
-    if (recommendation.action === 'Timed Test') {
-      const practiceSetup = {
-        id: recommendation.id,
-        name: recommendation.name,
-        duration: 10,
-        questionCount: 20,
-        isTimedTest: true
-      };
-      localStorage.setItem('practice_subject', JSON.stringify(practiceSetup));
-      localStorage.setItem('timed_test_config', JSON.stringify({
-        duration: 10,
-        questionCount: 20
-      }));
-    }
-    
+  const handleRecommendationClick = (rec) => {
+    const config = { id: rec.id, name: rec.name };
+    if (rec.action === 'Timed Test') { config.duration = 10; config.questionCount = 20; config.isTimedTest = true; }
+    localStorage.setItem('practice_subject', JSON.stringify(config));
     router.push('/dashboard/practice-setup');
   };
 
-  const quickActions = [
-    { title: 'Start Practice', icon: '📝', color: 'border-[#039994] text-[#039994] hover:bg-[#E8F8F6]', action: () => setActiveSection('exams') },
-    { title: 'Timed Test', icon: '⏱️', color: 'border-[#10B981] text-[#10B981] hover:bg-[#D1FAE5]', action: () => setActiveSection('timed-tests') },
-    { title: 'View Performance', icon: '📊', color: 'border-[#8B5CF6] text-[#8B5CF6] hover:bg-[#EDE9FE]', action: () => setActiveSection('performance') },
-    { title: 'Achievements', icon: '🏆', color: 'border-[#F59E0B] text-[#F59E0B] hover:bg-[#FEF3C7]', action: () => setActiveSection('achievements') },
-  ];
-
-  const popularSubjects = subjects.slice(0, 6).map(subject => ({
-    id: subject.id,
-    name: subject.name,
-    icon: subjectIcons[subject.name] || '📘',
-    questionCount: subject.questionCount || 50
+  const popularSubjects = subjects.slice(0, 6).map(s => ({
+    id: s.id, name: s.name, icon: subjectIcons[s.name] || '📘', questionCount: s.questionCount || 50,
   }));
 
-  const getProgressPercentage = () => {
-    const total = practiceStats?.totalPractices || 0;
-    const target = 50;
-    return Math.min(Math.round((total / target) * 100), 100);
-  };
-
   const getMotivationalMessage = () => {
-    const lastActivity = recentActivities[0];
-    if (!lastActivity) return "Start your first practice session today!";
-    
-    if (lastActivity.score >= 90) return "Outstanding performance! Keep up the excellent work!";
-    if (lastActivity.score >= 70) return "Great job! You're making excellent progress.";
-    if (lastActivity.score >= 50) return "Good effort! A little more practice will make perfect.";
-    return "Every master was once a beginner. Keep practicing!";
+    const last = recentActivities[0];
+    if (!last) return 'Start your first practice session today!';
+    if (last.score >= 90) return 'Outstanding performance! Keep up the excellent work!';
+    if (last.score >= 70) return "Great job! You're making excellent progress.";
+    if (last.score >= 50) return 'Good effort! A little more practice will make perfect.';
+    return 'Every master was once a beginner. Keep practicing!';
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-[#039994] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-[14px] leading-[100%] font-[500] text-[#626060] font-playfair">Loading dashboard...</p>
+          <div className="w-12 h-12 border-4 border-brand-primary-lt border-t-brand-primary rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-sm font-medium text-content-secondary">Loading your dashboard...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6">
-      <div className="mb-8">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-[#1E1E1E] font-playfair">
-              Welcome back, {user?.firstName || 'Student'}! 👋
-            </h1>
-            <p className="text-[#626060] mt-2 font-playfair">
-              {getMotivationalMessage()}
-            </p>
-          </div>
-          <div className="bg-[#039994] text-white px-4 py-2 rounded-full text-sm font-playfair">
-            Level {Math.floor((practiceStats?.totalPractices || 0) / 10) + 1}
-          </div>
+    <div className="max-w-7xl mx-auto">
+
+      {/* ── Welcome header ── */}
+      <div className="flex items-start justify-between mb-6">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-content-primary font-playfair">
+            Welcome back, {user?.firstName || 'Student'}! 👋
+          </h1>
+          <p className="text-sm text-content-secondary mt-1.5">{getMotivationalMessage()}</p>
         </div>
-        {isOffline && (
-          <div className="mt-4 bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded-lg flex items-center gap-2">
-            <span>📴</span>
-            <span className="text-sm font-playfair">You're offline. Using cached data.</span>
-          </div>
-        )}
+        <div className="flex-shrink-0 ml-4">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-brand-gold text-brand-navy rounded-full text-xs font-bold shadow-gold">
+            <Trophy size={12} />
+            Level {Math.floor((practiceStats?.totalPractices || 0) / 10) + 1}
+          </span>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-        <motion.div
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.1 }}
-          className="bg-gradient-to-br from-[#039994] to-[#028a85] rounded-xl p-6 text-white"
-        >
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-3xl">📊</span>
-            <span className="text-2xl font-bold">{stats.completed}</span>
-          </div>
-          <p className="text-sm opacity-90">Formal Exams</p>
-          <div className="mt-3 h-1 bg-white/20 rounded-full overflow-hidden">
-            <div className="h-full bg-white" style={{ width: `${Math.min((stats.completed / 20) * 100, 100)}%` }}></div>
-          </div>
-          <p className="text-xs mt-2 opacity-75">Goal: 20 exams</p>
-        </motion.div>
+      {/* Offline banner */}
+      {isOffline && (
+        <div className="offline-banner mb-5">
+          <WifiOff size={16} className="flex-shrink-0" />
+          <span>You&apos;re offline — showing cached data.</span>
+        </div>
+      )}
 
-        <motion.div
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.15 }}
-          className="bg-gradient-to-br from-[#10B981] to-[#059669] rounded-xl p-6 text-white"
-        >
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-3xl">📝</span>
-            <span className="text-2xl font-bold">{practiceStats?.totalPractices || 0}</span>
-          </div>
-          <p className="text-sm opacity-90">Practice Sessions</p>
-          <div className="mt-3 h-1 bg-white/20 rounded-full overflow-hidden">
-            <div className="h-full bg-white" style={{ width: `${getProgressPercentage()}%` }}></div>
-          </div>
-          <p className="text-xs mt-2 opacity-75">Target: 50 sessions</p>
-        </motion.div>
+      {/* ── Stat Cards ── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        {statCards.map((card, i) => {
+          const Icon = card.icon;
+          const rawValue = card.key === 'completed' ? stats.completed
+            : card.key === 'averagePercentage' ? stats.averagePercentage
+            : card.key === 'totalPractices' ? (practiceStats?.totalPractices || 0)
+            : (practiceStats?.bestScore || 0);
+          const pct = Math.min((rawValue / card.goal) * 100, 100);
 
-        <motion.div
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.2 }}
-          className="bg-gradient-to-br from-[#8B5CF6] to-[#7C3AED] rounded-xl p-6 text-white"
-        >
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-3xl">🎯</span>
-            <span className="text-2xl font-bold">{stats.averagePercentage}%</span>
-          </div>
-          <p className="text-sm opacity-90">Average Score</p>
-          <div className="mt-3 h-1 bg-white/20 rounded-full overflow-hidden">
-            <div className="h-full bg-white" style={{ width: `${stats.averagePercentage}%` }}></div>
-          </div>
-          <p className="text-xs mt-2 opacity-75">{stats.rank}</p>
-        </motion.div>
-
-        <motion.div
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.25 }}
-          className="bg-gradient-to-br from-[#F59E0B] to-[#D97706] rounded-xl p-6 text-white"
-        >
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-3xl">🏆</span>
-            <span className="text-2xl font-bold">{practiceStats?.bestScore || 0}%</span>
-          </div>
-          <p className="text-sm opacity-90">Best Score</p>
-          <div className="mt-3 h-1 bg-white/20 rounded-full overflow-hidden">
-            <div className="h-full bg-white" style={{ width: `${practiceStats?.bestScore || 0}%` }}></div>
-          </div>
-          <p className="text-xs mt-2 opacity-75">{practiceStats?.bestScore >= 90 ? 'Excellent!' : 'Keep pushing!'}</p>
-        </motion.div>
-      </div>
-
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        {quickActions.map((action, index) => (
-          <motion.button
-            key={action.title}
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={action.action}
-            className={`p-4 rounded-xl border-2 ${action.color} transition-all bg-white`}
-          >
-            <div className="text-3xl mb-2">{action.icon}</div>
-            <h3 className="text-sm font-[600] font-playfair">{action.title}</h3>
-          </motion.button>
-        ))}
-      </div>
-
-      {recommendations.length > 0 && (
-        <div className="mb-8">
-          <h2 className="text-lg font-bold text-[#1E1E1E] mb-4 font-playfair">🎯 Recommended for You</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {recommendations.map((rec, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
-                className={`rounded-xl p-5 cursor-pointer transition-all hover:shadow-lg ${
-                  rec.type === 'excellent' ? 'bg-gradient-to-r from-[#10B981] to-[#059669] text-white' :
-                  rec.type === 'good' ? 'bg-gradient-to-r from-[#8B5CF6] to-[#7C3AED] text-white' :
-                  rec.type === 'weak' ? 'bg-gradient-to-r from-[#F59E0B] to-[#D97706] text-white' :
-                  'bg-gradient-to-r from-[#3B82F6] to-[#2563EB] text-white'
-                }`}
-                onClick={() => handleRecommendationClick(rec)}
-              >
-                <div className="flex items-start gap-3 mb-3">
-                  <span className="text-3xl">{rec.icon}</span>
-                  <div>
-                    <h3 className="font-bold">{rec.name}</h3>
-                    <p className="text-xs opacity-90 mt-1">{rec.message}</p>
-                  </div>
+          return (
+            <motion.div
+              key={card.key}
+              initial={{ y: 16, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: i * 0.07 }}
+              className="rounded-xl p-4 sm:p-5 text-white"
+              style={{ background: `linear-gradient(135deg, ${card.gradientFrom}, ${card.gradientTo})` }}
+            >
+              <div className="flex items-start justify-between mb-2">
+                <div className="p-1.5 bg-white/20 rounded-lg">
+                  <Icon size={16} strokeWidth={2.5} />
                 </div>
-                <button className="w-full py-2 bg-white/20 rounded-lg text-sm font-medium hover:bg-white/30 transition">
-                  {rec.action}
-                </button>
-              </motion.div>
-            ))}
+                <span className="text-2xl font-bold font-playfair">
+                  {rawValue}{card.suffix || ''}
+                </span>
+              </div>
+              <p className="text-xs font-medium opacity-90 mb-3">{card.label}</p>
+              <div className="h-1 bg-white/20 rounded-full overflow-hidden">
+                <div className="h-full bg-white rounded-full" style={{ width: `${pct}%` }} />
+              </div>
+              <p className="text-xs opacity-75 mt-1.5">
+                {card.key === 'bestScore'
+                  ? rawValue >= 90 ? 'Excellent!' : 'Keep pushing!'
+                  : card.key === 'averagePercentage' ? stats.rank
+                  : `Goal: ${card.goal} ${card.key === 'totalPractices' ? 'sessions' : 'exams'}`}
+              </p>
+            </motion.div>
+          );
+        })}
+      </div>
+
+      {/* ── Quick Actions ── */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+        {quickActions.map((a, i) => {
+          const Icon = a.icon;
+          return (
+            <motion.button
+              key={a.id}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.97 }}
+              onClick={() => setActiveSection(a.id)}
+              className={`p-4 rounded-xl border-2 ${a.color} transition-all bg-white text-left min-h-[80px]`}
+            >
+              <Icon size={22} strokeWidth={2} className="mb-2" />
+              <span className="text-sm font-semibold block">{a.title}</span>
+            </motion.button>
+          );
+        })}
+      </div>
+
+      {/* ── Recommendations ── */}
+      {recommendations.length > 0 && (
+        <div className="mb-6">
+          <h2 className="text-base font-bold text-content-primary mb-3 font-playfair flex items-center gap-2">
+            <Star size={16} className="text-brand-gold" />
+            Recommended for You
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {recommendations.map((rec, idx) => {
+              const bg =
+                rec.type === 'excellent' ? 'from-success to-success-dark'
+                : rec.type === 'good'    ? 'from-info to-info-dark'
+                : rec.type === 'weak'    ? 'from-warning to-warning-dark'
+                : 'from-brand-primary to-brand-primary-dk';
+              return (
+                <motion.div
+                  key={idx}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: idx * 0.08 }}
+                  onClick={() => handleRecommendationClick(rec)}
+                  className={`rounded-xl p-4 bg-gradient-to-r ${bg} text-white cursor-pointer hover:shadow-card-md transition-all`}
+                >
+                  <div className="flex items-start gap-3 mb-3">
+                    <span className="text-2xl">{rec.icon}</span>
+                    <div>
+                      <p className="font-bold text-sm">{rec.name}</p>
+                      <p className="text-xs opacity-90 mt-0.5">{rec.message}</p>
+                    </div>
+                  </div>
+                  <button className="w-full py-1.5 bg-white/20 rounded-lg text-xs font-semibold hover:bg-white/30 transition">
+                    {rec.action}
+                  </button>
+                </motion.div>
+              );
+            })}
           </div>
         </div>
       )}
 
+      {/* ── Weak Areas ── */}
       {weakAreas.length > 0 && (
-        <div className="mb-8 p-6 bg-gradient-to-r from-[#FEF3C7] to-[#FDE68A] rounded-xl border border-yellow-300">
-          <h2 className="text-lg font-bold text-yellow-800 mb-4 font-playfair flex items-center gap-2">
-            <span>⚠️</span> Areas That Need Improvement
+        <div className="mb-6 p-5 bg-warning-light rounded-xl border border-warning-dark/20">
+          <h2 className="text-sm font-bold text-warning-dark mb-3 font-playfair flex items-center gap-2">
+            ⚠️ Areas Needing Improvement
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             {weakAreas.map((area) => (
-              <div key={area.id} className="bg-white rounded-lg p-4 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <span className="text-2xl">{area.icon}</span>
+              <div key={area.id} className="bg-white rounded-lg p-3 flex items-center justify-between shadow-card">
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">{area.icon}</span>
                   <div>
-                    <p className="font-medium text-[#1E1E1E] font-playfair">{area.name}</p>
-                    <p className="text-xs text-red-600 font-playfair">Failed {area.failedCount} time(s)</p>
+                    <p className="text-sm font-semibold text-content-primary">{area.name}</p>
+                    <p className="text-xs text-danger">Failed {area.failedCount}×</p>
                   </div>
                 </div>
                 <button
                   onClick={() => handlePracticeWeakArea(area.id, area.name)}
-                  className="px-3 py-1 bg-yellow-500 text-white text-sm rounded-lg hover:bg-yellow-600 transition"
+                  className="px-3 py-1.5 bg-warning text-white text-xs font-semibold rounded-lg hover:bg-warning-dark transition-colors"
                 >
                   Practice
                 </button>
@@ -499,216 +332,171 @@ export default function DashboardHome({ setActiveSection }) {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+      {/* ── Recent Activity + Quick Practice ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-6">
+        {/* Recent Activity */}
+        <div className="bg-white rounded-xl border border-border p-5 shadow-card">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold text-[#1E1E1E] font-playfair">Recent Activity</h2>
-            <button 
-              onClick={() => setActiveSection('performance')}
-              className="text-xs text-[#039994] hover:underline"
-            >
-              View All
+            <h2 className="text-base font-bold text-content-primary font-playfair">Recent Activity</h2>
+            <button onClick={() => setActiveSection('performance')} className="text-xs font-semibold text-brand-primary hover:underline flex items-center gap-0.5">
+              View All <ChevronRight size={12} />
             </button>
           </div>
-          <div className="space-y-4">
-            {recentActivities.length > 0 ? (
-              recentActivities.map((activity, index) => (
-                <div key={index} className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg cursor-pointer"
-                     onClick={() => activity.type === 'practice' ? router.push('/dashboard/performance') : null}>
-                  <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-xl ${
-                      activity.type === 'exam' ? 'bg-blue-100' : 'bg-purple-100'
-                    }`}>
-                      {activity.icon}
-                    </div>
-                    <div>
-                      <p className="font-medium text-[#1E1E1E] font-playfair">{activity.subject}</p>
-                      <p className="text-xs text-[#626060] font-playfair">
-                        {activity.type === 'exam' ? 'Exam' : 'Practice'} • {activity.time}
-                      </p>
-                    </div>
+          <div className="space-y-1">
+            {recentActivities.length > 0 ? recentActivities.map((a, idx) => (
+              <div key={idx} className="flex items-center justify-between p-3 hover:bg-surface-subtle rounded-lg transition-colors">
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-lg flex-shrink-0 ${a.type === 'exam' ? 'bg-brand-primary-lt' : 'bg-success-light'}`}>
+                    {a.icon}
                   </div>
-                  <div className="text-right">
-                    <span className={`font-bold text-lg font-playfair ${
-                      activity.score >= 70 ? 'text-green-600' : 
-                      activity.score >= 50 ? 'text-yellow-600' : 
-                      'text-red-600'
-                    }`}>
-                      {activity.score}%
-                    </span>
-                    <p className="text-xs text-[#626060]">
-                      {activity.status === 'passed' ? '✓ Passed' : '⚠️ Needs work'}
-                    </p>
+                  <div>
+                    <p className="text-sm font-semibold text-content-primary">{a.subject}</p>
+                    <p className="text-xs text-content-muted">{a.type === 'exam' ? 'Exam' : 'Practice'} · {a.time}</p>
                   </div>
                 </div>
-              ))
-            ) : (
-              <div className="text-center py-8 text-[#626060] font-playfair">
-                No recent activity. Start an exam to see your progress.
+                <div className="text-right">
+                  <span className={`text-base font-bold ${a.score >= 70 ? 'text-success' : a.score >= 50 ? 'text-warning' : 'text-danger'}`}>
+                    {a.score}%
+                  </span>
+                  <p className="text-xs text-content-muted">{a.status === 'passed' ? '✓ Passed' : '⚠ Review'}</p>
+                </div>
+              </div>
+            )) : (
+              <div className="text-center py-8 text-sm text-content-muted">
+                No recent activity. Start a practice exam!
               </div>
             )}
           </div>
         </div>
 
-        <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
-          <h2 className="text-lg font-bold text-[#1E1E1E] mb-4 font-playfair">Quick Practice</h2>
-          <div className="grid grid-cols-2 gap-3 mb-4">
-            {popularSubjects.map((subject, index) => {
-              const practiceScore = practiceHistory
-                .filter(p => p.subjectId === subject.id)
-                .sort((a, b) => new Date(b.date._seconds * 1000) - new Date(a.date._seconds * 1000))[0]?.percentage;
-              
+        {/* Quick Practice */}
+        <div className="bg-white rounded-xl border border-border p-5 shadow-card">
+          <h2 className="text-base font-bold text-content-primary mb-4 font-playfair">Quick Practice</h2>
+          <div className="grid grid-cols-2 gap-3 mb-3">
+            {popularSubjects.map((sub, idx) => {
+              const lastScore = practiceHistory.find(p => p.subjectId === sub.id)?.percentage;
               return (
                 <button
-                  key={index}
-                  onClick={() => {
-                    localStorage.setItem('practice_subject', JSON.stringify(subject));
-                    router.push('/dashboard/practice-setup');
-                  }}
-                  className="p-3 border border-gray-200 rounded-lg hover:border-[#039994] hover:bg-[#E6FFFA] transition-all text-left relative"
+                  key={idx}
+                  onClick={() => { localStorage.setItem('practice_subject', JSON.stringify(sub)); router.push('/dashboard/practice-setup'); }}
+                  className="p-3 border border-border rounded-xl hover:border-brand-primary hover:bg-brand-primary-lt transition-all text-left relative"
                 >
-                  {practiceScore !== undefined && (
-                    <div className={`absolute top-1 right-1 w-2 h-2 rounded-full ${
-                      practiceScore >= 70 ? 'bg-green-500' :
-                      practiceScore >= 50 ? 'bg-yellow-500' :
-                      'bg-red-500'
-                    }`}></div>
+                  {lastScore !== undefined && (
+                    <div className={`absolute top-2 right-2 w-2 h-2 rounded-full ${lastScore >= 70 ? 'bg-success' : lastScore >= 50 ? 'bg-warning' : 'bg-danger'}`} />
                   )}
                   <div className="flex items-center gap-2">
-                    <span className="text-2xl">{subject.icon}</span>
-                    <div>
-                      <div className="text-sm font-medium text-[#1E1E1E] font-playfair">{subject.name}</div>
-                      <div className="text-xs text-[#626060] font-playfair">
-                        {practiceScore ? `Last: ${practiceScore}%` : `${subject.questionCount} Qs`}
-                      </div>
+                    <span className="text-2xl">{sub.icon}</span>
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-content-primary truncate">{sub.name}</p>
+                      <p className="text-xs text-content-muted">{lastScore != null ? `Last: ${lastScore}%` : `${sub.questionCount} Qs`}</p>
                     </div>
                   </div>
                 </button>
               );
             })}
           </div>
-          <button
-            onClick={() => setActiveSection('exams')}
-            className="w-full py-2 text-[#039994] border border-[#039994] rounded-lg hover:bg-[#E6FFFA] transition-colors text-sm font-playfair"
-          >
+          <button onClick={() => setActiveSection('exams')} className="btn-secondary w-full text-sm">
             View All Subjects
           </button>
         </div>
       </div>
 
+      {/* ── Practice Progress ── */}
       {practiceStats && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
-            <h2 className="text-lg font-bold text-[#1E1E1E] mb-4 font-playfair">📊 Practice Progress</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6">
+          <div className="bg-white rounded-xl border border-border p-5 shadow-card">
+            <h2 className="text-base font-bold text-content-primary mb-4 font-playfair flex items-center gap-2">
+              <BarChart3 size={16} className="text-brand-primary" /> Practice Progress
+            </h2>
             <div className="space-y-4">
-              <div>
-                <div className="flex justify-between text-sm mb-1">
-                  <span className="text-[#626060]">Total Questions Attempted</span>
-                  <span className="font-bold">{practiceStats.totalQuestions || 0}</span>
+              {[
+                { label: 'Questions Attempted', val: practiceStats.totalQuestions || 0, max: 500, color: 'bg-brand-primary' },
+                { label: 'Correct Answers',     val: practiceStats.totalCorrect || 0,   max: practiceStats.totalQuestions || 1, color: 'bg-success' },
+              ].map(item => (
+                <div key={item.label}>
+                  <div className="flex justify-between text-xs mb-1.5">
+                    <span className="text-content-secondary font-medium">{item.label}</span>
+                    <span className="font-bold text-content-primary">{item.val}</span>
+                  </div>
+                  <div className="h-2 bg-surface-subtle rounded-full overflow-hidden">
+                    <div className={`h-full ${item.color} rounded-full`} style={{ width: `${Math.min((item.val / item.max) * 100, 100)}%` }} />
+                  </div>
                 </div>
-                <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                  <div className="h-full bg-[#039994]" style={{ width: `${Math.min((practiceStats.totalQuestions / 500) * 100, 100)}%` }}></div>
-                </div>
-              </div>
-              <div>
-                <div className="flex justify-between text-sm mb-1">
-                  <span className="text-[#626060]">Correct Answers</span>
-                  <span className="font-bold text-green-600">{practiceStats.totalCorrect || 0}</span>
-                </div>
-                <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                  <div className="h-full bg-green-500" style={{ width: `${(practiceStats.totalCorrect / (practiceStats.totalQuestions || 1)) * 100}%` }}></div>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4 mt-4">
-                <div className="text-center p-3 bg-gray-50 rounded-lg">
-                  <div className="text-2xl font-bold text-[#039994]">{practiceStats.bestScore}%</div>
-                  <div className="text-xs text-[#626060]">Best Score</div>
-                </div>
-                <div className="text-center p-3 bg-gray-50 rounded-lg">
-                  <div className="text-2xl font-bold text-[#039994]">{practiceStats.averagePercentage}%</div>
-                  <div className="text-xs text-[#626060]">Average</div>
-                </div>
+              ))}
+              <div className="grid grid-cols-2 gap-3 mt-2">
+                {[
+                  { label: 'Best Score', val: `${practiceStats.bestScore || 0}%` },
+                  { label: 'Average',    val: `${practiceStats.averagePercentage || 0}%` },
+                ].map(item => (
+                  <div key={item.label} className="text-center p-3 bg-brand-primary-lt rounded-xl">
+                    <p className="text-xl font-bold text-brand-primary font-playfair">{item.val}</p>
+                    <p className="text-xs text-content-secondary mt-0.5">{item.label}</p>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
-            <h2 className="text-lg font-bold text-[#1E1E1E] mb-4 font-playfair">📈 Subject Breakdown</h2>
+          <div className="bg-white rounded-xl border border-border p-5 shadow-card">
+            <h2 className="text-base font-bold text-content-primary mb-4 font-playfair flex items-center gap-2">
+              <TrendingUp size={16} className="text-brand-primary" /> Subject Breakdown
+            </h2>
             <div className="space-y-3">
-              {practiceStats.bySubject && Object.entries(practiceStats.bySubject).slice(0, 4).map(([subject, data], idx) => (
-                <div key={idx} className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xl">{subjectIcons[subject] || '📘'}</span>
-                    <span className="text-sm font-medium">{subject}</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
-                      <div 
-                        className={`h-full ${
-                          data.averagePercentage >= 70 ? 'bg-green-500' :
-                          data.averagePercentage >= 50 ? 'bg-yellow-500' :
-                          'bg-red-500'
-                        }`}
-                        style={{ width: `${data.averagePercentage}%` }}
-                      ></div>
+              {practiceStats.bySubject && Object.entries(practiceStats.bySubject).slice(0, 5).map(([sub, d], idx) => (
+                <div key={idx} className="flex items-center gap-3">
+                  <span className="text-xl flex-shrink-0">{subjectIcons[sub] || '📘'}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-content-primary truncate">{sub}</p>
+                    <div className="h-1.5 bg-surface-subtle rounded-full mt-1 overflow-hidden">
+                      <div
+                        className={`h-full rounded-full ${d.averagePercentage >= 70 ? 'bg-success' : d.averagePercentage >= 50 ? 'bg-warning' : 'bg-danger'}`}
+                        style={{ width: `${d.averagePercentage}%` }}
+                      />
                     </div>
-                    <span className="text-sm font-bold w-12 text-right">{data.averagePercentage}%</span>
                   </div>
+                  <span className="text-sm font-bold text-content-primary w-10 text-right flex-shrink-0">{d.averagePercentage}%</span>
                 </div>
               ))}
-              {(!practiceStats.bySubject || Object.keys(practiceStats.bySubject).length === 0) && (
-                <p className="text-center text-[#626060] py-4">No practice data yet</p>
+              {(!practiceStats.bySubject || !Object.keys(practiceStats.bySubject).length) && (
+                <p className="text-center text-sm text-content-muted py-6">No practice data yet. Start practicing!</p>
               )}
             </div>
           </div>
         </div>
       )}
 
-      <div className="bg-gradient-to-r from-[#039994] to-[#028a85] rounded-xl p-6 md:p-8 text-white">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+      {/* ── CTA Banner ── */}
+      <div className="bg-gradient-to-r from-brand-primary to-brand-primary-dk rounded-xl p-5 sm:p-7 text-white">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-5">
           <div>
-            <h3 className="text-xl md:text-2xl font-bold mb-2 font-playfair">Ready to Level Up?</h3>
-            <p className="text-sm opacity-90 font-playfair">
-              {practiceStats?.averagePercentage >= 70 
+            <h3 className="text-xl font-bold font-playfair mb-1">Ready to Level Up?</h3>
+            <p className="text-sm opacity-90">
+              {(practiceStats?.averagePercentage || 0) >= 70
                 ? "You're doing great! Try timed tests to challenge yourself."
-                : "Practice makes perfect. Keep going and you'll improve!"}
+                : 'Practice makes perfect. Every question gets you closer!'}
             </p>
           </div>
-          <div className="flex flex-col sm:flex-row gap-3">
-            <button
-              onClick={() => setActiveSection('timed-tests')}
-              className="px-6 py-3 bg-white text-[#039994] rounded-lg font-playfair text-sm font-[600] hover:bg-gray-100 transition"
-            >
+          <div className="flex flex-col sm:flex-row gap-3 flex-shrink-0">
+            <button onClick={() => setActiveSection('timed-tests')} className="px-5 py-2.5 bg-white text-brand-primary rounded-xl text-sm font-bold hover:bg-blue-50 transition-colors">
               Try Timed Tests
             </button>
-            <button
-              onClick={() => setActiveSection('exams')}
-              className="px-6 py-3 border border-white text-white rounded-lg font-playfair text-sm font-[600] hover:bg-white/10 transition"
-            >
+            <button onClick={() => setActiveSection('exams')} className="px-5 py-2.5 border border-white/40 text-white rounded-xl text-sm font-semibold hover:bg-white/10 transition-colors">
               Browse Subjects
             </button>
           </div>
         </div>
-        
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 pt-6 border-t border-white/20">
-          <div>
-            <div className="text-2xl font-bold font-playfair">{stats.completed}</div>
-            <div className="text-xs opacity-90 font-playfair">Exams</div>
-          </div>
-          <div>
-            <div className="text-2xl font-bold font-playfair">{practiceStats?.totalPractices || 0}</div>
-            <div className="text-xs opacity-90 font-playfair">Practices</div>
-          </div>
-          <div>
-            <div className="text-2xl font-bold font-playfair">
-              {practiceStats?.totalQuestions || 0}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-5 pt-5 border-t border-white/20">
+          {[
+            { val: stats.completed,                            label: 'Exams' },
+            { val: practiceStats?.totalPractices || 0,        label: 'Practices' },
+            { val: practiceStats?.totalQuestions || 0,        label: 'Questions' },
+            { val: stats.rank,                                 label: 'Global Rank' },
+          ].map((item, idx) => (
+            <div key={idx} className="text-center">
+              <p className="text-2xl font-bold font-playfair">{item.val}</p>
+              <p className="text-xs opacity-80 mt-0.5">{item.label}</p>
             </div>
-            <div className="text-xs opacity-90 font-playfair">Questions</div>
-          </div>
-          <div>
-            <div className="text-2xl font-bold font-playfair">{stats.rank}</div>
-            <div className="text-xs opacity-90 font-playfair">Global Rank</div>
-          </div>
+          ))}
         </div>
       </div>
     </div>
