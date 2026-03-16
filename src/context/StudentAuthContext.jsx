@@ -9,7 +9,6 @@ const BASE_URL = 'https://cbt-simulator-backend.vercel.app';
 
 // localStorage keys
 const CACHE_KEY = 'cbt_user_cache';
-const TOKEN_KEY = 'cbt_auth_token';
 const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
 
 function loadCachedUser() {
@@ -27,10 +26,7 @@ function saveCachedUser(user) {
 }
 
 function clearAuthCache() {
-  try {
-    localStorage.removeItem(CACHE_KEY);
-    localStorage.removeItem(TOKEN_KEY);
-  } catch {}
+  try { localStorage.removeItem(CACHE_KEY); } catch {}
 }
 
 export function StudentAuthProvider({ children }) {
@@ -54,14 +50,14 @@ export function StudentAuthProvider({ children }) {
     };
   }, []);
 
-  const checkAuth = useCallback(async () => {
+  // soft=true → background refresh: never evicts the user on failure (for PWA cold start)
+  // soft=false → hard check: clears user+cache on explicit 401 (used when no cache exists)
+  const checkAuth = useCallback(async (soft = false) => {
     try {
-      const token = (() => { try { return localStorage.getItem(TOKEN_KEY); } catch { return null; } })();
       const response = await fetch(`${BASE_URL}/api/auth/me`, {
         method: 'GET',
         credentials: 'include',
         cache: 'no-store',
-        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
       });
 
       if (response.ok) {
@@ -70,28 +66,39 @@ export function StudentAuthProvider({ children }) {
         saveCachedUser(data.user);
         return true;
       } else {
-        // Explicit auth failure — clear everything
-        setUser(null);
-        clearAuthCache();
+        // Server returned 401/403
+        if (!soft) {
+          // Hard check — actually clear the session
+          setUser(null);
+          clearAuthCache();
+        }
+        // Soft check — server says no, but we keep the cached session
+        // (mobile PWA: cookie may be blocked cross-origin; don't boot the user)
         return false;
       }
     } catch (error) {
-      // Network / CORS error — keep cached user so PWA stays logged in
+      // Network / CORS error — never clear user, cache is the source of truth
       console.error('Auth check error:', error);
-      const cached = loadCachedUser();
-      if (!cached) setUser(null);
       return false;
     }
   }, []);
 
   useEffect(() => {
     const initAuth = async () => {
-      // Show cached user immediately so the UI doesn't flash to login
       const cached = loadCachedUser();
-      if (cached) setUser(cached);
 
-      // Background server verification
-      await checkAuth();
+      if (cached) {
+        // Trust the cache immediately → no login flash on mobile PWA
+        setUser(cached);
+        setAuthChecked(true);
+        // Background soft refresh — if server agrees, it updates the cache;
+        // if cookies are blocked (mobile PWA) it just silently returns false
+        checkAuth(true);
+        return;
+      }
+
+      // No cache — hard check against server
+      await checkAuth(false);
       setAuthChecked(true);
     };
 
@@ -117,11 +124,6 @@ export function StudentAuthProvider({ children }) {
       if (response.ok && data.user) {
         setUser(data.user);
         saveCachedUser(data.user);
-
-        // Store token if backend returns one (used as Bearer fallback for PWA)
-        if (data.token || data.accessToken) {
-          try { localStorage.setItem(TOKEN_KEY, data.token || data.accessToken); } catch {}
-        }
 
         if (data.examMode) {
           if (window.location.hostname !== 'localhost') {
@@ -187,13 +189,11 @@ export function StudentAuthProvider({ children }) {
 
     const executeFetch = async () => {
       try {
-        const token = (() => { try { return localStorage.getItem(TOKEN_KEY); } catch { return null; } })();
         const response = await fetch(url, {
           ...options,
           credentials: 'include',
           headers: {
             'Content-Type': 'application/json',
-            ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
             ...(options.headers || {}),
           },
         });
