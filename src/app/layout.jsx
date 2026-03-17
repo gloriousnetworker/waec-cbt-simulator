@@ -4,7 +4,8 @@
 import '../styles/globals.css'
 import { Toaster } from 'react-hot-toast'
 import { StudentAuthProvider } from '../context/StudentAuthContext'
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
+import PWAInstallBanner from '../components/PWAInstallBanner'
 
 const toastOptions = {
   style: {
@@ -59,27 +60,15 @@ const toastOptions = {
 }
 
 export default function RootLayout({ children }) {
-  const [, setDeferredPrompt] = useState(null)
-
   useEffect(() => {
-    if (typeof window === 'undefined') return
-
+    // Store the deferred prompt on window so PWAInstallBanner can pick it up
+    // even if the event fires before the component mounts
     const handleInstallPrompt = (e) => {
       e.preventDefault()
-      setDeferredPrompt(e)
+      window._deferredPWAPrompt = e
     }
-
-    const handleAppInstalled = () => {
-      setDeferredPrompt(null)
-    }
-
     window.addEventListener('beforeinstallprompt', handleInstallPrompt)
-    window.addEventListener('appinstalled', handleAppInstalled)
-
-    return () => {
-      window.removeEventListener('beforeinstallprompt', handleInstallPrompt)
-      window.removeEventListener('appinstalled', handleAppInstalled)
-    }
+    return () => window.removeEventListener('beforeinstallprompt', handleInstallPrompt)
   }, [])
 
   return (
@@ -152,6 +141,7 @@ export default function RootLayout({ children }) {
             containerStyle={{ top: 20 }}
           />
           {children}
+          <PWAInstallBanner />
         </StudentAuthProvider>
       </body>
     </html>

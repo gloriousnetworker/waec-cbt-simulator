@@ -93,7 +93,7 @@ function DashboardContentWithParams() {
 
   useEffect(() => {
     if (authChecked && isAuthenticated) {
-      if (user?.examMode) { router.replace('/dashboard/exam-room'); return; }
+      if (user?.examMode) { router.replace('/exam-instructions'); return; }
       const t = setTimeout(() => setPageLoading(false), 100);
       return () => clearTimeout(t);
     }
