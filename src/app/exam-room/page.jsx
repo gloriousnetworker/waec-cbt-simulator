@@ -242,11 +242,12 @@ function ExamRoomContent() {
     if (!examId || !Object.keys(answers).length || examSubmitted) return;
     localStorage.setItem(`exam_answers_${examId}`, JSON.stringify(answers));
     for (const [questionId, index] of Object.entries(answers)) {
-      const q = questions.find(q => q.id === questionId);
-      if (q) {
+      // API expects the letter "A"|"B"|"C"|"D", not the option text
+      const letter = ['A', 'B', 'C', 'D'][index];
+      if (letter) {
         fetchWithAuth(`/exams/${examId}/save-answer`, {
           method: 'POST',
-          body: JSON.stringify({ questionId, answer: q.options[index] }),
+          body: JSON.stringify({ questionId, answer: letter }),
         }).catch(() => {});
       }
     }
@@ -408,11 +409,12 @@ function ExamRoomContent() {
     setAnswers(prev => {
       const next = { ...prev, [questionId]: optionIndex };
       localStorage.setItem(`exam_answers_${examId}`, JSON.stringify(next));
-      const q = questions.find(q => q.id === questionId);
-      if (q) {
+      // API expects letter "A"|"B"|"C"|"D", not the option text
+      const letter = ['A', 'B', 'C', 'D'][optionIndex];
+      if (letter) {
         fetchWithAuth(`/exams/${examId}/save-answer`, {
           method: 'POST',
-          body: JSON.stringify({ questionId, answer: q.options[optionIndex] }),
+          body: JSON.stringify({ questionId, answer: letter }),
         }).catch(() => {});
       }
       return next;

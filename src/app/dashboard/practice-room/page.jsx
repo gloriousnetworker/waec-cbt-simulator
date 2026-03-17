@@ -168,23 +168,28 @@ function PracticeRoomContent() {
 
   const savePracticeToServer = async (resultData) => {
     try {
+      // Build per-question array required by the new API
+      const questionsPayload = (resultData.questions || []).map(q => ({
+        id: q.id,
+        question: q.question,
+        correctAnswer: q.correctAnswer,
+        userAnswer: q.selected || null,
+        isCorrect: q.status === 'correct',
+      }));
+
+      // timeTaken: seconds elapsed (total time minus what remained on the clock)
+      const timeTaken = session.timeLimit ? session.timeLimit - timeLeft : 0;
+
       const response = await fetchWithAuth('/practice/save', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
         body: JSON.stringify({
           subjectId: session.subjectId,
           subjectName: session.subjectName,
+          questions: questionsPayload,
+          score: resultData.correct,
           totalQuestions: resultData.totalQuestions,
-          correct: resultData.correct,
-          wrong: resultData.wrong,
-          unanswered: resultData.unanswered,
-          percentage: resultData.percentage,
-          duration: session.timeLimit ? Math.floor(session.timeLimit / 60) : 0,
-          difficulty: session.difficulty || 'all',
-          isTimedTest: session.isTimedTest || false
-        })
+          timeTaken,
+        }),
       });
 
       if (response && response.ok) {

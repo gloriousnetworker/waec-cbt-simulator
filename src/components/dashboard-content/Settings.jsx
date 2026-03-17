@@ -102,7 +102,7 @@ function SettingsContent() {
     const toastId = toast.loading('Changing password...');
     try {
       const res = await fetchWithAuth('/change-password', {
-        method: 'PUT', body: JSON.stringify({ currentPassword: passwordData.current, newPassword: passwordData.new })
+        method: 'POST', body: JSON.stringify({ currentPassword: passwordData.current, newPassword: passwordData.new })
       });
       if (res?.ok) {
         toast.success('Password changed successfully!', { id: toastId });

@@ -5,7 +5,11 @@ import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 
 const StudentAuthContext = createContext();
-const BASE_URL = 'https://cbt-simulator-backend.vercel.app';
+
+// All API calls go through the same-origin proxy so iOS Safari (ITP) never
+// blocks cross-origin cookies.  The proxy lives at /api/proxy and forwards
+// requests server-side to the real backend.
+const PROXY = '/api/proxy';
 
 // localStorage keys
 const CACHE_KEY = 'cbt_user_cache';
@@ -54,7 +58,7 @@ export function StudentAuthProvider({ children }) {
   // soft=false → hard check: clears user+cache on explicit 401 (used when no cache exists)
   const checkAuth = useCallback(async (soft = false) => {
     try {
-      const response = await fetch(`${BASE_URL}/api/auth/me`, {
+      const response = await fetch(`${PROXY}/auth/me`, {
         method: 'GET',
         credentials: 'include',
         cache: 'no-store',
@@ -112,7 +116,7 @@ export function StudentAuthProvider({ children }) {
         ? { nin: identifier, password }
         : { loginId: identifier, password };
 
-      const response = await fetch(`${BASE_URL}/api/student/login`, {
+      const response = await fetch(`${PROXY}/student/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -121,9 +125,12 @@ export function StudentAuthProvider({ children }) {
 
       const data = await response.json();
 
-      if (response.ok && data.user) {
-        setUser(data.user);
-        saveCachedUser(data.user);
+      // Backend may return 'student' (new API) or 'user' (legacy) — handle both
+      const userData = data.student || data.user;
+
+      if (response.ok && userData) {
+        setUser(userData);
+        saveCachedUser(userData);
 
         if (data.examMode) {
           if (window.location.hostname !== 'localhost') {
@@ -141,7 +148,7 @@ export function StudentAuthProvider({ children }) {
 
         return {
           success: true,
-          user: data.user,
+          user: userData,
           examMode: data.examMode,
           currentExam: data.currentExam
         };
@@ -164,7 +171,7 @@ export function StudentAuthProvider({ children }) {
 
   const logout = useCallback(async () => {
     try {
-      await fetch(`${BASE_URL}/api/auth/logout`, {
+      await fetch(`${PROXY}/auth/logout`, {
         method: 'POST',
         credentials: 'include',
       });
@@ -180,9 +187,9 @@ export function StudentAuthProvider({ children }) {
   }, [router]);
 
   const fetchWithAuth = useCallback(async (endpoint, options = {}) => {
-    const url = endpoint.startsWith('http') 
-      ? endpoint 
-      : `${BASE_URL}/api/student${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
+    const url = endpoint.startsWith('http')
+      ? endpoint
+      : `${PROXY}/student${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
 
     const maxRetries = 1;
     let retryCount = 0;
@@ -201,7 +208,7 @@ export function StudentAuthProvider({ children }) {
         if (response.status === 401 && retryCount < maxRetries) {
           retryCount++;
           
-          const refreshResponse = await fetch(`${BASE_URL}/api/auth/refresh`, {
+          const refreshResponse = await fetch(`${PROXY}/auth/refresh`, {
             method: 'POST',
             credentials: 'include',
           });

@@ -22,40 +22,50 @@ export default function PastQuestions() {
   const [subjects, setSubjects] = useState([]);
   const [pastQuestions, setPastQuestions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const LIMIT = 20;
   const router = useRouter();
   const { fetchWithAuth, isOffline, getOfflineData } = useStudentAuth();
 
   const years = ['2024', '2023', '2022', '2021', '2020', '2019', '2018', '2017'];
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => {
+    if (isOffline) {
+      const cached = getOfflineData('studentSubjects');
+      if (cached) setSubjects(cached);
+    } else {
+      fetchWithAuth('/subjects').then(res => {
+        if (res?.ok) res.json().then(d => setSubjects(d.subjects || []));
+      });
+    }
+  }, []);
 
-  const fetchData = async () => {
+  useEffect(() => { fetchResults(page); }, [page]);
+
+  const fetchResults = async (p) => {
     setLoading(true);
     try {
       if (!isOffline) {
-        const subjectsRes = await fetchWithAuth('/subjects');
-        if (subjectsRes?.ok) {
-          const data = await subjectsRes.json();
-          setSubjects(data.subjects || []);
-        }
-        const resultsRes = await fetchWithAuth('/results/all');
-        if (resultsRes?.ok) {
-          const data = await resultsRes.json();
-          setPastQuestions((data.results || []).map(r => {
-            const date = new Date(r.date._seconds * 1000);
+        const res = await fetchWithAuth(`/results?limit=${LIMIT}&page=${p}`);
+        if (res?.ok) {
+          const data = await res.json();
+          const total = data.total ?? (data.exams || data.results || []).length;
+          setTotalPages(Math.max(1, Math.ceil(total / LIMIT)));
+          setPastQuestions((data.exams || data.results || []).map(r => {
+            const rawDate = r.createdAt?._seconds
+              ? new Date(r.createdAt._seconds * 1000)
+              : r.endTime ? new Date(r.endTime) : new Date();
             return {
-              id: r.id, year: date.getFullYear().toString(), subject: r.subject,
-              subjectId: r.subjectId, paper: 'Past Question',
-              type: r.examType === 'practice' ? 'Practice' : 'Exam',
-              questions: 50, duration: '2h',
+              id: r.id, year: rawDate.getFullYear().toString(),
+              subject: r.title || r.subject || 'Exam',
+              subjectId: r.examSetupId || r.subjectId, paper: 'Exam Result',
+              type: 'Exam', questions: r.questionCount || 50, duration: `${r.duration || 120}m`,
               difficulty: r.percentage >= 70 ? 'Easy' : r.percentage >= 50 ? 'Medium' : 'Hard',
               score: r.percentage || r.score
             };
           }));
         }
-      } else {
-        const cached = getOfflineData('studentSubjects');
-        if (cached) setSubjects(cached);
       }
     } catch {
       toast.error('Failed to load past questions');
@@ -199,6 +209,23 @@ export default function PastQuestions() {
               </motion.div>
             );
           })}
+        </div>
+      )}
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-3 mb-6">
+          <button
+            onClick={() => setPage(p => Math.max(1, p - 1))}
+            disabled={page === 1}
+            className="px-4 py-2 rounded-xl text-sm font-semibold border border-border bg-white text-content-secondary hover:border-brand-primary disabled:opacity-40 disabled:cursor-not-allowed transition-all min-h-[40px]"
+          >Previous</button>
+          <span className="text-sm text-content-secondary font-medium">Page {page} of {totalPages}</span>
+          <button
+            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+            disabled={page === totalPages}
+            className="px-4 py-2 rounded-xl text-sm font-semibold border border-border bg-white text-content-secondary hover:border-brand-primary disabled:opacity-40 disabled:cursor-not-allowed transition-all min-h-[40px]"
+          >Next</button>
         </div>
       )}
 

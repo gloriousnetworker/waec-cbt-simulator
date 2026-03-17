@@ -1,7 +1,7 @@
 // components/dashboard-content/Performance.jsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useStudentAuth } from '../../context/StudentAuthContext';
 import { useRouter } from 'next/navigation';
@@ -21,6 +21,14 @@ export default function Performance() {
   const { fetchWithAuth, isOffline, getOfflineData } = useStudentAuth();
   const router = useRouter();
 
+  const LIMIT = 20;
+  const [examPage, setExamPage] = useState(1);
+  const [examTotalPages, setExamTotalPages] = useState(1);
+  const [practicePage, setPracticePage] = useState(1);
+  const [practiceTotalPages, setPracticeTotalPages] = useState(1);
+  const examPageRef = useRef(false);
+  const practicePageRef = useRef(false);
+
   const subjectIcons = {
     Mathematics: '🧮', English: '📖', Physics: '⚛️', Chemistry: '🧪',
     Biology: '🧬', Economics: '📈', Geography: '🗺️', Government: '🏛️',
@@ -29,81 +37,107 @@ export default function Performance() {
     'Agricultural Science': '🌾', 'Civic Education': '🏛️', 'Data Processing': '💻'
   };
 
-  useEffect(() => { fetchPerformanceData(); }, []);
+  const fetchExamHistory = async (page) => {
+    const localExamHistory = JSON.parse(localStorage.getItem('exam_history') || '[]');
+    if (isOffline) {
+      setExamHistory(getOfflineData('examHistory') || localExamHistory);
+      setExamTotalPages(1);
+      return;
+    }
+    const res = await fetchWithAuth(`/history?limit=${LIMIT}&page=${page}`);
+    if (res?.ok) {
+      const data = await res.json();
+      const total = data.total ?? (data.exams || []).length;
+      setExamTotalPages(Math.max(1, Math.ceil(total / LIMIT)));
+      const apiExams = (data.exams || []).map(exam => {
+        const mainSubject = exam.subjects?.length > 0 ? exam.subjects[0] : { subjectName: 'General', questionCount: exam.questionCount || 0 };
+        const subjectName = exam.subjects?.length > 1 ? `${exam.subjects.length} Subjects Combined` : mainSubject.subjectName || 'General';
+        return {
+          id: exam.id, examSetupId: exam.examSetupId, subject: subjectName, subjectName,
+          subjects: exam.subjects || [], score: exam.score || 0, totalMarks: exam.totalMarks || 0,
+          percentage: exam.percentage || 0,
+          date: exam.date?._seconds ? new Date(exam.date._seconds * 1000).toISOString() : new Date().toISOString(),
+          duration: exam.duration, questionCount: exam.questionCount || 0,
+          status: exam.status || 'completed', type: 'exam', isMockExam: true, source: 'api'
+        };
+      });
+      const merged = [...apiExams];
+      if (page === 1) {
+        localExamHistory.forEach(local => { if (!merged.some(a => a.id === local.id)) merged.push(local); });
+        localStorage.setItem('exam_history', JSON.stringify(merged));
+      }
+      setExamHistory(merged);
+    } else {
+      setExamHistory(page === 1 ? localExamHistory : []);
+    }
+  };
+
+  const fetchPracticeHistory = async (page) => {
+    const localPracticeHistory = JSON.parse(localStorage.getItem('practice_history') || '[]');
+    if (isOffline) {
+      setPracticeHistory(getOfflineData('practiceHistory') || localPracticeHistory);
+      setPracticeTotalPages(1);
+      return;
+    }
+    const res = await fetchWithAuth(`/practice/history?limit=${LIMIT}&page=${page}`);
+    if (res?.ok) {
+      const data = await res.json();
+      const total = data.total ?? (data.practices || []).length;
+      setPracticeTotalPages(Math.max(1, Math.ceil(total / LIMIT)));
+      const practices = (data.practices || []).map(p => ({
+        id: p.id, subjectId: p.subjectId, subjectName: p.subjectName, totalQuestions: p.totalQuestions,
+        correct: p.correct, wrong: p.wrong, unanswered: p.unanswered, percentage: p.percentage,
+        date: p.date?._seconds ? new Date(p.date._seconds * 1000).toISOString() : p.date,
+        duration: p.duration, difficulty: p.difficulty, isTimedTest: p.isTimedTest,
+        isMockExam: p.isMockExam || false, studentClass: p.studentClass, questions: p.questions || [],
+        type: 'practice', source: 'api'
+      }));
+      const merged = [...practices];
+      if (page === 1) {
+        localPracticeHistory.forEach(local => { if (!merged.some(a => a.id === local.id)) merged.push(local); });
+        localStorage.setItem('practice_history', JSON.stringify(merged));
+      }
+      setPracticeHistory(merged);
+    } else {
+      setPracticeHistory(page === 1 ? localPracticeHistory : []);
+    }
+  };
 
   const fetchPerformanceData = async () => {
     setLoading(true);
     try {
-      const localPracticeHistory = JSON.parse(localStorage.getItem('practice_history') || '[]');
-      const localExamHistory = JSON.parse(localStorage.getItem('exam_history') || '[]');
-
-      if (!isOffline) {
-        const [examHistoryRes, practiceRes, statsRes] = await Promise.all([
-          fetchWithAuth('/student/history'),
-          fetchWithAuth('/practice/history?limit=100'),
-          fetchWithAuth('/practice/stats')
-        ]);
-
-        if (examHistoryRes?.ok) {
-          const examData = await examHistoryRes.json();
-          const apiExams = examData.exams || [];
-          const formattedApiExams = apiExams.map(exam => {
-            const mainSubject = exam.subjects?.length > 0 ? exam.subjects[0] : { subjectName: 'General', questionCount: exam.questionCount || 0 };
-            const subjectName = exam.subjects?.length > 1 ? `${exam.subjects.length} Subjects Combined` : mainSubject.subjectName || 'General';
-            return {
-              id: exam.id, examSetupId: exam.examSetupId, subject: subjectName, subjectName,
-              subjects: exam.subjects || [], score: exam.score || 0, totalMarks: exam.totalMarks || 0,
-              percentage: exam.percentage || 0,
-              date: exam.date?._seconds ? new Date(exam.date._seconds * 1000).toISOString() : new Date().toISOString(),
-              duration: exam.duration, questionCount: exam.questionCount || 0,
-              status: exam.status || 'completed', type: 'exam', isMockExam: true, source: 'api'
-            };
-          });
-          const mergedExams = [...formattedApiExams];
-          localExamHistory.forEach(local => { if (!mergedExams.some(api => api.id === local.id)) mergedExams.push(local); });
-          setExamHistory(mergedExams);
-          localStorage.setItem('exam_history', JSON.stringify(mergedExams));
-        } else {
-          setExamHistory(localExamHistory);
-        }
-
-        if (practiceRes?.ok) {
-          const practiceData = await practiceRes.json();
-          const formattedApiPractices = (practiceData.practices || []).map(p => ({
-            id: p.id, subjectId: p.subjectId, subjectName: p.subjectName, totalQuestions: p.totalQuestions,
-            correct: p.correct, wrong: p.wrong, unanswered: p.unanswered, percentage: p.percentage,
-            date: p.date?._seconds ? new Date(p.date._seconds * 1000).toISOString() : p.date,
-            duration: p.duration, difficulty: p.difficulty, isTimedTest: p.isTimedTest,
-            isMockExam: p.isMockExam || false, studentClass: p.studentClass, questions: p.questions || [],
-            type: 'practice', source: 'api'
-          }));
-          const mergedPractices = [...formattedApiPractices];
-          localPracticeHistory.forEach(local => { if (!mergedPractices.some(api => api.id === local.id)) mergedPractices.push(local); });
-          setPracticeHistory(mergedPractices);
-          localStorage.setItem('practice_history', JSON.stringify(mergedPractices));
-        } else {
-          setPracticeHistory(localPracticeHistory);
-        }
-
-        if (statsRes?.ok) {
-          const statsData = await statsRes.json();
-          setPracticeStats(statsData.stats);
-        }
-      } else {
-        setExamHistory(getOfflineData('examHistory') || localExamHistory);
-        setPracticeHistory(getOfflineData('practiceHistory') || localPracticeHistory);
-      }
+      await Promise.all([
+        fetchExamHistory(1),
+        fetchPracticeHistory(1),
+        (async () => {
+          if (!isOffline) {
+            const statsRes = await fetchWithAuth('/practice/stats');
+            if (statsRes?.ok) {
+              const statsData = await statsRes.json();
+              setPracticeStats(statsData.stats);
+            }
+          }
+        })()
+      ]);
     } catch (error) {
       console.error('Error fetching performance data:', error);
       toast.error('Failed to load performance data');
-      const localPracticeHistory = JSON.parse(localStorage.getItem('practice_history') || '[]');
-      const localExamHistory = JSON.parse(localStorage.getItem('exam_history') || '[]');
-      setPracticeHistory(localPracticeHistory);
-      setExamHistory(localExamHistory);
+      setPracticeHistory(JSON.parse(localStorage.getItem('practice_history') || '[]'));
+      setExamHistory(JSON.parse(localStorage.getItem('exam_history') || '[]'));
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => { fetchPerformanceData(); }, []);
+  useEffect(() => {
+    if (!examPageRef.current) { examPageRef.current = true; return; }
+    fetchExamHistory(examPage);
+  }, [examPage]);
+  useEffect(() => {
+    if (!practicePageRef.current) { practicePageRef.current = true; return; }
+    fetchPracticeHistory(practicePage);
+  }, [practicePage]);
 
   const handleDeletePractice = async () => {
     if (!practiceToDelete) return;
@@ -366,7 +400,7 @@ export default function Performance() {
             <ClipboardList size={16} /> Exam History
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {examHistory.slice(0, 6).map((exam, idx) => {
+            {examHistory.map((exam, idx) => {
               const subjectName = exam.subject || (exam.subjects?.length > 0 ? (exam.subjects.length > 1 ? `${exam.subjects.length} Subjects` : exam.subjects[0].subjectName) : 'General');
               return (
                 <div key={exam.id || idx} className="bg-white rounded-xl p-4 border border-border">
@@ -403,8 +437,20 @@ export default function Performance() {
               );
             })}
           </div>
-          {examHistory.length > 6 && (
-            <button className="mt-4 text-sm text-brand-primary hover:underline font-medium">View All {examHistory.length} Exams →</button>
+          {examTotalPages > 1 && (
+            <div className="flex items-center justify-center gap-3 mt-4">
+              <button
+                onClick={() => setExamPage(p => Math.max(1, p - 1))}
+                disabled={examPage === 1}
+                className="px-4 py-2 rounded-xl text-sm font-semibold border border-border bg-white text-content-secondary hover:border-brand-primary disabled:opacity-40 disabled:cursor-not-allowed transition-all min-h-[40px]"
+              >Previous</button>
+              <span className="text-sm text-content-secondary font-medium">Page {examPage} of {examTotalPages}</span>
+              <button
+                onClick={() => setExamPage(p => Math.min(examTotalPages, p + 1))}
+                disabled={examPage === examTotalPages}
+                className="px-4 py-2 rounded-xl text-sm font-semibold border border-border bg-white text-content-secondary hover:border-brand-primary disabled:opacity-40 disabled:cursor-not-allowed transition-all min-h-[40px]"
+              >Next</button>
+            </div>
           )}
         </div>
       )}
@@ -416,7 +462,7 @@ export default function Performance() {
             <BookOpen size={16} /> Practice History
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {practiceHistory.slice(0, 6).map((practice, idx) => (
+            {practiceHistory.map((practice, idx) => (
               <div key={practice.id || idx} className="bg-white rounded-xl p-4 border border-border">
                 <div className="flex justify-between items-start mb-3">
                   <div>
@@ -452,8 +498,20 @@ export default function Performance() {
               </div>
             ))}
           </div>
-          {practiceHistory.length > 6 && (
-            <button className="mt-4 text-sm text-brand-primary hover:underline font-medium">View All {practiceHistory.length} Practices →</button>
+          {practiceTotalPages > 1 && (
+            <div className="flex items-center justify-center gap-3 mt-4">
+              <button
+                onClick={() => setPracticePage(p => Math.max(1, p - 1))}
+                disabled={practicePage === 1}
+                className="px-4 py-2 rounded-xl text-sm font-semibold border border-border bg-white text-content-secondary hover:border-brand-primary disabled:opacity-40 disabled:cursor-not-allowed transition-all min-h-[40px]"
+              >Previous</button>
+              <span className="text-sm text-content-secondary font-medium">Page {practicePage} of {practiceTotalPages}</span>
+              <button
+                onClick={() => setPracticePage(p => Math.min(practiceTotalPages, p + 1))}
+                disabled={practicePage === practiceTotalPages}
+                className="px-4 py-2 rounded-xl text-sm font-semibold border border-border bg-white text-content-secondary hover:border-brand-primary disabled:opacity-40 disabled:cursor-not-allowed transition-all min-h-[40px]"
+              >Next</button>
+            </div>
           )}
         </div>
       )}
