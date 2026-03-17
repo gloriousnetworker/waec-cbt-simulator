@@ -168,35 +168,31 @@ function PracticeRoomContent() {
 
   const savePracticeToServer = async (resultData) => {
     try {
-      // Build per-question array required by the new API
-      const questionsPayload = (resultData.questions || []).map(q => ({
-        id: q.id,
-        question: q.question,
-        correctAnswer: q.correctAnswer,
-        userAnswer: q.selected || null,
-        isCorrect: q.status === 'correct',
-      }));
-
-      // timeTaken: seconds elapsed (total time minus what remained on the clock)
-      const timeTaken = session.timeLimit ? session.timeLimit - timeLeft : 0;
+      const duration = session.timeLimit
+        ? Math.floor((session.timeLimit - timeLeft) / 60)
+        : 0;
 
       const response = await fetchWithAuth('/practice/save', {
         method: 'POST',
         body: JSON.stringify({
           subjectId: session.subjectId,
           subjectName: session.subjectName,
-          questions: questionsPayload,
-          score: resultData.correct,
           totalQuestions: resultData.totalQuestions,
-          timeTaken,
+          correct: resultData.correct,
+          wrong: resultData.wrong,
+          unanswered: resultData.unanswered,
+          percentage: resultData.percentage,
+          duration,
+          difficulty: session.difficulty || 'all',
+          isTimedTest: (session.timeLimit || 0) > 0,
         }),
       });
 
-      if (response && response.ok) {
+      if (response?.ok) {
         const data = await response.json();
-        console.log('Practice result saved to database:', data);
+        console.log('Practice result saved:', data);
       } else {
-        console.error('Failed to save practice result to database');
+        console.error('Failed to save practice result');
       }
     } catch (error) {
       console.error('Error saving practice result:', error);

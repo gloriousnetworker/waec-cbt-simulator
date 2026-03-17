@@ -36,6 +36,7 @@ function ExamRoomContent() {
   const submitAttemptedRef = useRef(false);
   const answerJustSelectedRef = useRef(false);
   const navigationTimeoutRef = useRef(null);
+  const answersRef = useRef({});
 
   // ─────────────────────────────────────────────────────────────────────────
   // THE TIMER — starts only when timerReady becomes true
@@ -93,12 +94,30 @@ function ExamRoomContent() {
 
   // ─────────────────────────────────────────────────────────────────────────
   // AUTO-SAVE every 30 s
+  // Keep answersRef current so the stable interval always reads latest answers
+  // without resetting the 30 s clock on every selection
   // ─────────────────────────────────────────────────────────────────────────
+  useEffect(() => { answersRef.current = answers; }, [answers]);
+
   useEffect(() => {
     if (!examId || examSubmitted || questions.length === 0) return;
-    autoSaveIntervalRef.current = setInterval(saveCurrentAnswers, 30000);
+    autoSaveIntervalRef.current = setInterval(() => {
+      const snap = answersRef.current;
+      if (!Object.keys(snap).length) return;
+      localStorage.setItem(`exam_answers_${examId}`, JSON.stringify(snap));
+      for (const [questionId, index] of Object.entries(snap)) {
+        const question = questions.find(q => q.id === questionId);
+        const optionText = question?.options?.[index];
+        if (optionText) {
+          fetchWithAuth(`/exams/${examId}/save-answer`, {
+            method: 'POST',
+            body: JSON.stringify({ questionId, answer: optionText }),
+          }).catch(() => {});
+        }
+      }
+    }, 30000);
     return () => clearInterval(autoSaveIntervalRef.current);
-  }, [examId, answers, examSubmitted, questions]);
+  }, [examId, examSubmitted, questions.length]);
 
   // ─────────────────────────────────────────────────────────────────────────
   // HELPER: activate timer from a known endTime ms value
@@ -238,19 +257,25 @@ function ExamRoomContent() {
   // ─────────────────────────────────────────────────────────────────────────
   // SAVE ANSWERS
   // ─────────────────────────────────────────────────────────────────────────
-  const saveCurrentAnswers = async () => {
+  // awaitAll=true on submit path: all saves must resolve before submit fires
+  // awaitAll=false (default): fire-and-forget for manual mid-exam saves
+  const saveCurrentAnswers = async (awaitAll = false) => {
     if (!examId || !Object.keys(answers).length || examSubmitted) return;
     localStorage.setItem(`exam_answers_${examId}`, JSON.stringify(answers));
+    const saves = [];
     for (const [questionId, index] of Object.entries(answers)) {
-      // API expects the letter "A"|"B"|"C"|"D", not the option text
-      const letter = ['A', 'B', 'C', 'D'][index];
-      if (letter) {
-        fetchWithAuth(`/exams/${examId}/save-answer`, {
-          method: 'POST',
-          body: JSON.stringify({ questionId, answer: letter }),
-        }).catch(() => {});
+      const question = questions.find(q => q.id === questionId);
+      const optionText = question?.options?.[index];
+      if (optionText) {
+        saves.push(
+          fetchWithAuth(`/exams/${examId}/save-answer`, {
+            method: 'POST',
+            body: JSON.stringify({ questionId, answer: optionText }),
+          }).catch(() => {})
+        );
       }
     }
+    if (awaitAll) await Promise.all(saves);
   };
 
   const enterFullscreen = () => document.documentElement.requestFullscreen?.().catch(() => {});
@@ -366,7 +391,7 @@ function ExamRoomContent() {
     submitAttemptedRef.current = true;
     setExamSubmitted(true);
     try {
-      await saveCurrentAnswers();
+      await saveCurrentAnswers(true);
       const res = await fetchWithAuth(`/exams/${examId}/submit`, { method: 'POST' });
       if (res?.ok) {
         const data = await res.json();
@@ -409,12 +434,12 @@ function ExamRoomContent() {
     setAnswers(prev => {
       const next = { ...prev, [questionId]: optionIndex };
       localStorage.setItem(`exam_answers_${examId}`, JSON.stringify(next));
-      // API expects letter "A"|"B"|"C"|"D", not the option text
-      const letter = ['A', 'B', 'C', 'D'][optionIndex];
-      if (letter) {
+      const question = questions.find(q => q.id === questionId);
+      const optionText = question?.options?.[optionIndex];
+      if (optionText) {
         fetchWithAuth(`/exams/${examId}/save-answer`, {
           method: 'POST',
-          body: JSON.stringify({ questionId, answer: letter }),
+          body: JSON.stringify({ questionId, answer: optionText }),
         }).catch(() => {});
       }
       return next;

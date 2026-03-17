@@ -114,26 +114,24 @@ stored in the database.
 
 ---
 
-## FIX 4 — Exam Answer Save: Wrong Answer Format
+## FIX 4 — Exam Answer Save: Wrong Answer Value + Race Condition + Auto-Save Drift
 
-**Severity:** HIGH
-**Problem:**
-`POST /api/student/exams/:examId/save-answer` expects `{ "questionId": "...", "answer": "A" }` where
-`answer` is a letter (`A`–`D`). The frontend was sending:
-```js
-answer: q.options[optionIndex]   // the option TEXT, e.g. "Paris"
-```
-If `q.options` is an object `{ A: "Paris", B: "London", ... }`, numeric index access returns
-`undefined`. If it's an array, it returns the text. Either way it is wrong — the backend expects
-the letter string `"A"`, `"B"`, `"C"`, or `"D"`.
+**Severity:** CRITICAL + HIGH
+**Problems (3 found in `src/app/exam-room/page.jsx`):**
+
+1. **Wrong answer value** — `POST /api/student/exams/:examId/save-answer` expects `{ "answer": "Alice" }` — the option TEXT. The previous fix sent the letter (`"A"`–`"D"`), which was also wrong. Fix: use `questions.find(q => q.id === questionId)?.options[optionIndex]` to get the text.
+
+2. **Race condition on submit** — `saveCurrentAnswers()` fired all save-answer requests as fire-and-forget (`.catch(() => {})`). `submitExam()` called `await saveCurrentAnswers()` but that returned before requests resolved, so `/submit` hit the server before answers were recorded — backend scored from incomplete data. Fix: `saveCurrentAnswers(awaitAll=false)` for auto-save; `saveCurrentAnswers(true)` on submit path uses `await Promise.all(saves)`.
+
+3. **Auto-save timer reset on every answer** — `useEffect` had `answers` in its dep array, so the 30 s interval restarted every time a student selected an answer. A student answering at normal speed never triggered an auto-save. Fix: moved to a stable interval that reads from `answersRef` (a `useRef` synced to `answers`), removed `answers` from dep array.
 
 **Fix applied (frontend):**
 - **Updated:** `src/app/exam-room/page.jsx`
-  - `handleAnswerSelect()`: `answer: ['A','B','C','D'][optionIndex]`
-  - `saveCurrentAnswers()`: `answer: ['A','B','C','D'][index]`
-
-**Backend note:** The backend scores submitted exams by comparing stored answers (`"A"`) to the
-question's `correctAnswer` field (`"A"`). This fix ensures the comparison works correctly.
+  - Added `answersRef = useRef({})` + sync effect
+  - `handleAnswerSelect()`: `answer: question?.options?.[optionIndex]`
+  - `saveCurrentAnswers(awaitAll)`: uses option text, `Promise.all` when `awaitAll=true`
+  - `submitExam()`: calls `saveCurrentAnswers(true)` — guaranteed flush before submit
+  - Auto-save `useEffect`: reads `answersRef.current`, stable interval, no `answers` dep
 
 ---
 
@@ -209,6 +207,43 @@ The response shape was also mismatched: code read `data.results` but API returns
 
 ---
 
+---
+
+## FIX 10 — Practice Save: Payload Field Mismatches (practice-room + exam-mock-room)
+
+**Severity:** CRITICAL
+**Problem:**
+Both `practice-room` and `exam-mock-room` called `POST /api/student/practice/save` with the wrong body shape. The actual API requires:
+```json
+{ "subjectId", "subjectName", "totalQuestions", "correct", "wrong", "unanswered", "percentage", "duration", "difficulty", "isTimedTest" }
+```
+What the frontend was sending:
+```json
+{ "subjectId", "subjectName", "questions": [...], "score": 15, "totalQuestions", "timeTaken": 300 }
+```
+Specific mismatches:
+- `score` → should be `correct` (field rename)
+- `wrong`, `unanswered`, `percentage` missing entirely (all present in `resultData`, just not mapped)
+- `timeTaken` (seconds) → should be `duration` (minutes: divide by 60)
+- `difficulty` and `isTimedTest` missing
+- `questions` array included but not accepted by this endpoint
+
+**Fix applied (frontend):**
+- **Updated:** `src/app/dashboard/practice-room/page.jsx` — `savePracticeToServer()`
+  - Body rebuilt: `correct`, `wrong`, `unanswered`, `percentage` from `resultData`
+  - `duration = Math.floor((session.timeLimit - timeLeft) / 60)`
+  - `difficulty: session.difficulty || 'all'`, `isTimedTest: session.timeLimit > 0`
+  - Removed `questions` array and `score`/`timeTaken` fields
+- **Updated:** `src/app/dashboard/exam-mock-room/page.jsx` — `savePracticeToServer()`
+  - Same body shape
+  - `duration = Math.floor((3600 - timeLeft) / 60)` (mock exam is always 60 min)
+  - `difficulty: 'all'`, `isTimedTest: true` (always timed)
+  - Removed `questions` array and `score`/`timeTaken` fields
+
+**Backend action required:** None. Endpoint already expects this shape.
+
+---
+
 ## BATCH 2 COORDINATION STATUS
 
 The following backend Batch 2 fixes from `AUDIT_PLAN.md` now have their matching frontend changes
@@ -229,9 +264,9 @@ already in place:
 |---|---|
 | `src/app/api/proxy/[...path]/route.js` | **CREATED** — Same-origin proxy (iOS ITP fix) |
 | `src/context/StudentAuthContext.jsx` | Proxy URLs, login key fix, soft checkAuth |
-| `src/app/exam-room/page.jsx` | save-answer format: letter not text |
-| `src/app/dashboard/practice-room/page.jsx` | practice/save payload shape |
-| `src/app/dashboard/exam-mock-room/page.jsx` | practice/save payload shape |
+| `src/app/exam-room/page.jsx` | save-answer: option text (not letter); race condition fixed (awaitAll); auto-save stable interval via answersRef |
+| `src/app/dashboard/practice-room/page.jsx` | practice/save payload: correct field names, missing fields added, duration in minutes |
+| `src/app/dashboard/exam-mock-room/page.jsx` | practice/save payload: correct field names, missing fields added, duration in minutes |
 | `src/components/dashboard-content/Settings.jsx` | change-password: PUT → POST |
 | `src/components/dashboard-content/Performance.jsx` | `/student/history` → `/history`; pagination for exam + practice history (independent, `limit=20`) |
 | `src/components/dashboard-content/PastQuestions.jsx` | `/results/all` → `/results`, response shape; pagination for results (`limit=20`) |

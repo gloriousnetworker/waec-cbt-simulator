@@ -93,30 +93,19 @@ function MockExamRoomContent() {
 
   const savePracticeToServer = async (resultData) => {
     try {
-      // Build per-question array required by the new API
-      const questionsPayload = (session.questions || []).map(q => {
-        const a = answers[q.id];
-        return {
-          id: q.id,
-          question: q.question,
-          correctAnswer: q.correctAnswer,
-          userAnswer: a ? a.selected : null,
-          isCorrect: a ? a.isCorrect : false,
-        };
-      });
-
-      // timeTaken: 3600s total mock exam minus whatever remained on the clock
-      const timeTaken = 3600 - timeLeft;
-
       const response = await fetchWithAuth('/practice/save', {
         method: 'POST',
         body: JSON.stringify({
           subjectId: session.subjectId,
           subjectName: session.subjectName,
-          questions: questionsPayload,
-          score: resultData.correct,
           totalQuestions: resultData.totalQuestions,
-          timeTaken,
+          correct: resultData.correct,
+          wrong: resultData.wrong,
+          unanswered: resultData.unanswered,
+          percentage: resultData.percentage,
+          duration: Math.floor((3600 - timeLeft) / 60),
+          difficulty: 'all',
+          isTimedTest: true,
         }),
       });
       if (response?.ok) console.log('Mock exam saved');
