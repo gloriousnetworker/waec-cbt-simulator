@@ -26,9 +26,8 @@ export const splashDot =
   'w-2 h-2 bg-brand-primary rounded-full';
 
 // ─── Login ───────────────────────────────────────────────────
-// app-shell: 100dvh fixed container — keyboard opens over it, not under it
 export const loginContainer =
-  'app-shell flex items-center justify-center bg-surface-muted px-4 py-8';
+  'min-h-screen flex items-center justify-center bg-surface-muted px-4 py-8';
 export const loginContent =
   'w-full max-w-sm';
 export const loginLogo =
@@ -99,14 +98,12 @@ export const loadingText =
   'ml-2 text-sm font-semibold';
 
 // ─── Dashboard Shell ─────────────────────────────────────────
-// app-shell: full dvh scroll container defined in globals.css
-// flex flex-col on the outer shell, flex-1 on inner panels to fill remaining height
 export const dashboardContainer =
-  'app-shell bg-surface-muted flex flex-col';
+  'min-h-screen bg-surface-muted flex flex-col';
 export const dashboardMain =
-  'flex flex-1 min-h-0'; /* min-h-0 allows flex children to shrink below content size */
+  'flex flex-1';
 export const dashboardContent =
-  'flex-1 min-h-0 scroll-area'; /* scroll-area: overflow-y-auto + overscroll-contain */
+  'flex-1 min-h-screen overflow-y-auto';
 export const dashboardInner =
   'max-w-7xl mx-auto px-4 sm:px-6 py-6';
 export const dashboardLoading =
@@ -177,12 +174,10 @@ export const navbarDropdownItemDanger =
   'w-full text-left px-3 py-2.5 text-sm font-normal text-danger hover:bg-danger-light rounded-lg transition-colors min-h-[40px] flex items-center';
 
 // ─── Sidebar ─────────────────────────────────────────────────
-// h-full: inherits from locked html/body (100dvh) — avoids 100vh keyboard reflow
 export const sidebarContainer =
-  'fixed inset-y-0 left-0 z-40 w-64 bg-white border-r border-border flex flex-col h-full overflow-hidden';
-// overflow-hidden on overlay body-locks scroll behind open sidebar on mobile
+  'fixed inset-y-0 left-0 z-40 w-64 bg-white border-r border-border flex flex-col h-screen overflow-hidden';
 export const sidebarOverlay =
-  'fixed inset-0 z-30 bg-black/40 backdrop-blur-sm lg:bg-transparent lg:pointer-events-none overflow-hidden';
+  'fixed inset-0 z-30 bg-black/40 backdrop-blur-sm lg:bg-transparent lg:pointer-events-none';
 
 // ─── Dashboard Home ───────────────────────────────────────────
 export const homeContainer = 'max-w-7xl mx-auto';

@@ -88,13 +88,9 @@
     /* PWA: prevent text size adjustment on orientation change */
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
-    /* Lock html to full viewport — prevents body drifting when keyboard opens */
-    height: 100%;
-    /* dvh = dynamic viewport height: excludes keyboard on iOS/Android */
-    height: 100dvh;
-    overflow: hidden;
-    /* Prevent bounce scroll at the html level */
-    overscroll-behavior: none;
+    scroll-behavior: smooth;
+    /* iOS momentum scrolling */
+    -webkit-overflow-scrolling: touch;
   }
 
   body {
@@ -104,20 +100,13 @@
     line-height: 1.5;
     color: var(--color-text-primary);
     background-color: var(--color-bg);
-    /* Lock body to full viewport — the inner app shell handles its own scroll */
-    height: 100%;
-    height: 100dvh;
-    overflow: hidden;
+    /* Prevent horizontal scroll on mobile */
+    overflow-x: hidden;
     /* iOS safe area support */
     padding-top: env(safe-area-inset-top);
     padding-bottom: env(safe-area-inset-bottom);
     padding-left: env(safe-area-inset-left);
     padding-right: env(safe-area-inset-right);
-  }
-
-  /* Prevent double-tap zoom on interactive elements — critical for iOS exam UX */
-  button, a, input, select, textarea, label, [role="button"] {
-    touch-action: manipulation;
   }
 
   /* Headings use Playfair Display */
@@ -451,31 +440,9 @@
   }
 }
 
-/* Prevent bounce scroll on iOS (page-level) — also set above in @layer base */
+/* Prevent bounce scroll on iOS (page-level) */
 html, body {
   overscroll-behavior: none;
-}
-
-/* App shell — the single full-height scroll container inside body */
-/* Any page that needs internal scrolling should use this class on its wrapper */
-.app-shell {
-  height: 100%;
-  height: 100dvh;
-  overflow-y: auto;
-  overflow-x: hidden;
-  /* Contain rubber-band scroll to this element, not the page */
-  overscroll-behavior-y: contain;
-  /* Allow vertical pan + pinch-zoom inside this container */
-  touch-action: pan-y pinch-zoom;
-  -webkit-overflow-scrolling: touch;
-}
-
-/* Scrollable inner panels (sidebar content, results lists, etc.) */
-.scroll-area {
-  overflow-y: auto;
-  overflow-x: hidden;
-  overscroll-behavior-y: contain;
-  -webkit-overflow-scrolling: touch;
 }
 
 /* Prevent text selection during swipes */
