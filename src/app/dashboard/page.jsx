@@ -151,7 +151,8 @@ function DashboardContentWithParams() {
         />
 
         {/* Main content — shifts right on desktop when sidebar is open */}
-        <main className={`flex-1 min-h-screen overflow-y-auto transition-[margin-left] duration-300 ease-in-out ${sidebarOpen ? 'lg:ml-64' : 'lg:ml-0'}`}>
+        {/* flex-1 min-h-0: fills remaining height without fighting the dvh-locked shell */}
+        <main className={`flex-1 min-h-0 scroll-area transition-[margin-left] duration-300 ease-in-out ${sidebarOpen ? 'lg:ml-64' : 'lg:ml-0'}`}>
           <motion.div
             key={activeSection}
             initial={{ opacity: 0, x: 12 }}

@@ -82,8 +82,9 @@ export default function StudentLoginPage() {
       </AnimatePresence>
 
       {/* ── Full-page dark navy background ── */}
+      {/* app-shell = 100dvh, overflow-y-auto, overscroll-contain — keyboard opens over it */}
       <div
-        className="min-h-screen relative flex items-center justify-center px-4 py-10 pt-safe pb-safe overflow-hidden"
+        className="app-shell relative flex items-center justify-center px-4 py-10 pt-safe pb-safe"
         style={{ background: 'linear-gradient(135deg, #1F2A49 0%, #1a2340 50%, #141C33 100%)' }}
       >
         {/* Ghost logo — large, low-opacity background decoration */}

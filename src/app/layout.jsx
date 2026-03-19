@@ -133,7 +133,8 @@ export default function RootLayout({ children }) {
         <script src="/sw-register.js" defer />
       </head>
 
-      <body className="bg-surface-muted min-h-screen font-inter antialiased">
+      {/* h-full: height is locked to 100dvh by globals.css — min-h-screen would fight that */}
+      <body className="bg-surface-muted h-full font-inter antialiased">
         <StudentAuthProvider>
           <Toaster
             position="top-center"

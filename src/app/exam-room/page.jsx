@@ -564,9 +564,9 @@ function ExamRoomContent() {
   const timerBgClass     = timerUrgency === 'safe' ? 'bg-brand-primary/5'     : timerUrgency === 'warn' ? 'bg-amber-50'       : 'bg-red-50';
 
   return (
-    <div className="min-h-screen bg-surface-muted select-none">
+    <div className="app-shell bg-surface-muted select-none flex flex-col">
 
-      <header className="bg-white border-b-2 border-border sticky top-0 z-30 shadow-sm">
+      <header className="bg-white border-b-2 border-border sticky top-0 z-30 shadow-sm flex-shrink-0">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="flex items-center justify-between h-16 gap-3">
 
