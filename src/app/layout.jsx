@@ -134,6 +134,21 @@ export default function RootLayout({ children }) {
       </head>
 
       <body className="bg-surface-muted min-h-screen font-inter antialiased">
+        {/* Global logo watermark — floats over all pages & components */}
+        <div
+          aria-hidden="true"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundImage: "url('/logo.png')",
+            backgroundRepeat: 'no-repeat',
+            backgroundSize: '45vmin',
+            backgroundPosition: 'center',
+            opacity: 0.04,
+            pointerEvents: 'none',
+            zIndex: 9999,
+          }}
+        />
         <StudentAuthProvider>
           <Toaster
             position="top-center"
